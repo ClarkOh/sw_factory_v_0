@@ -1,0 +1,201 @@
+requirements:
+- id: REQ-01
+  text: 도구는 텍스트 로그 파일을 읽어 기간별·서비스별 집계 리포트를 생성한다.
+  kind: functional
+  source: 서비스가 남긴 텍스트 로그를 읽어 기간별·서비스별 집계 리포트를 만든다.
+- id: REQ-02
+  text: 입력으로 텍스트 파일 하나 또는 여러 개를 받는다.
+  kind: functional
+  source: 입력은 텍스트 파일 하나 또는 여러 개다.
+- id: REQ-03
+  text: 입력 파일의 한 줄을 하나의 사건으로 해석한다.
+  kind: functional
+  source: 한 줄이 한 사건이다.
+- id: REQ-04
+  text: 한 줄을 앞에서부터 시각, 수준, 서비스 이름, 메시지, 소요시간 순의 필드로 파싱한다.
+  kind: functional
+  source: 앞에서부터 시각, 수준, 서비스 이름, 메시지, 소요시간이다.
+- id: REQ-05
+  text: 필드 구분자는 공백 하나 이상으로 인식한다.
+  kind: functional
+  source: 구분은 공백 하나 이상이며
+- id: REQ-06
+  text: 메시지 필드는 내부에 공백을 포함할 수 있으며, 공백이 있어도 하나의 메시지로 파싱한다.
+  kind: functional
+  source: 메시지에는 공백이 들어갈 수 있다.
+- id: REQ-07
+  text: 시각 필드는 UTC 기준 ISO 8601 형식으로 해석한다.
+  kind: functional
+  source: 시각은 UTC 기준 ISO 8601이다.
+- id: REQ-08
+  text: 수준 필드는 DEBUG, INFO, WARN, ERROR 네 값만 유효한 값으로 인정한다.
+  kind: constraint
+  source: 수준은 DEBUG, INFO, WARN, ERROR 넷 중 하나다.
+- id: REQ-09
+  text: 소요시간 필드는 `ms` 접미사가 붙은 밀리초 단위 정수로 해석한다.
+  kind: functional
+  source: 소요시간은 밀리초 단위 정수이고 `ms`가 붙는다.
+- id: REQ-10
+  text: 소요시간 필드가 없는 줄도 유효한 줄로 인정한다.
+  kind: functional
+  source: 없는 줄도 있다.
+- id: REQ-11
+  text: 형식에 맞지 않는 줄은 집계에서 제외한다.
+  kind: functional
+  source: 형식에 맞지 않는 줄은 집계에 넣지 않는다.
+- id: REQ-12
+  text: 리포트에 버린 줄의 개수와 버린 사유를 적는다.
+  kind: functional
+  source: 대신 몇 줄을 왜 버렸는지 리포트에 적는다.
+- id: REQ-13
+  text: 내용이 동일한 줄이 두 번 입력되면 두 개의 사건으로 계수하며 중복 제거를 하지 않는다.
+  kind: functional
+  source: 같은 줄이 두 번 들어와도 두 번으로 센다. 중복 제거는 하지 않는다.
+- id: REQ-14
+  text: 여러 입력 파일을 처리한 결과는 그 파일들을 하나로 이어붙인 단일 입력을 처리한 결과와 동일하다.
+  kind: functional
+  source: 입력 파일이 여러 개면 전부 합쳐서 하나로 본 것과 같은 결과가 나와야 한다.
+- id: REQ-15
+  text: 입력 파일의 나열 순서가 달라져도 리포트 결과는 동일하다.
+  kind: functional
+  source: 파일 순서나 파일 경계는 결과에 영향을 주지 않는다.
+- id: REQ-16
+  text: 집계 단위로 시간, 일, 주 중 하나를 지정할 수 있다.
+  kind: functional
+  source: 집계 단위는 시간, 일, 주 중 하나를 지정한다.
+- id: REQ-17
+  text: 집계 단위를 지정하지 않으면 일 단위를 기본값으로 사용한다.
+  kind: functional
+  source: 지정하지 않으면 일 단위다.
+- id: REQ-18
+  text: 각 (기간, 서비스) 칸마다 사건 수를 산출한다.
+  kind: functional
+  source: 각 (기간, 서비스) 칸마다 다음을 낸다. - 사건 수
+- id: REQ-19
+  text: 각 (기간, 서비스) 칸마다 DEBUG, INFO, WARN, ERROR 각 수준별 사건 수를 산출한다.
+  kind: functional
+  source: 수준별 사건 수 (DEBUG / INFO / WARN / ERROR)
+- id: REQ-20
+  text: 각 (기간, 서비스) 칸마다 소요시간이 있는 사건의 평균 소요시간을 산출한다.
+  kind: functional
+  source: 소요시간이 있는 사건에 대한 평균, 최댓값, 95 백분위수
+- id: REQ-21
+  text: 각 (기간, 서비스) 칸마다 소요시간이 있는 사건의 최대 소요시간을 산출한다.
+  kind: functional
+  source: 소요시간이 있는 사건에 대한 평균, 최댓값, 95 백분위수
+- id: REQ-22
+  text: 각 (기간, 서비스) 칸마다 소요시간이 있는 사건의 95 백분위수 소요시간을 산출한다.
+  kind: functional
+  source: 소요시간이 있는 사건에 대한 평균, 최댓값, 95 백분위수
+- id: REQ-23
+  text: 소요시간이 없는 사건도 해당 칸의 사건 수에는 포함한다.
+  kind: functional
+  source: 소요시간이 없는 사건은 사건 수에는 들어가고
+- id: REQ-24
+  text: 소요시간이 없는 사건은 소요시간 통계 계산에서 제외한다.
+  kind: functional
+  source: 소요시간 통계에서는 빠진다.
+- id: REQ-25
+  text: 한 칸의 모든 사건에 소요시간이 없으면 그 칸의 소요시간 통계를 0이 아닌 값 없음으로 표시한다.
+  kind: functional
+  source: 한 칸의 모든 사건에 소요시간이 없으면 그 칸의 소요시간 통계는 값 없음으로 표시한다. 0으로 적으면 "빨랐다"로 읽힌다.
+- id: REQ-26
+  text: 기간 경계는 시작 시각을 포함하고 끝 시각을 포함하지 않는 반열림 구간으로 처리한다.
+  kind: functional
+  source: 기간 경계는 시작 시각을 포함하고 끝 시각을 포함하지 않는다.
+- id: REQ-27
+  text: 일 단위의 한 기간은 해당일 00:00:00Z부터 다음 날 00:00:00Z 직전까지다.
+  kind: functional
+  source: 일 단위의 하루는 그날 00:00:00Z 부터 다음 날 00:00:00Z 직전까지다.
+- id: REQ-28
+  text: 사건이 하나도 없는 (기간, 서비스) 칸은 리포트에 출력하지 않는다.
+  kind: functional
+  source: 사건이 하나도 없는 (기간, 서비스) 칸은 리포트에 넣지 않는다.
+- id: REQ-29
+  text: 모든 칸의 사건 수 합계는 집계에 포함된 총 사건 수와 같다.
+  kind: constraint
+  source: 모든 칸의 사건 수를 더하면 집계에 들어간 총 사건 수와 같아야 한다.
+- id: REQ-30
+  text: 한 칸의 수준별 사건 수 합계는 그 칸의 사건 수와 같다.
+  kind: constraint
+  source: 수준별 사건 수의 합도 그 칸의 사건 수와 같아야 한다.
+- id: REQ-31
+  text: 리포트의 행은 기간 오름차순으로 정렬한다.
+  kind: functional
+  source: 리포트는 기간 오름차순, 같은 기간 안에서는 서비스 이름 오름차순으로 낸다.
+- id: REQ-32
+  text: 같은 기간 내의 행은 서비스 이름 오름차순으로 정렬한다.
+  kind: functional
+  source: 같은 기간 안에서는 서비스 이름 오름차순으로 낸다.
+- id: REQ-33
+  text: 리포트 최상단에 대상 기간, 읽은 줄 수, 집계한 사건 수, 버린 줄 수, 서비스 수를 담은 요약을 출력한다.
+  kind: functional
+  source: '리포트 맨 위에 요약을 둔다: 대상 기간, 읽은 줄 수, 집계한 사건 수, 버린 줄 수, 서비스 수.'
+- id: REQ-34
+  text: 리포트에 각 입력 파일의 이름, 크기, 내용 해시를 입력 지문으로 기록한다.
+  kind: functional
+  source: 리포트에 입력의 지문(각 입력 파일의 이름, 크기, 내용 해시)을 적는다.
+- id: REQ-35
+  text: 같은 입력과 같은 설정으로 두 번 실행하면 바이트 단위로 동일한 리포트를 출력한다.
+  kind: nonfunctional
+  source: 같은 입력과 같은 설정으로 두 번 돌리면 완전히 같은 리포트가 나온다.
+- id: REQ-36
+  text: 실행 시각, 실행 소요 시간, 임시 경로처럼 실행마다 달라지는 값은 리포트에 포함하지 않는다.
+  kind: constraint
+  source: 시각, 실행 시간, 임시 경로처럼 실행할 때마다 달라지는 값은 리포트에 넣지 않는다.
+- id: REQ-37
+  text: 리포트 출력 형식으로 사람이 읽는 표 형식과 JSON 형식을 모두 지원한다.
+  kind: functional
+  source: 출력 형식은 사람이 읽는 표와 JSON 둘 다 지원한다.
+- id: REQ-38
+  text: 같은 입력과 설정에서 표 형식과 JSON 형식의 수치는 서로 같다.
+  kind: constraint
+  source: 두 형식의 수치는 같아야 한다.
+- id: REQ-39
+  text: 입력 파일 전체를 메모리에 한꺼번에 올리지 않고 스트리밍 방식으로 읽어 메모리보다 큰 입력을 처리한다.
+  kind: nonfunctional
+  source: 입력이 메모리보다 클 수 있다. 파일 전체를 한꺼번에 올리지 않고 읽는다.
+- id: REQ-40
+  text: 입력 파일을 열 수 없거나 읽는 도중 실패해도 전체 실행을 실패로 만들지 않고 그때까지 읽은 내용으로 리포트를 출력한다.
+  kind: functional
+  source: 그때까지 읽은 것으로 리포트를 내되 ... 전체를 실패로 만들지 않는다.
+- id: REQ-41
+  text: 파일 열기 또는 읽기 실패 시 어느 파일에서 무엇이 실패했는지 리포트에 적는다.
+  kind: functional
+  source: 어느 파일에서 무엇이 실패했는지 리포트에 적는다.
+- id: REQ-42
+  text: 입력에 집계 가능한 사건이 하나도 없으면 오류 없이 빈 리포트를 출력한다.
+  kind: functional
+  source: 입력에 사건이 하나도 없으면 빈 리포트를 낸다. 오류가 아니다.
+- id: REQ-43
+  text: 지정된 집계 단위가 시간, 일, 주 중 하나가 아니면 리포트를 만들지 않고 무엇이 잘못됐는지 알린다.
+  kind: functional
+  source: 지정한 집계 단위가 셋 중 하나가 아니거나 ... 아무것도 만들지 않고 무엇이 잘못됐는지 알린다.
+- id: REQ-44
+  text: 입력 파일이 하나도 주어지지 않으면 리포트를 만들지 않고 무엇이 잘못됐는지 알린다.
+  kind: functional
+  source: 입력 파일이 하나도 주어지지 않으면 아무것도 만들지 않고 무엇이 잘못됐는지 알린다.
+- id: REQ-45
+  text: '[모호] 95 백분위수의 계산 방식(보간 여부, 정렬 기준)이 문서에 정의되어 있지 않다.'
+  kind: constraint
+  source: 소요시간이 있는 사건에 대한 평균, 최댓값, 95 백분위수
+- id: REQ-46
+  text: '[모호] 주 단위 기간의 시작 요일과 경계 기준이 문서에 정의되어 있지 않다.'
+  kind: constraint
+  source: 집계 단위는 시간, 일, 주 중 하나를 지정한다.
+- id: REQ-47
+  text: '[모호] 요약의 "대상 기간"이 입력 데이터에서 도출되는지 사용자가 지정하는지 문서에 정의되어 있지 않다.'
+  kind: constraint
+  source: '리포트 맨 위에 요약을 둔다: 대상 기간, 읽은 줄 수, 집계한 사건 수, 버린 줄 수, 서비스 수.'
+- id: REQ-48
+  text: '[모호] 내용 해시에 사용할 해시 알고리즘이 문서에 정의되어 있지 않다.'
+  kind: constraint
+  source: 리포트에 입력의 지문(각 입력 파일의 이름, 크기, 내용 해시)을 적는다.
+- id: REQ-49
+  text: '[모호] 평균 소요시간의 반올림 및 표기 정밀도가 문서에 정의되어 있지 않다.'
+  kind: constraint
+  source: 소요시간이 있는 사건에 대한 평균, 최댓값, 95 백분위수
+- id: REQ-50
+  text: '[모호] 서비스 이름 오름차순 정렬의 비교 기준(바이트/코드포인트/로케일)이 문서에 정의되어 있지 않다.'
+  kind: constraint
+  source: 같은 기간 안에서는 서비스 이름 오름차순으로 낸다.

@@ -26,3 +26,7 @@ projects/*/.factory/smoke.txt
 *_state.json
 *.state.json
 demo_script.txt
+
+# 사용량 대시보드 캐시 (실행마다 바뀐다)
+tools/.usage_cache.json
+tools/.usage_otel.jsonl

@@ -11,6 +11,12 @@ from factory.models import FSM, Event, Requirement, State, Transition, UseCase
 READ_ONLY = ["Read", "Glob", "Grep"]
 
 
+def _principles(ctx: Ctx) -> str:
+    """원칙 문서 원문. 여기 선언된 보존 등식을 모델 검사가 읽는다."""
+    p = ctx.store.principles_md
+    return p.read_text(encoding="utf-8") if p.exists() else ""
+
+
 def _ask(ctx: Ctx, label: str, body: str) -> dict:
     """분석 단계는 파일을 쓰지 않는다. 읽기 전용 도구로 묻고 YAML만 받는다."""
     return ask_yaml(ctx, label, body, cwd=ctx.cfg.workspace, tools=READ_ONLY)
@@ -109,7 +115,7 @@ def _simulate_and_repair(ctx: Ctx, fsm: FSM) -> FSM:
     ucs = ctx.store.load_usecases()
     prev = None
     for attempt in range(1, ctx.cfg.limits.fsm_repair_attempts + 1):
-        findings = simulate.run_all(fsm, ucs)
+        findings = simulate.run_all(fsm, ucs, _principles(ctx))
         fixable = [f for f in findings if f.fixable_by_fsm]
         if attempt == 1:
             for f in findings[:10]:

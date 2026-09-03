@@ -1,0 +1,591 @@
+project: log_report
+states:
+- id: AWAITING_INPUT_SPECIFICATION
+  desc: 유효한 입력 파일 경로가 하나도 등록되지 않은 채, 운영자의 경로 지정 · 옵션 지정 · 실행 요청을 기다린다
+  initial: true
+  final: false
+- id: AWAITING_RUN_COMMAND
+  desc: 입력 파일 경로가 하나 이상 등록되고 모든 옵션이 유효한 상태로, 운영자의 리포트 생성 요청을 기다린다
+  initial: false
+  final: false
+- id: AWAITING_OPTION_CORRECTION
+  desc: 허용되지 않는 집계 단위 또는 출력 형식이 지정된 상태로, 운영자의 옵션 재지정을 기다린다
+  initial: false
+  final: false
+- id: AWAITING_NEXT_FILE
+  desc: 실행 중 파일 목록의 다음 파일을 열 차례로, 남은 파일이 있는지에 따른 다음 처리를 기다린다
+  initial: false
+  final: false
+- id: AWAITING_NEXT_LINE
+  desc: 현재 파일이 열려 있고 다음 줄을 읽을 차례로, 다음 줄 또는 파일 끝을 기다린다
+  initial: false
+  final: false
+- id: AWAITING_REPORT_REVIEW
+  desc: 리포트가 출력 완료된 상태로, 운영자의 확인 및 재실행 · 옵션 변경 요청을 기다린다
+  initial: false
+  final: false
+- id: AWAITING_ERROR_ACKNOWLEDGEMENT
+  desc: 리포트를 만들지 않고 오류를 알린 상태로, 운영자의 오류 확인 및 입력 · 옵션 재지정, 재실행 요청을 기다린다
+  initial: false
+  final: false
+events:
+- id: SPECIFY_INPUT_FILES
+  desc: 운영자가 하나 이상의 입력 파일 경로를 도구에 지정할 때 발생한다
+  payload:
+    paths: list[str]
+- id: SPECIFY_BUCKET_UNIT
+  desc: 운영자가 집계 단위를 지정할 때 발생한다
+  payload:
+    unit: str
+- id: SPECIFY_OUTPUT_FORMAT
+  desc: 운영자가 출력 형식을 지정할 때 발생한다
+  payload:
+    format: str
+- id: RUN_REPORT
+  desc: 운영자가 리포트 생성을 요청할 때 발생한다
+  payload: {}
+- id: OPEN_FILE
+  desc: 실행 중 파일 목록의 다음 파일을 열려고 시도한 결과가 확정될 때 발생한다
+  payload:
+    path: str
+    opened: bool
+    error_kind: str
+- id: READ_LINE
+  desc: 열린 파일에서 다음 줄을 읽어 그 내용이 확정될 때 발생한다
+  payload:
+    line: str
+    fields: list[str]
+- id: READ_ERROR
+  desc: 파일을 읽는 도중 읽기 실패가 발생할 때 발생한다
+  payload:
+    path: str
+    error_kind: str
+- id: END_OF_FILE
+  desc: 현재 파일의 마지막 줄까지 읽어 파일 끝에 도달할 때 발생한다
+  payload:
+    path: str
+    trailing_newline: bool
+- id: NO_MORE_FILES
+  desc: 파일 목록의 모든 파일 처리가 끝나 남은 파일이 없을 때 발생한다
+  payload: {}
+- id: EMIT_REPORT
+  desc: 집계가 끝나 리포트를 출력할 때 발생한다
+  payload: {}
+- id: ACKNOWLEDGE
+  desc: 운영자가 출력된 리포트 또는 오류 메시지를 확인할 때 발생한다
+  payload: {}
+transitions:
+- id: T-001
+  src: AWAITING_INPUT_SPECIFICATION
+  event: SPECIFY_INPUT_FILES
+  dst: AWAITING_RUN_COMMAND
+  guard: count(non_blank(paths)) > 0
+  action: input_files = concat(input_files, non_blank(paths))
+  usecase: UC-01
+  notes: 같은 경로를 두 번 지정해도 중복 제거 없이 그대로 목록에 누적한다 (UC-02 1a)
+- id: T-002
+  src: AWAITING_INPUT_SPECIFICATION
+  event: SPECIFY_INPUT_FILES
+  dst: AWAITING_INPUT_SPECIFICATION
+  guard: count(non_blank(paths)) == 0
+  action: ''
+  usecase: UC-11
+  notes: 빈 문자열뿐인 입력 목록은 미지정으로 처리한다 (UC-11 2a)
+- id: T-003
+  src: AWAITING_RUN_COMMAND
+  event: SPECIFY_INPUT_FILES
+  dst: AWAITING_RUN_COMMAND
+  guard: count(non_blank(paths)) > 0
+  action: input_files = concat(input_files, non_blank(paths))
+  usecase: UC-02
+  notes: ''
+- id: T-004
+  src: AWAITING_RUN_COMMAND
+  event: SPECIFY_INPUT_FILES
+  dst: AWAITING_RUN_COMMAND
+  guard: count(non_blank(paths)) == 0
+  action: ''
+  usecase: UC-11
+  notes: ''
+- id: T-005
+  src: AWAITING_INPUT_SPECIFICATION
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_INPUT_SPECIFICATION
+  guard: unit in allowed_units
+  action: bucket_unit = unit
+  usecase: UC-03
+  notes: allowed_units = [hour, day, week]
+- id: T-006
+  src: AWAITING_RUN_COMMAND
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_RUN_COMMAND
+  guard: unit in allowed_units
+  action: bucket_unit = unit
+  usecase: UC-03
+  notes: ''
+- id: T-007
+  src: AWAITING_INPUT_SPECIFICATION
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_OPTION_CORRECTION
+  guard: unit not in allowed_units
+  action: invalid_options = add(invalid_options, bucket_unit_option); message = invalid_unit_with(allowed_units)
+  usecase: UC-03
+  notes: ''
+- id: T-008
+  src: AWAITING_RUN_COMMAND
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_OPTION_CORRECTION
+  guard: unit not in allowed_units
+  action: invalid_options = add(invalid_options, bucket_unit_option); message = invalid_unit_with(allowed_units)
+  usecase: UC-03
+  notes: ''
+- id: T-009
+  src: AWAITING_INPUT_SPECIFICATION
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_INPUT_SPECIFICATION
+  guard: format in allowed_formats
+  action: output_format = format
+  usecase: UC-07
+  notes: allowed_formats = [table, json]
+- id: T-010
+  src: AWAITING_RUN_COMMAND
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_RUN_COMMAND
+  guard: format in allowed_formats
+  action: output_format = format
+  usecase: UC-07
+  notes: ''
+- id: T-011
+  src: AWAITING_INPUT_SPECIFICATION
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_OPTION_CORRECTION
+  guard: format not in allowed_formats
+  action: invalid_options = add(invalid_options, output_format_option); message =
+    unsupported_format_with(allowed_formats)
+  usecase: UC-07
+  notes: ''
+- id: T-012
+  src: AWAITING_RUN_COMMAND
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_OPTION_CORRECTION
+  guard: format not in allowed_formats
+  action: invalid_options = add(invalid_options, output_format_option); message =
+    unsupported_format_with(allowed_formats)
+  usecase: UC-07
+  notes: ''
+- id: T-013
+  src: AWAITING_OPTION_CORRECTION
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_OPTION_CORRECTION
+  guard: unit not in allowed_units
+  action: message = invalid_unit_with(allowed_units)
+  usecase: UC-03
+  notes: ''
+- id: T-014
+  src: AWAITING_OPTION_CORRECTION
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_OPTION_CORRECTION
+  guard: format not in allowed_formats
+  action: message = unsupported_format_with(allowed_formats)
+  usecase: UC-07
+  notes: ''
+- id: T-015
+  src: AWAITING_OPTION_CORRECTION
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_RUN_COMMAND
+  guard: unit in allowed_units and remaining_invalid_after(bucket_unit_option) ==
+    0 and count(input_files) > 0
+  action: bucket_unit = unit; invalid_options = remove(invalid_options, bucket_unit_option)
+  usecase: UC-03
+  notes: ''
+- id: T-016
+  src: AWAITING_OPTION_CORRECTION
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_INPUT_SPECIFICATION
+  guard: unit in allowed_units and remaining_invalid_after(bucket_unit_option) ==
+    0 and count(input_files) == 0
+  action: bucket_unit = unit; invalid_options = remove(invalid_options, bucket_unit_option)
+  usecase: UC-03
+  notes: ''
+- id: T-017
+  src: AWAITING_OPTION_CORRECTION
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_OPTION_CORRECTION
+  guard: unit in allowed_units and remaining_invalid_after(bucket_unit_option) > 0
+  action: bucket_unit = unit; invalid_options = remove(invalid_options, bucket_unit_option)
+  usecase: UC-03
+  notes: ''
+- id: T-018
+  src: AWAITING_OPTION_CORRECTION
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_RUN_COMMAND
+  guard: format in allowed_formats and remaining_invalid_after(output_format_option)
+    == 0 and count(input_files) > 0
+  action: output_format = format; invalid_options = remove(invalid_options, output_format_option)
+  usecase: UC-07
+  notes: ''
+- id: T-019
+  src: AWAITING_OPTION_CORRECTION
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_INPUT_SPECIFICATION
+  guard: format in allowed_formats and remaining_invalid_after(output_format_option)
+    == 0 and count(input_files) == 0
+  action: output_format = format; invalid_options = remove(invalid_options, output_format_option)
+  usecase: UC-07
+  notes: ''
+- id: T-020
+  src: AWAITING_OPTION_CORRECTION
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_OPTION_CORRECTION
+  guard: format in allowed_formats and remaining_invalid_after(output_format_option)
+    > 0
+  action: output_format = format; invalid_options = remove(invalid_options, output_format_option)
+  usecase: UC-07
+  notes: ''
+- id: T-021
+  src: AWAITING_OPTION_CORRECTION
+  event: SPECIFY_INPUT_FILES
+  dst: AWAITING_OPTION_CORRECTION
+  guard: ''
+  action: input_files = concat(input_files, non_blank(paths))
+  usecase: UC-03
+  notes: ''
+- id: T-022
+  src: AWAITING_OPTION_CORRECTION
+  event: RUN_REPORT
+  dst: AWAITING_ERROR_ACKNOWLEDGEMENT
+  guard: ''
+  action: emit_option_error(invalid_options); exit_code = non_zero; suppress_report()
+  usecase: UC-11
+  notes: 입력 파일이 없고 집계 단위도 잘못된 경우 잘못된 항목을 함께 알린다 (UC-11 1a)
+- id: T-023
+  src: AWAITING_INPUT_SPECIFICATION
+  event: RUN_REPORT
+  dst: AWAITING_ERROR_ACKNOWLEDGEMENT
+  guard: count(input_files) == 0
+  action: emit_missing_input_error(); exit_code = non_zero; suppress_report()
+  usecase: UC-11
+  notes: ''
+- id: T-024
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: ACKNOWLEDGE
+  dst: AWAITING_INPUT_SPECIFICATION
+  guard: count(input_files) == 0 or count(invalid_options) > 0
+  action: invalid_options = clear()
+  usecase: UC-11
+  notes: ''
+- id: T-025
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: ACKNOWLEDGE
+  dst: AWAITING_RUN_COMMAND
+  guard: count(input_files) > 0 and count(invalid_options) == 0
+  action: ''
+  usecase: UC-11
+  notes: ''
+- id: T-026
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: SPECIFY_INPUT_FILES
+  dst: AWAITING_RUN_COMMAND
+  guard: count(non_blank(paths)) > 0 and count(invalid_options) == 0
+  action: input_files = concat(input_files, non_blank(paths))
+  usecase: UC-11
+  notes: ''
+- id: T-027
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: SPECIFY_INPUT_FILES
+  dst: AWAITING_ERROR_ACKNOWLEDGEMENT
+  guard: count(non_blank(paths)) == 0 or count(invalid_options) > 0
+  action: input_files = concat(input_files, non_blank(paths))
+  usecase: UC-11
+  notes: 빈 문자열뿐인 지정은 입력 미지정으로 남는다 (UC-11 2a)
+- id: T-028
+  src: AWAITING_RUN_COMMAND
+  event: RUN_REPORT
+  dst: AWAITING_NEXT_FILE
+  guard: count(input_files) > 0 and count(invalid_options) == 0
+  action: effective_unit = bucket_unit or day; effective_format = output_format or
+    table; buckets = clear(); read_lines = 0; event_count = 0; dropped = 0; drop_reasons
+    = clear(); fingerprints = clear(); failures = clear(); file_cursor = 0
+  usecase: UC-01
+  notes: 집계 단위 미지정 시 일 단위를 기본값으로 적용한다 (UC-03 1a). 대상 기간 산출 근거는 [미규정 REQ-26] — 입력 데이터에서
+    도출한 최소·최대 사건 시각으로 결정하는 규칙을 문서화해 모든 실행에 동일 적용한다. 주 단위 시작 요일·경계 기준은 [미규정 REQ-46].
+    95 백분위수 계산 방식은 [미규정 REQ-45], 평균 반올림·표기 정밀도는 [미규정 REQ-49], 서비스 이름 정렬 비교 기준은 [미규정
+    REQ-50], 해시 알고리즘은 [미규정 REQ-48] — 각각 하나의 규칙을 문서화해 모든 실행에 동일 적용한다. AWAITING_NEXT_FILE에서
+    운영자 이벤트(RUN_REPORT · SPECIFY_OUTPUT_FORMAT)를 처리하지 못한다는 지적은 위반이 아니다 — 실행 구간은 OPEN_FILE
+    · READ_LINE · END_OF_FILE · NO_MORE_FILES · EMIT_REPORT라는 내부 이벤트만으로 AWAITING_REPORT_REVIEW까지
+    진행하며, 유스케이스 흐름에 적힌 다음 운영자 이벤트는 그 이후에 도착한다.
+- id: T-029
+  src: AWAITING_NEXT_FILE
+  event: OPEN_FILE
+  dst: AWAITING_NEXT_LINE
+  guard: opened
+  action: fingerprints = add(fingerprints, fingerprint_of(path)); file_cursor += 1
+  usecase: UC-08
+  notes: 지문은 파일 이름 · 크기(바이트) · 내용 해시와 해시 알고리즘 이름으로 구성한다
+- id: T-030
+  src: AWAITING_NEXT_FILE
+  event: OPEN_FILE
+  dst: AWAITING_NEXT_FILE
+  guard: '!opened'
+  action: failures = add(failures, {path, error_kind}); fingerprints = add(fingerprints,
+    hash_unavailable(path, error_kind)); file_cursor += 1
+  usecase: UC-10
+  notes: 존재하지 않음 · 권한 없음 모두 실행을 중단하지 않고 실패로 기록한 뒤 다음 파일로 진행한다 (UC-10 3a, 3b). 해시 계산
+    불가 시 지문 항목에 실패 사실을 기록한다 (UC-08 3c)
+- id: T-031
+  src: AWAITING_NEXT_LINE
+  event: READ_LINE
+  dst: AWAITING_NEXT_LINE
+  guard: count(fields) >= 4 and valid_iso8601_utc(fields[0]) and fields[1] in log_levels
+    and non_empty(fields[2]) and valid_duration_ms(last(fields))
+  action: read_lines += 1; event_count += 1; bucket = bucket_of(fields[0], effective_unit);
+    add_event(buckets, bucket, fields[2], fields[1], duration_ms(last(fields)))
+  usecase: UC-01
+  notes: 필드는 공백 1개 이상으로 구분하며, 메시지 내부 공백은 구분자로 보지 않고 시각·수준·서비스 이름과 끝의 소요시간을 제외한 나머지를
+    하나의 메시지로 파싱한다 (UC-01 4d). 동일 내용의 줄도 중복 제거 없이 각각 계수한다 (UC-01 5a). 기간 경계는 시작 포함
+    · 끝 제외의 반열림 구간이다. log_levels = [DEBUG, INFO, WARN, ERROR]
+- id: T-032
+  src: AWAITING_NEXT_LINE
+  event: READ_LINE
+  dst: AWAITING_NEXT_LINE
+  guard: count(fields) >= 3 and valid_iso8601_utc(fields[0]) and fields[1] in log_levels
+    and non_empty(fields[2]) and !has_duration_field(fields)
+  action: read_lines += 1; event_count += 1; bucket = bucket_of(fields[0], effective_unit);
+    add_event(buckets, bucket, fields[2], fields[1], duration_absent)
+  usecase: UC-04
+  notes: 소요시간 없는 사건은 유효 사건으로 계수하되 소요시간 통계 대상에서 제외한다 (UC-01 4e, UC-04 2b)
+- id: T-033
+  src: AWAITING_NEXT_LINE
+  event: READ_LINE
+  dst: AWAITING_NEXT_LINE
+  guard: is_blank(line)
+  action: read_lines += 1; dropped += 1; count_reason(drop_reasons, empty_line)
+  usecase: UC-05
+  notes: ''
+- id: T-034
+  src: AWAITING_NEXT_LINE
+  event: READ_LINE
+  dst: AWAITING_NEXT_LINE
+  guard: '!is_blank(line) and count(fields) < 3'
+  action: read_lines += 1; dropped += 1; count_reason(drop_reasons, malformed_fields)
+  usecase: UC-05
+  notes: 공백 구분으로 시각·수준·서비스 이름을 얻을 수 없는 줄을 버린다 (UC-01 4c)
+- id: T-035
+  src: AWAITING_NEXT_LINE
+  event: READ_LINE
+  dst: AWAITING_NEXT_LINE
+  guard: count(fields) >= 3 and !valid_iso8601_utc(fields[0])
+  action: read_lines += 1; dropped += 1; count_reason(drop_reasons, invalid_timestamp)
+  usecase: UC-05
+  notes: UC-01 4a
+- id: T-036
+  src: AWAITING_NEXT_LINE
+  event: READ_LINE
+  dst: AWAITING_NEXT_LINE
+  guard: count(fields) >= 3 and valid_iso8601_utc(fields[0]) and fields[1] not in
+    log_levels
+  action: read_lines += 1; dropped += 1; count_reason(drop_reasons, invalid_level)
+  usecase: UC-05
+  notes: UC-01 4b, UC-05 2b
+- id: T-037
+  src: AWAITING_NEXT_LINE
+  event: READ_LINE
+  dst: AWAITING_NEXT_LINE
+  guard: count(fields) >= 4 and valid_iso8601_utc(fields[0]) and fields[1] in log_levels
+    and has_duration_field(fields) and !valid_duration_ms(last(fields))
+  action: read_lines += 1; dropped += 1; count_reason(drop_reasons, invalid_duration)
+  usecase: UC-05
+  notes: UC-01 4f, UC-05 2c
+- id: T-038
+  src: AWAITING_NEXT_LINE
+  event: END_OF_FILE
+  dst: AWAITING_NEXT_FILE
+  guard: ''
+  action: close_current_file()
+  usecase: UC-02
+  notes: 마지막 줄이 개행으로 끝나지 않아도 다음 파일의 첫 줄과 이어붙이지 않는다 (UC-02 3b). 유효 사건이 하나도 없는 파일도 건너뛰고
+    나머지 파일로 계속한다 (UC-02 3a)
+- id: T-039
+  src: AWAITING_NEXT_LINE
+  event: READ_ERROR
+  dst: AWAITING_NEXT_FILE
+  guard: ''
+  action: failures = add(failures, {path, error_kind}); close_current_file()
+  usecase: UC-09
+  notes: 메모리보다 큰 입력도 한 줄씩 읽어 집계 결과만 유지하므로, 읽기 실패 지점 이전까지 읽은 사건은 집계에 유지하고 이후는 포기한다
+    (UC-09 3a, UC-10 3c). 포기한 파일은 failures에 이유와 함께 남아 리포트에 출력된다 (P1)
+- id: T-040
+  src: AWAITING_NEXT_FILE
+  event: NO_MORE_FILES
+  dst: AWAITING_NEXT_FILE
+  guard: file_cursor >= count(input_files)
+  action: finalize_stats(buckets); sort_rows(buckets)
+  usecase: UC-06
+  notes: 행은 기간 오름차순, 같은 기간 내 서비스 이름 오름차순으로 정렬한다. 사건 원문은 보관하지 않고 집계 결과만 유지한다 (UC-09
+    3b)
+- id: T-041
+  src: AWAITING_NEXT_FILE
+  event: EMIT_REPORT
+  dst: AWAITING_REPORT_REVIEW
+  guard: event_count > 0
+  action: render(effective_format, summary(period, read_lines, event_count, dropped,
+    service_count), drop_reasons, fingerprints, failures, non_empty_rows(buckets));
+    exit_code = 0
+  usecase: UC-01
+  notes: 사건 수가 0인 칸은 행으로 출력하지 않는다. 소요시간 통계는 소요시간이 있는 사건만으로 평균·최댓값·95 백분위수를 산출하고, 대상이
+    0건인 칸은 값 없음(JSON에서는 null)으로 출력한다 (UC-04 2a). 실행 시각·소요 시간·임시 경로 등 실행마다 달라지는 값은
+    출력에서 제외한다 (UC-08)
+- id: T-042
+  src: AWAITING_NEXT_FILE
+  event: EMIT_REPORT
+  dst: AWAITING_REPORT_REVIEW
+  guard: event_count == 0
+  action: render_empty(effective_format, summary(period, read_lines, event_count,
+    dropped, service_count), drop_reasons, fingerprints, failures); exit_code = 0
+  usecase: UC-12
+  notes: 요약과 입력 지문만 있는 빈 리포트를 오류 없이 출력한다. JSON 형식에서는 칸 목록이 빈 배열인 유효한 JSON을 출력한다 (UC-12
+    3c). 모든 파일이 실패한 경우에도 실패 목록이 담긴 빈 리포트를 출력한다 (UC-10 3d)
+- id: T-043
+  src: AWAITING_REPORT_REVIEW
+  event: ACKNOWLEDGE
+  dst: AWAITING_RUN_COMMAND
+  guard: ''
+  action: ''
+  usecase: UC-01
+  notes: ''
+- id: T-044
+  src: AWAITING_REPORT_REVIEW
+  event: RUN_REPORT
+  dst: AWAITING_NEXT_FILE
+  guard: count(input_files) > 0 and count(invalid_options) == 0
+  action: effective_unit = bucket_unit or day; effective_format = output_format or
+    table; buckets = clear(); read_lines = 0; event_count = 0; dropped = 0; drop_reasons
+    = clear(); fingerprints = clear(); failures = clear(); file_cursor = 0
+  usecase: UC-08
+  notes: 동일 입력·동일 설정의 재실행은 바이트 단위로 동일한 리포트를 낸다. 파일 나열 순서를 바꿔도 수치가 동일하다 (UC-02). 입력
+    내용이 바뀌면 달라진 해시와 그에 맞는 리포트를 낸다 (UC-08 3a). 재실행 중 AWAITING_NEXT_FILE에 머무는 동안 운영자
+    이벤트가 오지 않는 것은 T-028과 같은 이유이며 위반이 아니다.
+- id: T-045
+  src: AWAITING_REPORT_REVIEW
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_RUN_COMMAND
+  guard: format in allowed_formats
+  action: output_format = format
+  usecase: UC-07
+  notes: ''
+- id: T-046
+  src: AWAITING_REPORT_REVIEW
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_OPTION_CORRECTION
+  guard: format not in allowed_formats
+  action: invalid_options = add(invalid_options, output_format_option); message =
+    unsupported_format_with(allowed_formats)
+  usecase: UC-07
+  notes: ''
+- id: T-047
+  src: AWAITING_REPORT_REVIEW
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_RUN_COMMAND
+  guard: unit in allowed_units
+  action: bucket_unit = unit
+  usecase: UC-03
+  notes: ''
+- id: T-048
+  src: AWAITING_REPORT_REVIEW
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_OPTION_CORRECTION
+  guard: unit not in allowed_units
+  action: invalid_options = add(invalid_options, bucket_unit_option); message = invalid_unit_with(allowed_units)
+  usecase: UC-03
+  notes: ''
+- id: T-049
+  src: AWAITING_REPORT_REVIEW
+  event: SPECIFY_INPUT_FILES
+  dst: AWAITING_RUN_COMMAND
+  guard: ''
+  action: input_files = concat(input_files, non_blank(paths))
+  usecase: UC-02
+  notes: ''
+- id: T-050
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_RUN_COMMAND
+  guard: format in allowed_formats and remaining_invalid_after(output_format_option)
+    == 0 and count(input_files) > 0
+  action: output_format = format; invalid_options = remove(invalid_options, output_format_option)
+  usecase: UC-07
+  notes: 오류 확인 상태에서도 SPECIFY_INPUT_FILES(T-026)와 같이 옵션 재지정을 받는다. 남은 잘못된 옵션이 없고 입력
+    파일이 있으면 곧바로 실행 대기로 돌아간다
+- id: T-051
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_ERROR_ACKNOWLEDGEMENT
+  guard: format in allowed_formats and (remaining_invalid_after(output_format_option)
+    > 0 or count(input_files) == 0)
+  action: output_format = format; invalid_options = remove(invalid_options, output_format_option);
+    message = remaining_error_message(input_files, invalid_options)
+  usecase: UC-07
+  notes: 아직 해소되지 않은 오류가 남아 있으면 무엇이 남았는지 다시 알리고 오류 확인 상태에 머문다 (P1)
+- id: T-052
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: SPECIFY_OUTPUT_FORMAT
+  dst: AWAITING_ERROR_ACKNOWLEDGEMENT
+  guard: format not in allowed_formats
+  action: invalid_options = add(invalid_options, output_format_option); message =
+    unsupported_format_with(allowed_formats)
+  usecase: UC-07
+  notes: ''
+- id: T-053
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_RUN_COMMAND
+  guard: unit in allowed_units and remaining_invalid_after(bucket_unit_option) ==
+    0 and count(input_files) > 0
+  action: bucket_unit = unit; invalid_options = remove(invalid_options, bucket_unit_option)
+  usecase: UC-03
+  notes: ''
+- id: T-054
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_ERROR_ACKNOWLEDGEMENT
+  guard: unit in allowed_units and (remaining_invalid_after(bucket_unit_option) >
+    0 or count(input_files) == 0)
+  action: bucket_unit = unit; invalid_options = remove(invalid_options, bucket_unit_option);
+    message = remaining_error_message(input_files, invalid_options)
+  usecase: UC-03
+  notes: ''
+- id: T-055
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: SPECIFY_BUCKET_UNIT
+  dst: AWAITING_ERROR_ACKNOWLEDGEMENT
+  guard: unit not in allowed_units
+  action: invalid_options = add(invalid_options, bucket_unit_option); message = invalid_unit_with(allowed_units)
+  usecase: UC-03
+  notes: ''
+- id: T-056
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: RUN_REPORT
+  dst: AWAITING_NEXT_FILE
+  guard: count(input_files) > 0 and count(invalid_options) == 0
+  action: effective_unit = bucket_unit or day; effective_format = output_format or
+    table; buckets = clear(); read_lines = 0; event_count = 0; dropped = 0; drop_reasons
+    = clear(); fingerprints = clear(); failures = clear(); file_cursor = 0
+  usecase: UC-11
+  notes: 오류를 알린 뒤 입력·옵션이 모두 갖춰진 상태에서 곧바로 실행을 요청할 수 있다. 실행 시작 시 모든 계수기를 초기화해 이전 실패
+    실행의 수치가 섞이지 않게 한다 (P2, P3)
+- id: T-057
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: RUN_REPORT
+  dst: AWAITING_ERROR_ACKNOWLEDGEMENT
+  guard: count(invalid_options) > 0
+  action: emit_option_error(invalid_options); exit_code = non_zero; suppress_report()
+  usecase: UC-11
+  notes: 잘못된 옵션이 남은 채 재실행을 요청하면 리포트를 만들지 않고 잘못된 항목을 다시 알린다 (UC-11 1a)
+- id: T-058
+  src: AWAITING_ERROR_ACKNOWLEDGEMENT
+  event: RUN_REPORT
+  dst: AWAITING_ERROR_ACKNOWLEDGEMENT
+  guard: count(invalid_options) == 0 and count(input_files) == 0
+  action: emit_missing_input_error(); exit_code = non_zero; suppress_report()
+  usecase: UC-11
+  notes: ''

@@ -407,6 +407,158 @@ def check_coverage(fsm: FSM, usecases: list[UseCase]) -> list[Finding]:
 
 
 # --------------------------------------------------------------------------
+# 선언된 보존량
+# --------------------------------------------------------------------------
+
+_FENCE = re.compile(r"```\s*보존\s*\n(.*?)```", re.S)
+
+
+@dataclass
+class Conserved:
+    """원칙 문서가 선언한 보존 관계. 두 형태가 있다.
+
+    `등식: A = B + C` -- **닫힌 계**. 셋 다 같은 전이에서 함께 움직여야 한다.
+    읽은 줄 수처럼 바깥에서 새로 생기지 않는 양이 여기 해당한다.
+
+    `감소대응: A -> B, C, payout` -- **열린 계**. A 는 바깥에서 들어올 수 있고
+    (고객이 코인을 넣는다) 그때는 짝이 필요 없다. 다만 **줄어들 때는** 반드시
+    B·C 로 옮겨가거나 payout 처럼 계를 떠나야 한다.
+    돈이 이 형태다. 처음에 등식으로 쓰려다 거짓 양성 13건을 얻고 알았다.
+    """
+    kind: str                  # "등식" | "감소대응"
+    lhs: str
+    rhs: list[str]
+    raw: str
+
+    @property
+    def names(self) -> list[str]:
+        return [self.lhs, *self.rhs]
+
+
+def load_conserved(principles_md: str) -> list[Conserved]:
+    """원칙 문서의 ```보존 블록을 읽는다.
+
+    **왜 문서에 두는가.** 처음엔 `credit` · `sales` · `stock` 을 검사 코드에 손으로
+    박아넣었다. 그래서 도메인이 로그 집계로 바뀌자 검사가 통째로 눈을 감았다 --
+    원칙 문서에 보존 등식을 셋이나 적어두었는데도 지적 0건이었다.
+    **무엇이 보존량인지는 도메인이 아는 것이지 검사기가 아는 것이 아니다.**
+
+        ```보존
+        등식: read_lines = event_count + dropped
+        ```
+    """
+    out = []
+    for block in _FENCE.findall(principles_md or ""):
+        for line in block.splitlines():
+            line = line.strip()
+            for kind, sep in (("등식", "="), ("감소대응", "->")):
+                if not line.startswith(kind + ":"):
+                    continue
+                body = line.split(":", 1)[1].strip()
+                if sep not in body:
+                    continue
+                lhs, rhs = body.split(sep, 1)
+                terms = [t.strip().rstrip("()") for t in re.split(r"[+＋,·]", rhs)
+                         if t.strip()]
+                if lhs.strip() and terms:
+                    out.append(Conserved(kind, lhs.strip(), terms, body))
+    return out
+
+
+def _states_holding(fsm: FSM, name: str) -> set[str]:
+    """그 양이 0보다 클 수 있는 상태. `_states_that_can_hold_credit` 의 일반형.
+
+    이게 없으면 **이미 0인 자리의 방어적 초기화** 를 결함으로 신고한다.
+    v8 의 T-075 · T-076 이 그랬다 -- 관리 모드를 나오며 `credit := 0` 하는데,
+    거기 도달할 때 잔액은 이미 0이다. 잃을 것이 없는 자리는 지적하지 않는다.
+    """
+    inc = rf"\b{re.escape(name)}\b\s*(?:\[[^\]]*\]|\([^)]*\))?\s*\+="
+    zero = rf"\b{re.escape(name)}\b\s*(?:\[[^\]]*\]|\([^)]*\))?\s*{_ASSIGN}\s*0"
+    holds = {t.dst for t in fsm.transitions if re.search(inc, t.action or "")}
+    changed = True
+    while changed:
+        changed = False
+        for t in fsm.transitions:
+            if t.src in holds and t.dst not in holds \
+                    and not re.search(zero, t.action or "") \
+                    and not _guard_pins_zero(t.guard or "", name):
+                holds.add(t.dst)
+                changed = True
+    return holds
+
+
+def _guard_pins_zero(guard: str, name: str) -> bool:
+    """guard 가 그 양을 0 으로 못박는 갈래인가. 산술식도 읽는다."""
+    for conj in re.split(r"&&|\|\||\band\b", guard or ""):
+        if re.search(rf"\b{re.escape(name)}\b", conj) and re.search(r"==\s*0\b", conj):
+            return True
+    return False
+
+
+def _moves(action: str, name: str) -> bool:
+    """이 전이가 그 양을 건드리는가. 배열 첨자와 점 표기까지 같이 본다."""
+    pat = rf"\b{re.escape(name)}\b\s*(?:\[[^\]]*\]|\.\w+)?\s*(?:\+=|-=|{_ASSIGN})"
+    return bool(re.search(pat, action or ""))
+
+
+def check_conservation(fsm: FSM, ids: list[Conserved]) -> list[Finding]:
+    """선언된 등식을 **한 전이 안에서** 깨는 곳을 찾는다.
+
+    등식이 두 전이에 걸쳐서만 맞으면, 그 사이 상태에서는 장부가 깨져 있다.
+    거기서 정전이나 실패가 나면 차이가 그대로 사라진다 -- 자판기의 -700 이 그랬다.
+    """
+    out = []
+    holding: dict[str, set] = {}
+    actions = " ; ".join(t.action or "" for t in fsm.transitions)
+    for c in ids:
+        # **선언이 틀린 것과 설계가 틀린 것을 구분한다.** 이름이 어느 전이에도
+        # 없으면 그건 모든 전이가 등식을 깬 게 아니라 내가 이름을 잘못 적은 것이다.
+        # 이 구분이 없으면 오타 하나가 지적 수십 건으로 둔갑한다 -- 실제로 그랬다.
+        missing = [n for n in c.names
+                   if not re.search(rf"\b{re.escape(n)}\b", actions)]
+        if missing:
+            out.append(Finding(
+                "선언 오류", "",
+                f"원칙에 적은 `{c.raw}` 에서 {' · '.join(missing)} 은(는) "
+                f"어떤 전이에도 나오지 않는다 — 이름이 FSM 과 다르거나 "
+                f"모델이 그 양을 아예 안 만들었다", [], fixable_by_fsm=False))
+            continue
+
+        for t in fsm.transitions:
+            a = t.action or ""
+            right = [r for r in c.rhs if _moves(a, r)]
+            if c.kind == "등식":
+                left = _moves(a, c.lhs)
+                if left and not right:
+                    out.append(Finding(
+                        "보존 등식", "",
+                        f"{t.id}: '{c.lhs}' 이 움직이는데 대응하는 "
+                        f"{' · '.join(c.rhs)} 변화가 이 전이에 없다 — "
+                        f"`{c.raw}` 이 '{t.dst}' 에서 깨진다", [t.id]))
+                elif right and not left:
+                    out.append(Finding(
+                        "보존 등식", "",
+                        f"{t.id}: {' · '.join(right)} 이 움직이는데 '{c.lhs}' 는 "
+                        f"그대로다 — `{c.raw}` 이 '{t.dst}' 에서 깨진다", [t.id]))
+            else:                                   # 감소대응
+                if t.src not in holding.setdefault(c.lhs, _states_holding(fsm, c.lhs)):
+                    continue                        # 잃을 것이 없는 자리
+                if _guard_pins_zero(t.guard or "", c.lhs):
+                    continue                        # 설계자가 이미 막아 둔 갈래
+                drops = bool(re.search(rf"\b{re.escape(c.lhs)}\b\s*-=", a)) or \
+                    bool(re.search(rf"\b{re.escape(c.lhs)}\b\s*{_ASSIGN}\s*0", a))
+                # 계를 떠나는 호출도 대응으로 친다: payout(...), refund(...)
+                left_system = any(re.search(rf"\b{re.escape(r)}\s*\(", a) for r in c.rhs)
+                if drops and not right and not left_system:
+                    out.append(Finding(
+                        "보존 등식", "",
+                        f"{t.id}: '{c.lhs}' 이 줄어드는데 "
+                        f"{' · '.join(c.rhs)} 어디로도 가지 않는다 — "
+                        f"그만큼이 '{t.dst}' 에서 사라진다", [t.id]))
+    return out
+
+
+# --------------------------------------------------------------------------
 # 전체 실행
 # --------------------------------------------------------------------------
 
@@ -421,11 +573,19 @@ CHECKS = [
 ]
 
 
-def run_all(fsm: FSM, usecases: list[UseCase]) -> list[Finding]:
+def run_all(fsm: FSM, usecases: list[UseCase], principles: str = "") -> list[Finding]:
+    """`principles` 는 원칙 문서 원문. 거기 선언된 보존 등식이 검사 대상에 더해진다.
+
+    빠뜨려도 나머지 검사는 그대로 돈다 -- 다만 그 프로젝트의 보존량은 아무도 안 본다.
+    """
     out = []
     for _name, fn in CHECKS:
         try:
             out.extend(fn(fsm, usecases))
         except Exception as exc:            # 검사 하나가 죽어도 나머지는 돈다
             out.append(Finding("검사 오류", "", f"{_name} 실행 실패: {exc}"))
+    try:
+        out.extend(check_conservation(fsm, load_conserved(principles)))
+    except Exception as exc:
+        out.append(Finding("검사 오류", "", f"보존 등식 실행 실패: {exc}"))
     return out

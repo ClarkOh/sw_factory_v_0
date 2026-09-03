@@ -1,0 +1,19 @@
+[11:53:04] 공장 0eed242 (수정본) · 요구사항 72bc8602548a
+[11:53:04] -- INIT --
+[11:53:04] 스캐폴딩: conftest.py, CONVENTIONS.md, INTERFACE.md, .gitignore, app/__init__.py, tests/__init__.py
+[11:53:04] -- ELICIT --
+[11:53:56] 요구사항 50건 → C:\work\sw_factory\projects\log_report\artifacts\requirements.yaml
+[11:53:56] -- USECASE --
+[11:56:15] 유스케이스 12건 → C:\work\sw_factory\projects\log_report\artifacts\usecases.yaml
+[11:56:15] -- MODEL --
+[12:00:23]   fsm: YAML 파싱 실패 -> 재질의 (원문은 .factory/raw/ 에 보존)
+[12:01:55]     - UC-02 의 3번째 이벤트 'RUN_REPORT' 를 어느 상태에서도 처리할 수 없다 (그때까지 도달한 상태: AWAITING_ERROR_ACKNOWLEDGEMENT, AWAITING_NEXT_FILE) (UC-02, RUN_REPORT)
+[12:01:55]     - UC-07 의 3번째 이벤트 'SPECIFY_OUTPUT_FORMAT' 를 어느 상태에서도 처리할 수 없다 (그때까지 도달한 상태: AWAITING_ERROR_ACKNOWLEDGEMENT, AWAITING_NEXT_FILE) (UC-07, SPECIFY_OUTPUT_FORMAT)
+[12:01:55]     - UC-08 의 3번째 이벤트 'RUN_REPORT' 를 어느 상태에서도 처리할 수 없다 (그때까지 도달한 상태: AWAITING_ERROR_ACKNOWLEDGEMENT, AWAITING_NEXT_FILE) (UC-08, RUN_REPORT)
+[12:01:55]     - UC-09 '메모리보다 큰 입력 처리' 를 참조하는 전이가 하나도 없다 (UC-09)
+[12:01:55]   모델 검사: 4건 수리 시도 1/3
+[12:05:03]   모델 검사: FSM 으로 고칠 지적 없음 (전체 0건)
+[12:05:03] FSM: 상태 7 / 이벤트 11 / 전이 58 → C:\work\sw_factory\projects\log_report\artifacts\fsm.yaml
+[12:05:03] [PAUSE] 게이트 'fsm' 승인 대기 중 (phase=MODEL)
+   산출물을 검토한 뒤 `python -m factory.cli approve fsm` 하고 재개하세요.
+[12:05:03] 정지 지점: MODEL | 통계: {}

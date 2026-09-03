@@ -1,0 +1,197 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Claude Code 사용량</title>
+<style>
+  :root{
+    --bg:#faf9f7; --panel:#fff; --ink:#1a1917; --dim:#6b6862; --line:#e6e2db;
+    --accent:#c2410c; --ok:#15803d; --warn:#b45309; --bad:#b91c1c;
+    --bar:#e8e3da;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#141311; --panel:#1c1b18; --ink:#ece9e3; --dim:#8f8b83; --line:#2c2a26;
+           --accent:#fb923c; --ok:#4ade80; --warn:#fbbf24; --bad:#f87171; --bar:#2c2a26; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.55 ui-sans-serif,-apple-system,"Segoe UI",system-ui,sans-serif;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:26px 20px 60px}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+  h1{font-size:19px;margin:0;letter-spacing:-.01em}
+  .tag{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);
+       color:var(--dim);white-space:nowrap}
+  .tag.on{color:var(--ok);border-color:currentColor}
+  .tag.off{color:var(--dim)}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:16px 18px}
+  .card h2{font-size:12px;margin:0 0 12px;color:var(--dim);font-weight:600;
+           letter-spacing:.04em;text-transform:uppercase}
+  .big{font-size:27px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .sub{color:var(--dim);font-size:12px;margin-top:3px}
+  .bar{height:9px;background:var(--bar);border-radius:99px;overflow:hidden;margin:11px 0 7px}
+  .bar > i{display:block;height:100%;background:var(--accent);border-radius:99px;
+           transition:width .5s ease}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  th,td{text-align:right;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--dim);font-weight:500;font-size:11px;letter-spacing:.03em}
+  tr:last-child td{border-bottom:0}
+  .muted{color:var(--dim)}
+  .note{font-size:12px;color:var(--dim);margin-top:9px;line-height:1.5}
+  .spark{display:flex;align-items:flex-end;gap:2px;height:52px;margin-top:6px}
+  .spark div{flex:1;background:var(--accent);opacity:.75;border-radius:2px 2px 0 0;min-height:1px}
+  .spark div:last-child{opacity:1}
+  .contrib{margin:0 0 13px}
+  .contrib b{font-variant-numeric:tabular-nums}
+  .setup{background:var(--panel);border:1px dashed var(--line);border-radius:11px;
+         padding:15px 18px;margin-top:14px}
+  pre{margin:8px 0 0;padding:11px 13px;background:var(--bg);border:1px solid var(--line);
+      border-radius:7px;overflow-x:auto;font-size:12px;line-height:1.6}
+  .row{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
+  .wide{grid-column:1/-1}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Claude Code 사용량</h1>
+    <span class="tag" id="tel">텔레메트리 —</span>
+    <span class="tag" id="clock">—</span>
+    <span class="tag" id="files">—</span>
+  </header>
+
+  <div class="grid" id="top"></div>
+  <div class="grid" style="margin-top:14px" id="mid"></div>
+  <div id="setup"></div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const n = (x) => (x ?? 0).toLocaleString('ko-KR');
+const M = (x) => (x >= 1e9 ? (x/1e9).toFixed(2)+'B' : x >= 1e6 ? (x/1e6).toFixed(1)+'M'
+                : x >= 1e3 ? (x/1e3).toFixed(0)+'k' : String(x||0));
+const usd = (x) => '$' + (x ?? 0).toLocaleString('en-US',{minimumFractionDigits:2,
+                                                          maximumFractionDigits:2});
+
+function card(title, body, cls='') {
+  return `<div class="card ${cls}"><h2>${title}</h2>${body}</div>`;
+}
+
+function render(d) {
+  const t = d.transcripts, tel = d.telemetry;
+  const on = tel.all.live;
+
+  $('#tel').textContent = on ? `텔레메트리 켜짐 · ${n(tel.all.events)}건`
+                             : '텔레메트리 꺼짐';
+  $('#tel').className = 'tag ' + (on ? 'on' : 'off');
+  $('#clock').textContent = new Date(d.now).toLocaleString('ko-KR');
+  $('#files').textContent = `기록 ${n(t.files)}개 파일`;
+
+  // --- 위: 창 사용량 ---
+  const pct = t.pct;
+  const bar = pct === null ? '' :
+    `<div class="bar"><i style="width:${Math.min(pct,100)}%;background:${
+      pct>=90?'var(--bad)':pct>=70?'var(--warn)':'var(--accent)'}"></i></div>`;
+  const top = [];
+
+  top.push(card(`최근 ${d.window_h}시간`, `
+    <div class="big">${M(t.window.tokens)} <span class="sub">토큰</span></div>
+    ${bar}
+    <div class="sub">${pct === null
+      ? '한도 관측값이 없어 비율을 말할 수 없습니다'
+      : `관측된 한도의 <b>${pct}%</b> · 기준 ${M(t.reference_limit)}`}</div>
+    <div class="sub">호출 ${n(t.window.calls)} · 세션 기록 기준 ${usd(t.window.cost)}</div>`));
+
+  top.push(card('실시간 (텔레메트리)', on ? `
+    <div class="big">${M(tel.window.total_tokens)} <span class="sub">토큰</span></div>
+    <div class="sub">Claude Code 가 보고한 비용 <b>${usd(tel.window.cost)}</b></div>
+    <div class="sub">최근 ${d.window_h}시간 · 세션 ${tel.window.sessions}개</div>
+    <div class="note">추정이 아니라 Claude Code 자신이 계산한 값입니다.</div>`
+    : `<div class="big muted">—</div>
+    <div class="note">아직 지표가 오지 않았습니다. 아래 설정을 켜면
+    이 칸이 <b>추정 없는 실측</b>으로 채워집니다.</div>`));
+
+  top.push(card('오늘 24시간', `
+    <div class="big">${M(t.day.tokens)} <span class="sub">토큰</span></div>
+    <div class="sub">${usd(t.day.cost)} · 호출 ${n(t.day.calls)}</div>
+    <div class="sub">지금 살아 있는 세션 ${t.live_sessions}개</div>`));
+
+  $('#top').innerHTML = top.join('');
+
+  // --- 가운데 ---
+  const mid = [];
+
+  mid.push(card('무엇이 한도를 쓰고 있나 <span class="muted">(최근 24시간)</span>',
+    (t.contributors||[]).map(c => `
+      <div class="contrib">
+        <div class="row"><span>${c.label}</span><b>${c.pct}%</b></div>
+        <div class="bar" style="margin:5px 0 4px"><i style="width:${c.pct}%"></i></div>
+        <div class="sub">${c.hint}</div>
+      </div>`).join('') +
+    `<div class="note">서로 겹칠 수 있는 독립적인 특성입니다. 합이 100%가 되지 않습니다.</div>`));
+
+  const days = t.daily || [];
+  const max = Math.max(1, ...days.map(x => x.tokens));
+  mid.push(card('일별 추이', `
+    <div class="spark">${days.map(x =>
+      `<div style="height:${Math.max(2, x.tokens/max*100)}%" title="${x.date} · ${M(x.tokens)} · ${usd(x.cost)}"></div>`
+    ).join('')}</div>
+    <div class="row sub"><span>${days[0]?.date ?? ''}</span><span>${days.at(-1)?.date ?? ''}</span></div>
+    <div class="sub">최대 ${M(max)} · 누계 ${M(t.all.tokens)} · ${usd(t.all.cost)}</div>`));
+
+  const models = Object.entries(t.by_model).sort((a,b) => b[1].tokens - a[1].tokens);
+  mid.push(card('모델별 <span class="muted">(전체 기간)</span>', `
+    <table><tr><th>모델</th><th>토큰</th><th>출력</th><th>비용</th></tr>
+    ${models.map(([m,v]) => `<tr><td>${m.replace('claude-','')}</td>
+      <td>${M(v.tokens)}</td><td>${M(v.out)}</td><td>${usd(v.cost)}</td></tr>`).join('')}
+    </table>`));
+
+  mid.push(card('프로젝트별 <span class="muted">(최근 24시간)</span>', `
+    <table><tr><th>프로젝트</th><th>토큰</th><th>호출</th></tr>
+    ${(t.by_project||[]).map(p => `<tr><td>${p.name}</td>
+      <td>${M(p.tokens)}</td><td>${n(p.calls)}</td></tr>`).join('')}
+    </table>`));
+
+  const obs = t.observed_limits || [];
+  mid.push(card('한도에 막힌 기록', obs.length ? `
+    <div class="sub" style="margin-bottom:8px">공개된 한도 수치는 없습니다.
+    <b>실제로 막힌 순간</b>의 ${d.window_h}시간 사용량이 그때의 한도입니다.</div>
+    <table><tr><th>시각</th><th>그때까지 ${d.window_h}시간</th></tr>
+    ${obs.slice(-8).reverse().map(o => `<tr>
+      <td>${new Date(o.ts).toLocaleString('ko-KR',{month:'numeric',day:'numeric',
+          hour:'2-digit',minute:'2-digit'})}</td>
+      <td>${M(o.tokens)}</td></tr>`).join('')}
+    </table>
+    <div class="note">값이 흔들리는 것 자체가 정보입니다 — 한도가 토큰 하나로
+    정해지지 않는다는 뜻입니다.</div>`
+    : '<div class="muted">기록 없음</div>', 'wide'));
+
+  $('#mid').innerHTML = mid.join('');
+
+  // --- 설정 안내 ---
+  $('#setup').innerHTML = on ? '' : `
+    <div class="setup">
+      <h2 style="font-size:12px;color:var(--dim);margin:0 0 6px;text-transform:uppercase;
+                 letter-spacing:.04em">실측으로 바꾸기</h2>
+      <div class="sub">세션 기록에서 읽은 값은 <b>근사</b>입니다 — 한 요청이 여러 레코드로
+      나뉘어 기록되고, 중복을 제거해도 <code>/usage</code>가 보고하는 수치와 어긋납니다.
+      Claude Code 는 자기 사용량을 OpenTelemetry 로 내보내므로, 그걸 이 서버로 보내면
+      추정이 사라집니다. 새 터미널에서:</div>
+      <pre>export CLAUDE_CODE_ENABLE_TELEMETRY=1
+export OTEL_METRICS_EXPORTER=otlp
+export OTEL_EXPORTER_OTLP_PROTOCOL=http/json
+export OTEL_EXPORTER_OTLP_ENDPOINT=${location.origin}
+export OTEL_METRIC_EXPORT_INTERVAL=10000</pre>
+    </div>`;
+}
+
+async function tick() {
+  try {
+    const r = await fetch('/api/usage');
+    render(await r.json());
+  } catch (e) {
+    $('#clock').textContent = '연결 끊김';
+  }
+}
+tick();
+setInterval(tick, 5000);
+</script>

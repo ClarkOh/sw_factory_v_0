@@ -1644,3 +1644,89 @@ def test_guard_arithmetic_pinning_credit_to_zero_is_read():
                            ("DISPENSING", False), ("ADMIN", False)])
     assert [x for x in simulate.run_all(f, []) if "잔액을 든 채" in x.detail], \
         "구분 없이 잔액을 흘려보내는 것을 놓쳤다"
+
+
+def test_conserved_quantities_come_from_the_principles_document():
+    """무엇이 보존량인지는 **도메인이 아는 것이지 검사기가 아는 것이 아니다.**
+
+    처음엔 `credit`·`sales`·`stock` 을 검사 코드에 박아넣었다. 그래서 두 번째
+    프로젝트(로그 집계)에서 검사가 통째로 눈을 감았다 -- 원칙 문서에 보존 등식을
+    셋이나 적어두었는데 지적 0건이었다. 0건이 '깨끗하다'가 아니라 '안 봤다'였다.
+    """
+    from factory import simulate
+
+    md = """
+    ```보존
+    등식: read_lines = event_count + dropped
+    감소대응: credit -> sales, payout
+    ```
+    """
+    ids = simulate.load_conserved(md)
+    assert [c.kind for c in ids] == ["등식", "감소대응"]
+    assert ids[0].lhs == "read_lines" and ids[0].rhs == ["event_count", "dropped"]
+    assert ids[1].rhs == ["sales", "payout"]
+    assert simulate.load_conserved("보존 블록이 없는 문서") == []
+
+
+def test_closed_and_open_systems_are_checked_differently():
+    """`등식` 은 닫힌 계 -- 양쪽이 함께 움직여야 한다.
+    `감소대응` 은 열린 계 -- 바깥에서 들어오는 것은 짝이 필요 없고, 나갈 때만 필요하다.
+
+    돈을 등식으로 쓰려다 거짓 양성 13건을 얻고 알았다. 코인 투입은 잔액만 늘린다.
+    """
+    from factory import simulate
+
+    md = "```보존\n등식: read = kept + dropped\n감소대응: credit -> sales\n```"
+    ids = simulate.load_conserved(md)
+
+    bad = _fsm([("T-1", "A", "LINE", "A", "read += 1"),                 # 짝 없음
+                ("T-0", "A", "LINE", "A", "read += 1; kept += 1; dropped += 0"),
+                ("T-2", "A", "COIN", "B", "credit += amount"),
+                ("T-3", "B", "PICK", "A", "credit -= price"),          # 행선지 없음
+                ("T-4", "B", "BUY", "A", "credit -= price; sales += price")],
+               states=[("A", True), ("B", False)])
+    found = simulate.check_conservation(bad, ids)
+    refs = {r for f in found for r in f.refs}
+    assert "T-1" in refs, "닫힌 계에서 한쪽만 움직이는 것을 놓쳤다"
+    assert "T-3" in refs, "열린 계에서 나가는 곳 없이 줄어드는 것을 놓쳤다"
+    assert "T-2" not in refs, "바깥에서 들어오는 것을 결함으로 봤다"
+
+    good = _fsm([("T-1", "A", "LINE", "A", "read += 1; kept += 1"),
+                 ("T-1b", "A", "LINE", "A", "read += 1; dropped += 1"),
+                 ("T-2", "A", "COIN", "B", "credit += amount"),
+                 ("T-3", "B", "PICK", "A", "credit -= price; sales += price")],
+                states=[("A", True), ("B", False)])
+    assert not simulate.check_conservation(good, ids)
+
+
+def test_a_declaration_that_matches_nothing_is_a_declaration_error():
+    """선언이 틀린 것과 설계가 틀린 것은 다르다.
+
+    이름 하나를 잘못 적으면 '모든 전이가 등식을 깬다'로 둔갑해 지적 수십 건이 된다.
+    실제로 그랬다 -- 자판기에 `refund` 라고 적었는데 그 모델은 `payout` 을 썼고,
+    거짓 양성 13건이 나왔다. 그건 FSM 을 고쳐서 해소되지 않으므로 수리 루프에도
+    넘기면 안 된다.
+    """
+    from factory import simulate
+
+    ids = simulate.load_conserved("```보존\n감소대응: credit -> refund\n```")
+    f = _fsm([("T-1", "A", "COIN", "A", "credit += amount"),
+              ("T-2", "A", "PICK", "A", "credit -= price; payout(price)")])
+    found = simulate.check_conservation(f, ids)
+    assert len(found) == 1 and found[0].check == "선언 오류"
+    assert "refund" in found[0].detail
+    assert not found[0].fixable_by_fsm, "FSM 수리 루프에 넘기면 토큰만 태운다"
+
+
+def test_defensive_reset_where_nothing_can_be_lost_is_not_a_defect():
+    """잃을 것이 없는 자리의 `x = 0` 은 방어 코드지 결함이 아니다.
+    v8 의 T-075·T-076 이 그랬다 -- 관리 모드를 나오며 잔액을 0 으로 두는데,
+    거기 도달할 때 잔액은 이미 0이다."""
+    from factory import simulate
+
+    ids = simulate.load_conserved("```보존\n감소대응: credit -> sales\n```")
+    f = _fsm([("T-1", "IDLE", "COIN", "PAID", "credit += amount"),
+              ("T-2", "PAID", "PICK", "IDLE", "credit -= price; sales += price"),
+              ("T-3", "ADMIN", "EXIT", "IDLE", "credit = 0")],
+             states=[("IDLE", True), ("PAID", False), ("ADMIN", False)])
+    assert not [x for x in simulate.check_conservation(f, ids) if "T-3" in x.refs]
