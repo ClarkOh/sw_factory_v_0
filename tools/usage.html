@@ -49,6 +49,10 @@
       border-radius:7px;overflow-x:auto;font-size:12px;line-height:1.6}
   .row{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
   .wide{grid-column:1/-1}
+  .mini{margin-left:6px;font:inherit;font-size:11px;padding:1px 7px;cursor:pointer;
+        background:transparent;color:var(--dim);border:1px solid var(--line);
+        border-radius:99px}
+  .mini:hover{color:var(--ink);border-color:var(--dim)}
 </style>
 
 <div class="wrap">
@@ -60,6 +64,7 @@
   </header>
 
   <div class="grid" id="top"></div>
+  <div class="grid" style="margin-top:14px" id="top2"></div>
   <div class="grid" style="margin-top:14px" id="mid"></div>
   <div id="setup"></div>
 </div>
@@ -75,6 +80,36 @@ const usd = (x) => '$' + (x ?? 0).toLocaleString('en-US',{minimumFractionDigits:
 function card(title, body, cls='') {
   return `<div class="card ${cls}"><h2>${title}</h2>${body}</div>`;
 }
+
+// 초기화 시각. 오늘이면 시각만, 아니면 날짜와 요일까지.
+function when(iso) {
+  const d = new Date(iso), today = new Date();
+  const same = d.toDateString() === today.toDateString();
+  return d.toLocaleString('ko-KR', same
+    ? {hour: '2-digit', minute: '2-digit'}
+    : {month: 'numeric', day: 'numeric', weekday: 'short',
+       hour: '2-digit', minute: '2-digit'});
+}
+
+// 남은 시간. 초 단위까지 보여주면 눈이 피곤하므로 분까지만.
+function until(iso) {
+  const s = Math.max(0, (new Date(iso) - Date.now()) / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+  return h ? `${h}시간 ${m}분` : `${m}분`;
+}
+
+// 주간 한도는 도달 기록이 없어 기준을 모른다. 지어내지 않고 한 번 물어본다 --
+// `/usage` 가 지금 몇 %라고 하는지 넣으면 그 시점 토큰으로 기준을 역산해 둔다.
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-cal]');
+  if (!b) return;
+  const cur = prompt('/usage 가 지금 이 칸을 몇 % 로 보여주나요? (숫자만, 지우려면 0)');
+  const p = Number(cur);
+  if (!Number.isFinite(p)) return;
+  await fetch('/api/calibrate', {method: 'POST', body: JSON.stringify(
+    {id: b.dataset.cal, pct: p, cost: Number(b.dataset.cost)})});
+  tick();
+});
 
 function render(d) {
   const t = d.transcripts, tel = d.telemetry;
@@ -93,15 +128,27 @@ function render(d) {
       pct>=90?'var(--bad)':pct>=70?'var(--warn)':'var(--accent)'}"></i></div>`;
   const top = [];
 
-  top.push(card(`최근 ${d.window_h}시간`, `
-    <div class="big">${M(t.window.tokens)} <span class="sub">토큰</span></div>
-    ${bar}
-    <div class="sub">${pct === null
-      ? '한도 관측값이 없어 비율을 말할 수 없습니다'
-      : `관측된 한도의 <b>${pct}%</b> · 기준 ${M(t.reference_limit)}`}</div>
-    <div class="sub">호출 ${n(t.window.calls)} · 세션 기록 기준 ${usd(t.window.cost)}</div>`));
+  // --- 한도 세 칸. 주간은 기준을 모르므로 한 번 보정을 받는다. ---
+  for (const L of (d.limits || [])) {
+    // 척도는 비용이다. 토큰 총합은 98% 가 캐시 읽기라 한도와 거의 무관하다.
+    const isLimit = L.is_limit;
+    const p = L.pct;
+    const col = p >= 90 ? 'var(--bad)' : p >= 70 ? 'var(--warn)' : 'var(--accent)';
+    top.push(card(L.label, `
+      <div class="big">${p === null ? '—' : p + '%'}
+        <span class="sub">${p === null ? '보정 전' : '사용'}</span></div>
+      ${p === null ? '' :
+        `<div class="bar"><i style="width:${Math.min(p,100)}%;background:${col}"></i></div>`}
+      <div class="sub">${M(L.tokens)} 토큰 · ${usd(L.cost)} · 호출 ${n(L.calls)}</div>
+      <div class="sub"><b>${when(L.resets)}</b> 초기화
+        <span class="muted">· ${until(L.resets)} 뒤</span></div>
+      <div class="note">${L.basis}
+        <button class="mini" data-cal="${L.id}" data-cost="${L.cost}">${
+          isLimit ? '재보정' : '한도 보정'}</button></div>`));
+  }
 
-  top.push(card('실시간 (텔레메트리)', on ? `
+  const top2 = [];
+  top2.push(card('실시간 (텔레메트리)', on ? `
     <div class="big">${M(tel.window.total_tokens)} <span class="sub">토큰</span></div>
     <div class="sub">Claude Code 가 보고한 비용 <b>${usd(tel.window.cost)}</b></div>
     <div class="sub">최근 ${d.window_h}시간 · 세션 ${tel.window.sessions}개</div>
@@ -110,12 +157,13 @@ function render(d) {
     <div class="note">아직 지표가 오지 않았습니다. 아래 설정을 켜면
     이 칸이 <b>추정 없는 실측</b>으로 채워집니다.</div>`));
 
-  top.push(card('오늘 24시간', `
+  top2.push(card('오늘 24시간', `
     <div class="big">${M(t.day.tokens)} <span class="sub">토큰</span></div>
     <div class="sub">${usd(t.day.cost)} · 호출 ${n(t.day.calls)}</div>
     <div class="sub">지금 살아 있는 세션 ${t.live_sessions}개</div>`));
 
   $('#top').innerHTML = top.join('');
+  $('#top2').innerHTML = top2.join('');
 
   // --- 가운데 ---
   const mid = [];

@@ -36,11 +36,12 @@ import threading
 import webbrowser
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 PAGE = Path(__file__).with_name("usage.html")
 CACHE = Path(__file__).with_name(".usage_cache.json")
+CALIB = Path(__file__).with_name(".usage_calib.json")
 OTEL_LOG = Path(__file__).with_name(".usage_otel.jsonl")
 ROOT = Path.home() / ".claude" / "projects"
 
@@ -289,6 +290,18 @@ def _bucket(calls: list) -> dict:
     }
 
 
+def _slice(calls: list, lo_iso: str, hi_iso: str) -> list:
+    """[lo, hi) 구간. **ISO-8601 UTC 문자열은 사전순이 곧 시간순** 이라
+    파싱 없이 이분탐색으로 자른다.
+
+    매 요청마다 타임스탬프를 파싱했더니 200만 번이 되어 응답이 멈췄다.
+    호출 기록은 이미 ts 로 정렬돼 있으므로 이걸로 충분하다.
+    """
+    import bisect
+    keys = [c["ts"] for c in calls]
+    return calls[bisect.bisect_left(keys, lo_iso):bisect.bisect_left(keys, hi_iso)]
+
+
 def observed_limits(store: Store) -> list[dict]:
     """실제로 막힌 순간의 5시간 사용량. 한도의 **관측값** 이다.
 
@@ -296,12 +309,12 @@ def observed_limits(store: Store) -> list[dict]:
     한도가 토큰 하나로 정해지지 않는다는 뜻이니까.
     """
     out = []
-    for lim in store.limits:
+    for lim in store.limits[-40:]:
         t = _utc(lim["ts"])
         if not t:
             continue
-        lo = t - timedelta(hours=SESSION_WINDOW_H)
-        win = [c for c in store.calls if lo <= (_utc(c["ts"]) or t) <= t]
+        lo = (t - timedelta(hours=SESSION_WINDOW_H)).isoformat()
+        win = _slice(store.calls, lo, lim["ts"])
         if win:
             out.append({"ts": lim["ts"], "text": lim["text"],
                         "tokens": sum(tokens_of(c) for c in win)})
@@ -313,6 +326,7 @@ def contributors(calls: list) -> list[dict]:
     if not calls:
         return []
     total = sum(tokens_of(c) for c in calls) or 1
+    calls = calls[-4000:]        # 동시성 판정은 O(n*160) 이다. 최근 것만 본다.
     stamps = sorted((_utc(c["ts"]), c["session"], tokens_of(c))
                     for c in calls if _utc(c["ts"]))
     par = 0
@@ -342,15 +356,154 @@ def contributors(calls: list) -> list[dict]:
     ]
 
 
+KST = timezone(timedelta(hours=9))
+WEEK_ANCHOR = (1, 4)            # (요일 0=월, 시각) — 관측: "Resets Sep 1, 4am (Asia/Seoul)"
+_RESET_RE = re.compile(r"resets\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)", re.I)
+
+
+def session_block(store: Store, now: datetime) -> tuple[datetime, datetime]:
+    """지금 세션 블록의 [시작, 끝).
+
+    한도 문구가 `resets 5:20pm (Asia/Seoul)` 처럼 **끝 시각을 알려준다.**
+    5시간을 그냥 굴리는 것보다 이게 맞다 -- 블록은 굴러가는 창이 아니라 칸이다.
+    문구가 없으면 굴림 창으로 물러선다.
+    """
+    for lim in reversed(store.limits):
+        m = _RESET_RE.search(lim["text"])
+        t = _utc(lim["ts"])
+        if not m or not t:
+            continue
+        h = int(m.group(1)) % 12 + (12 if m.group(3).lower() == "pm" else 0)
+        local = t.astimezone(KST)
+        end = local.replace(hour=h, minute=int(m.group(2) or 0), second=0, microsecond=0)
+        if end <= local:
+            end += timedelta(days=1)
+        # 그 끝에서 5시간 간격으로 칸이 이어진다. 지금이 속한 칸을 찾는다.
+        step = timedelta(hours=SESSION_WINDOW_H)
+        while end <= now.astimezone(KST):
+            end += step
+        while end - step > now.astimezone(KST):
+            end -= step
+        return (end - step).astimezone(timezone.utc), end.astimezone(timezone.utc)
+    return now - timedelta(hours=SESSION_WINDOW_H), now
+
+
+def weekly_reference(store: Store, now: datetime, only_fable=False) -> tuple[int, str]:
+    """주간 한도의 기준값. **지금까지 관측된 최대 주간 사용량** 을 쓴다.
+
+    주간 한도에 막힌 기록은 트랜스크립트에 남지 않는다 -- 118건이 전부 세션 한도다.
+    그래서 세션처럼 '막힌 순간'으로 역산할 수 없다. 대신 실제로 한 주에 이만큼은
+    썼다는 사실이 남아 있고, 그건 **한도의 하한** 이다. 한도까지 써 본 주가 있다면
+    최댓값이 곧 한도에 가깝다.
+
+    지어낸 값이 아니라 관측값이므로 근거를 화면에 같이 적는다.
+    """
+    lo, _ = week_window(now)
+    best, weeks = 0, 0
+    for k in range(1, 27):                       # 반년치
+        s = lo - timedelta(days=7 * k)
+        e = s + timedelta(days=7)
+        win = _slice(store.calls, s.isoformat(), e.isoformat())
+        if only_fable:
+            win = [c for c in win if "fable" in c["model"]]
+        if not win:
+            continue
+        weeks += 1
+        best = max(best, sum(tokens_of(c) for c in win))
+    return best, weeks
+
+
+def week_window(now: datetime) -> tuple[datetime, datetime]:
+    """주간 한도의 칸. 관측된 리셋(화요일 4시 KST)에 맞춘다."""
+    local = now.astimezone(KST)
+    wd, hh = WEEK_ANCHOR
+    start = local.replace(hour=hh, minute=0, second=0, microsecond=0)
+    start -= timedelta(days=(local.weekday() - wd) % 7)
+    if start > local:
+        start -= timedelta(days=7)
+    return start.astimezone(timezone.utc), (start + timedelta(days=7)).astimezone(timezone.utc)
+
+
+def load_calib() -> dict:
+    """`/usage` 로 맞춘 한도. 칸 이름 -> 100% 에 해당하는 비용(달러).
+
+    **왜 과거 기록으로 역산하지 않는가.** 처음엔 "실제로 막힌 순간의 사용량이 곧
+    한도"라고 보고 40회의 중앙값을 썼다. 그런데 그 값들이 $16 ~ $108 로 흩어지고,
+    지금 `/usage` 가 말하는 20% 와도 안 맞았다. **한도가 그동안 바뀌었기 때문이다** --
+    화면에 "+50% promo through Sep 13" 이 떠 있다.
+    움직이는 기준을 과거로 역산하면 언제나 틀린다. 그래서 사람이 본 값을 받는다.
+    """
+    try:
+        return json.loads(CALIB.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def save_calib(d: dict) -> None:
+    try:
+        CALIB.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _panel(pid, label, calls, resets, calib) -> dict:
+    """한 칸. **척도는 비용이다.**
+
+    토큰 총합으로 재면 98% 가 캐시 읽기라 한도와 거의 무관한 값이 된다.
+    실제로 그렇게 재서 74% 라고 표시했는데 `/usage` 는 20% 였다.
+    비용은 캐시 읽기를 1/10, 출력을 5배로 셈하므로 한도의 대리값으로 훨씬 낫다.
+    """
+    b = _bucket(calls)
+    ref = float(calib.get(pid) or 0)
+    # 사용량이 0 이면 한도를 몰라도 0% 다. 양수 한도의 0 은 언제나 0% --
+    # 여기서 '모른다'고 하면 아는 것을 모른다고 하는 셈이다.
+    pct = 0 if not b["cost"] else (round(b["cost"] / ref * 100) if ref else None)
+    return {"id": pid, "label": label, "resets": resets.isoformat(timespec="seconds"),
+            **b, "reference": ref, "is_limit": bool(ref),
+            "pct": pct,
+            "basis": (f"`/usage` 로 맞춘 한도 ${ref:,.0f} 대비" if ref
+                      else "이번 칸에 사용량이 없습니다" if not b["cost"]
+                      else "아직 보정하지 않았습니다 — `/usage` 의 % 를 한 번 넣어주세요")}
+
+
+def _week_panel(store, now, pid, label, calls, resets, only_fable) -> dict:
+    """주간 칸.
+
+    **이 막대는 한도 대비가 아니다.** 주간 한도에 막힌 기록이 트랜스크립트에 안 남아
+    (118건이 전부 세션 한도) 역산할 근거가 없다. 대신 '지금까지 가장 많이 쓴 주'
+    대비로 그린다 -- 관측값이고, 이번 주가 평소보다 얼마나 센지는 정확히 말해준다.
+    한도를 알고 싶으면 화면의 [보정] 로 `/usage` 의 % 를 한 번 넣으면 된다.
+    """
+    past, weeks = weekly_reference(store, now, only_fable)
+    cur = sum(tokens_of(c) for c in calls)
+    ref = max(past, cur)
+    basis = (f"지난 {weeks}주 최대 대비 — 한도가 아닙니다"
+             if weeks else "과거 기록이 없어 비교 대상이 없습니다")
+    if cur and cur >= past:
+        basis = f"지금까지 중 가장 많이 쓴 주입니다 (지난 {weeks}주 최대의 " \
+                f"{round(cur / past * 100)}%)" if past else basis
+    return {"id": pid, "label": label, "resets": resets.isoformat(timespec="seconds"),
+            **_bucket(calls), "reference": ref, "is_limit": False,
+            "pct": round(cur / ref * 100) if ref else None, "basis": basis}
+
+
 def snapshot(store: Store, tel: Telemetry) -> dict:
     now = datetime.now(timezone.utc)
 
-    def since(h):
-        lo = now - timedelta(hours=h)
-        return [c for c in store.calls if (_utc(c["ts"]) or now) >= lo]
+    hi = now.isoformat()
 
-    win = since(SESSION_WINDOW_H)
+    def since(h):
+        return _slice(store.calls, (now - timedelta(hours=h)).isoformat(), hi)
+
+    def between(lo, hi_dt, only_fable=False):
+        win = _slice(store.calls, lo.isoformat(), hi_dt.isoformat())
+        return [c for c in win if "fable" in c["model"]] if only_fable else win
+
+    blk_lo, blk_hi = session_block(store, now)
+    wk_lo, wk_hi = week_window(now)
+    win = between(blk_lo, blk_hi)
     obs = observed_limits(store)
+    calib = load_calib()
     ref = sorted(o["tokens"] for o in obs)[len(obs) // 2] if obs else 0
     cur = sum(tokens_of(c) for c in win)
     day = since(24)
@@ -370,9 +523,15 @@ def snapshot(store: Store, tel: Telemetry) -> dict:
             "window": tel.snapshot(SESSION_WINDOW_H),
             "day": tel.snapshot(24),
         },
+        "limits": [
+            _panel("session", f"세션 ({SESSION_WINDOW_H}시간 칸)", win, blk_hi, calib),
+            _panel("week", "주간 (전체 모델)", between(wk_lo, wk_hi), wk_hi, calib),
+            _panel("week_fable", "주간 (Fable)",
+                   between(wk_lo, wk_hi, only_fable=True), wk_hi, calib),
+        ],
         "transcripts": {
             "window": _bucket(win), "day": _bucket(day),
-            "week": _bucket(since(24 * 7)), "all": _bucket(store.calls),
+            "week": _bucket(between(wk_lo, wk_hi)), "all": _bucket(store.calls),
             "reference_limit": ref,
             "pct": round(cur / ref * 100) if ref else None,
             "by_model": {m: _bucket(v) for m, v in sorted(by_model.items())},
@@ -435,6 +594,21 @@ def make_handler(store: Store, tel: Telemetry):
                         pass
                 # OTLP 는 빈 JSON 객체를 성공으로 본다
                 return self._send({})
+            if self.path.startswith("/api/calibrate"):
+                # `/usage` 가 지금 몇 % 라고 하는지 받아 100% 에 해당하는 비용을 역산한다.
+                # 브라우저가 아니라 서버에 저장한다 -- 재시작해도, 다른 창에서도 남는다.
+                try:
+                    req = json.loads(raw)
+                    pid, pct, cost = req["id"], float(req["pct"]), float(req["cost"])
+                except Exception as exc:
+                    return self._send({"error": str(exc)}, 400)
+                cal = load_calib()
+                if pct > 0 and cost > 0:
+                    cal[pid] = round(cost / (pct / 100), 2)
+                else:
+                    cal.pop(pid, None)
+                save_calib(cal)
+                return self._send({"ok": True, "calib": cal})
             if self.path.endswith("/v1/logs") or self.path.endswith("/v1/traces"):
                 return self._send({})           # 받되 쓰지 않는다
             self._send({"error": "not found"}, 404)
@@ -458,7 +632,9 @@ def main() -> int:
         print(f"세션 기록 없음: {ROOT}")
 
     url = f"http://127.0.0.1:{args.port}"
-    srv = HTTPServer(("127.0.0.1", args.port), make_handler(store, tel))
+    # 브라우저가 keep-alive 로 연결을 붙잡으면 단일 스레드 서버는 통째로 막힌다.
+    # 5초마다 물어보는 화면이라 이건 곧 '멈춘 대시보드'가 된다.
+    srv = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(store, tel))
     print(f"\n  {url}  ← 대시보드\n")
     print("실시간 지표를 받으려면 새 터미널에서 이 값들을 켜고 claude 를 쓰세요:")
     print("  CLAUDE_CODE_ENABLE_TELEMETRY=1  OTEL_METRICS_EXPORTER=otlp")
