@@ -55,6 +55,66 @@ def record(workspace: Path, label: str, result, phase: str = "") -> None:
         pass
 
 
+def record_run(workspace: Path, project: str, model: str = "") -> dict:
+    """실행 하나의 출처를 남긴다. **무엇을 썼나** 옆에 **무엇이 만들었나** 를 둔다.
+
+    v6 -> v7 -> v8 에서 지적:구현 비용비가 8.6 -> 5.5 -> 1.3 배로 내려갔는데,
+    그 사이 세 가지가 동시에 바뀌었다: 요구사항 문서, 공장 코드, 그리고 사람.
+    기록에는 비용만 남아 있어 **원인을 가릴 수 없다.** 세 버전을 비교한 표가
+    그래서 대부분 무효였다.
+
+    한 실행 안에서는 이 값들이 안 바뀌므로 호출마다가 아니라 시작 때 한 번 찍는다.
+    """
+    row = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "kind": "run",
+        "project": project,
+        "model": model or "(기본)",
+        "factory": _git_head(Path(__file__).resolve().parent.parent),
+        # 커밋 안 된 수정이 있으면 그 실행은 재현할 수 없다. 숨기지 말고 표시한다 --
+        # 오늘 simulate.py 를 고치면서 v8 을 돌렸고, 그 사실이 어디에도 안 남았다.
+        "dirty": _git_dirty(Path(__file__).resolve().parent.parent),
+    }
+    ws = Path(workspace)
+    for name in ("requirements.md", "principles.md"):
+        row[f"{name.split('.')[0]}_sha"] = _file_sha(ws / name)
+    try:
+        path = ws / ".factory" / "cost.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+    return row
+
+
+def _git_head(repo: Path) -> str:
+    out = _git(repo, "rev-parse", "--short", "HEAD")
+    return out or "(git 아님)"
+
+
+def _git_dirty(repo: Path) -> bool:
+    return bool(_git(repo, "status", "--porcelain"))
+
+
+def _git(repo: Path, *args: str) -> str:
+    import subprocess
+    try:
+        r = subprocess.run(["git", "-C", str(repo), *args],
+                           capture_output=True, text=True, timeout=10)
+        return r.stdout.strip() if r.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
+def _file_sha(p: Path) -> str:
+    import hashlib
+    try:
+        return hashlib.sha256(p.read_bytes()).hexdigest()[:12]
+    except Exception:
+        return ""
+
+
 def _stage_of(label: str) -> str:
     """`implement:SWF-12:2` -> `implement`. 티켓·시도 번호를 떼어 단계만 남긴다."""
     return (label or "?").split(":", 1)[0]
@@ -105,7 +165,13 @@ def check_outlier(workspace: Path, label: str, threshold: float = 5.0,
 # 집계
 # --------------------------------------------------------------------------
 
-def load(workspace: Path) -> list[dict]:
+def load(workspace: Path, kind: str = "call") -> list[dict]:
+    """기록을 읽는다. 한 파일에 두 종류가 섞여 있다 --
+    워커 호출(`kind` 없음)과 실행 출처(`kind: run`). 집계는 앞의 것만 본다.
+
+    같은 파일에 두는 이유는 순서가 곧 문맥이기 때문이다. 출처 줄 다음에 오는
+    호출들이 그 공장·그 요구사항으로 돌아간 것이다.
+    """
     path = Path(workspace) / ".factory" / "cost.jsonl"
     if not path.exists():
         return []
@@ -115,10 +181,17 @@ def load(workspace: Path) -> list[dict]:
         if not line:
             continue
         try:
-            rows.append(json.loads(line))
+            r = json.loads(line)
         except json.JSONDecodeError:
             continue
+        if r.get("kind", "call") == kind:
+            rows.append(r)
     return rows
+
+
+def runs(workspace: Path) -> list[dict]:
+    """이 프로젝트를 돌린 실행들의 출처. 어떤 공장이 어떤 문서로 만들었는가."""
+    return load(workspace, kind="run")
 
 
 def summarize(workspace: Path, transitions: int = 0) -> dict:

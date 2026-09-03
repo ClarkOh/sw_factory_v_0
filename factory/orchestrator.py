@@ -15,7 +15,7 @@ from pathlib import Path
 from factory.context import Ctx
 from factory.models import Status, Ticket, TicketType
 from factory.scaffold import scaffold
-from factory import release
+from factory import cost, release
 from factory.stages import analysis, build, critic, deliver, entry, planning, remediate
 from factory.worker.base import WorkerUnavailable
 
@@ -112,6 +112,11 @@ class Orchestrator:
         게이트에서 멈춘 뒤 재개할 때 작업을 다시 돌리면, 사람이 승인한 산출물과
         실제로 쓰이는 산출물이 달라진다. LLM은 같은 입력에도 다른 답을 내기 때문이다.
         """
+        prov = cost.record_run(self.ctx.cfg.workspace, self.ctx.cfg.project,
+                               getattr(self.ctx.cfg, "model", ""))
+        self.ctx.log(f"공장 {prov['factory']}{' (수정본)' if prov['dirty'] else ''}"
+                     f" · 요구사항 {prov.get('requirements_sha', '?')}")
+
         while True:
             phase = Phase(self.state.phase)
             if phase is Phase.COMPLETE:

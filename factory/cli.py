@@ -122,6 +122,28 @@ def cmd_demo(ctx: Ctx, args) -> int:
     return 0 if ok else 1
 
 
+def _print_provenance(runs: list[dict]) -> None:
+    """무엇이 이 비용을 만들었는가. 비용만 보면 원인을 못 가린다.
+
+    같은 공장·같은 문서로 돌린 실행끼리만 숫자를 비교할 수 있다.
+    바뀐 줄에 표시를 달아 어디서 조건이 달라졌는지 눈에 띄게 한다.
+    """
+    if not runs:
+        return
+    print("실행 출처")
+    prev = {}
+    for r in runs[-8:]:
+        marks = "".join("*" if r.get(k) != prev.get(k) and prev else " "
+                        for k in ("factory", "requirements_sha"))
+        print(f"  {r['ts'][:16].replace('T', ' ')}  공장 {r.get('factory', '?'):>9}"
+              f"{'+수정' if r.get('dirty') else '    '}"
+              f"  요구사항 {(r.get('requirements_sha') or '?')[:8]}  {marks}")
+        prev = r
+    if len(runs) > 8:
+        print(f"  ... 이전 {len(runs) - 8}건 생략")
+    print("  (* = 앞 실행과 조건이 다름 -- 이 경계를 넘는 비교는 통제되지 않았다)\n")
+
+
 def cmd_cost(ctx: Ctx, _args) -> int:
     """이 프로젝트가 지금까지 쓴 비용. 기준선 비교는 단위당 값으로 한다."""
     from factory import cost
@@ -131,6 +153,8 @@ def cmd_cost(ctx: Ctx, _args) -> int:
     if not s["calls"]:
         print("기록 없음 (.factory/cost.jsonl). 아직 워커를 부르지 않았거나 이전 실행입니다.")
         return 0
+
+    _print_provenance(cost.runs(ctx.cfg.workspace))
 
     t = s["tokens"]
     print(f"호출 {s['calls']:,}회 | 벽시계 {s['wall_hours']}시간"
