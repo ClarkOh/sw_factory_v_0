@@ -1,0 +1,6811 @@
+- key: SWF-1
+  type: epic
+  title: '[UC-01] 코인을 투입하여 누적 금액을 올린다'
+  description: '**액터** 고객
+
+    **사전조건** 자판기가 판매 상태이고 배출 진행 중이 아니다.
+
+    **사후조건** 투입한 코인 액면가만큼 누적 투입 금액이 증가하고, 그 액면가의 보유 개수가 1 증가하며, 화면에 갱신된 누적 금액이 표시된다.
+
+
+    **주 흐름**
+
+    - 1. 고객이 코인 투입구에 100원, 500원 또는 1000원 코인을 넣는다.
+
+    - 2. 시스템이 코인의 액면가를 인식하고 받아들인다.
+
+    - 3. 시스템이 누적 투입 금액에 액면가를 더하고 화면에 표시한다.
+
+    - 4. 시스템이 해당 액면가의 동전 보유 개수를 1 증가시킨다.
+
+    - 5. 시스템이 각 음료의 선택 버튼 활성화 여부를 갱신한다(누적 금액 ≥ 가격 이고 재고 ≥ 1 인 음료만 활성).
+
+
+    **대안/예외 흐름**
+
+    - 2a. 코인이 100원·500원·1000원 이외의 액면가인 경우 시스템은 그 코인을 그대로 즉시 되돌려 보내고 누적 금액과 보유량을 변경하지
+    않는다.
+
+    - 2b. 코인 인식에 실패한 경우 시스템은 그 코인을 그대로 즉시 되돌려 보내고 누적 금액과 보유량을 변경하지 않는다.
+
+    - 2c. 자판기가 판매 중지 상태인 경우 시스템은 그 코인을 그대로 되돌려 보내고 누적 금액과 보유량을 변경하지 않는다.
+
+    - 2d. 자판기가 관리 모드인 경우 시스템은 그 코인을 그대로 되돌려 보내고 누적 금액과 보유량을 변경하지 않는다.
+
+    - 1a. 배출이 진행 중인 상태에서 코인이 투입된 경우 UC-04 로 처리한다.
+
+
+    **인수 조건**
+
+    - 누적 0원 상태에서 500원 투입 후 화면 표시값 == 500
+
+    - 누적 500원 상태에서 1000원 투입 후 누적 == 1500 이고 1000원 보유 개수가 투입 전보다 정확히 1 크다
+
+    - 50원 코인 투입 시 코인이 반환되고 누적 금액·모든 액면가 보유 개수가 투입 전과 동일하다
+
+    - 인식 실패 코인 투입 시 코인이 반환되고 누적 금액·보유 개수가 투입 전과 동일하다
+
+    - 판매 중지 상태·관리 모드에서 500원 투입 시 코인이 반환되고 누적 금액·보유 개수가 투입 전과 동일하다
+
+    - 어떤 시점에도 화면에 표시되는 값 == 현재 누적 투입 금액
+
+    - 누적 금액 ≥ 가격 이고 재고 ≥ 1 인 음료 버튼만 활성화 상태이고, 조건 미충족 음료 버튼은 비활성 상태이다'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-2
+  type: epic
+  title: '[UC-02] 음료를 선택하여 구매한다'
+  description: '**액터** 고객
+
+    **사전조건** 자판기가 판매 상태이고, 선택하려는 음료의 버튼이 활성화되어 있다(누적 금액 ≥ 가격, 재고 ≥ 1).
+
+    **사후조건** 해당 음료가 배출되고 재고가 1 감소하며, 버튼을 누른 시점의 (누적 금액 − 가격)이 거스름돈으로 지급되고 그만큼 액면가별
+    보유 개수가 차감되며, 자판기는 판매 상태로 돌아간다.
+
+
+    **주 흐름**
+
+    - 1. 고객이 활성화된 음료 선택 버튼을 누른다.
+
+    - 2. 시스템이 버튼을 누른 시점의 누적 금액에서 음료 가격을 뺀 값을 거스름돈으로 확정한다.
+
+    - 3. 시스템이 보유 동전으로 거스름돈을 구성할 수 있음을 확인한다.
+
+    - 4. 시스템이 2초 이내에 해당 음료의 배출을 개시한다.
+
+    - 5. 시스템이 배출 완료 신호를 받는다.
+
+    - 6. 시스템이 해당 음료의 재고를 1 차감하고 판매된 금액에 음료 가격을 더한다.
+
+    - 7. 거스름돈이 0보다 크면 시스템이 거스름돈을 반환하고 사용한 동전 개수만큼 액면가별 보유 개수를 차감한다.
+
+    - 8. 시스템이 누적 투입 금액에서 (가격 + 거스름돈)을 차감하고 화면에 표시한 뒤 판매 상태로 돌아간다.
+
+
+    **대안/예외 흐름**
+
+    - 1a. 비활성화된 버튼을 누른 경우 시스템은 아무것도 하지 않는다(배출·금액·재고 변화 없음).
+
+    - 3a. 보유 동전으로 거스름돈을 만들 수 없는 경우 시스템은 배출하지 않고 투입 금액 전액을 반환하며, 사용한 동전만큼 보유 개수를 차감하고
+    재고를 변경하지 않은 채 판매 상태로 돌아간다.
+
+    - 5a. 배출 개시 후 10초 안에 배출 완료 신호를 받지 못한 경우 UC-05 로 처리한다.
+
+    - 5b. 배출 완료를 기다리는 중 코인이 투입된 경우 UC-04 로 처리하며 진행 중인 배출의 거스름돈은 변하지 않는다.
+
+    - 5c. 배출 완료를 기다리는 중 관리자가 전용 키로 관리 모드 진입을 요청한 경우 UC-07 로 처리한다.
+
+    - 6a. 배출 후 모든 음료의 재고가 0이 된 경우 시스템은 판매 중지 상태로 전환한다(UC-11).
+
+
+    **인수 조건**
+
+    - 가격 700원 음료, 누적 1000원에서 버튼 누름 → 음료 1개 배출, 재고 −1, 거스름돈 300원 지급, 지급 후 누적 == 0
+
+    - 가격 1000원 음료, 누적 1000원에서 버튼 누름 → 음료 배출되고 거스름돈 지급 동작이 발생하지 않는다
+
+    - 거스름돈 300원 지급에 100원 3개 사용 시 100원 보유 개수가 정확히 3 감소하고 다른 액면가는 변화 없다
+
+    - 가격 700원 음료, 누적 1000원, 100원 보유 0개·500원 보유 0개 → 배출되지 않고 1000원 전액 반환, 재고 변화 없음,
+    상태 == 판매
+
+    - 버튼 누름 시각과 배출 개시 시각의 차 ≤ 2초
+
+    - 비활성 버튼을 눌렀을 때 누적 금액·재고·보유량·상태 모두 변화 없음'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-3
+  type: epic
+  title: '[UC-03] 반환 레버로 투입 금액을 돌려받는다'
+  description: '**액터** 고객
+
+    **사전조건** 자판기가 판매 상태이다.
+
+    **사후조건** 누적 투입 금액 전액이 반환되어 누적 금액이 0이 되고 화면에 0이 표시되며, 지급에 사용한 동전만큼 액면가별 보유 개수가
+    차감된다.
+
+
+    **주 흐름**
+
+    - 1. 고객이 반환 레버를 조작한다.
+
+    - 2. 시스템이 누적 투입 금액 전액을 동전으로 반환한다.
+
+    - 3. 시스템이 지급에 사용한 동전 개수만큼 액면가별 보유 개수를 차감한다.
+
+    - 4. 시스템이 누적 투입 금액을 0으로 하고 화면에 0을 표시하며 모든 음료 버튼을 비활성화한다.
+
+
+    **대안/예외 흐름**
+
+    - 1a. 누적 투입 금액이 0인 경우 시스템은 아무것도 반환하지 않고 상태를 유지한다.
+
+    - 1b. 판매 중지 상태나 관리 모드에서 레버가 조작된 경우 시스템은 레버 조작에 반응하지 않는다(반환 대상 금액이 없음).
+
+
+    **인수 조건**
+
+    - 누적 1500원 상태에서 레버 조작 → 반환 금액 합계 == 1500, 조작 후 누적 == 0, 화면 표시 == 0
+
+    - 반환에 1000원 1개·500원 1개 사용 시 1000원·500원 보유 개수가 각각 1씩 감소
+
+    - 누적 0원 상태에서 레버 조작 → 반환 동작 없음, 보유량 변화 없음
+
+    - 레버 조작 후 모든 음료 버튼이 비활성 상태'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-4
+  type: epic
+  title: '[UC-04] 배출 진행 중에 코인을 투입한다'
+  description: '**액터** 고객
+
+    **사전조건** 자판기가 어떤 음료의 배출을 개시한 뒤 배출 완료 신호를 기다리고 있다.
+
+    **사후조건** 투입된 코인이 수납되어 보유 개수와 누적 투입 금액에 더해지며, 진행 중인 배출의 거스름돈은 변하지 않고, 배출 완료 후 그
+    금액이 누적 금액으로 남는다.
+
+
+    **주 흐름**
+
+    - 1. 고객이 배출 진행 중에 100원·500원·1000원 코인을 넣는다.
+
+    - 2. 시스템이 코인을 받아들여 해당 액면가 보유 개수를 1 증가시키고 누적 투입 금액에 더해 화면에 표시한다.
+
+    - 3. 시스템이 진행 중인 배출의 거스름돈을 버튼을 누른 시점 기준 금액 그대로 유지한다.
+
+    - 4. 시스템이 배출을 완료하고 확정된 거스름돈만 지급한다.
+
+    - 5. 시스템이 배출 중 투입된 금액을 누적 투입 금액으로 남기고 버튼 활성화 여부를 갱신한다.
+
+
+    **대안/예외 흐름**
+
+    - 1a. 비액면가 또는 인식 실패 코인인 경우 시스템은 그 코인을 그대로 되돌려 보내고 아무것도 변경하지 않는다.
+
+    - 4a. 배출이 실패로 처리된 경우 시스템은 (버튼 시점 누적 금액 + 배출 중 투입 금액) 전액을 반환한다(UC-05).
+
+
+    **인수 조건**
+
+    - 가격 700원, 누적 1000원에서 버튼 누름 후 배출 중 500원 투입 → 완료 시 거스름돈 == 300, 완료 후 누적 == 500,
+    화면 표시 == 500
+
+    - 배출 중 500원 투입 시 500원 보유 개수가 투입 전보다 1 크다
+
+    - 완료 후 남은 500원으로 가격 500원 이하 음료(재고 ≥ 1) 버튼이 활성화된다'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-5
+  type: epic
+  title: '[UC-05] 배출 실패를 처리한다'
+  description: '**액터** 배출 장치
+
+    **사전조건** 자판기가 배출을 개시했고 아직 배출 완료 신호를 받지 못했다.
+
+    **사후조건** 재고가 차감되지 않고 누적 투입 금액 전액이 반환되어 0이 되며, 자판기는 판매 상태로 돌아간다. 이후 도착한 완료 신호는
+    지연 배출로만 기록된다.
+
+
+    **주 흐름**
+
+    - 1. 배출 장치가 배출 개시 후 10초 안에 배출 완료 신호를 보내지 않는다.
+
+    - 2. 시스템이 배출 실패로 처리하고 해당 음료의 재고를 차감하지 않는다.
+
+    - 3. 시스템이 누적 투입 금액 전액을 반환하고 사용한 동전만큼 액면가별 보유 개수를 차감한다.
+
+    - 4. 시스템이 누적 투입 금액을 0으로 하여 화면에 표시하고 판매 상태로 돌아간다.
+
+
+    **대안/예외 흐름**
+
+    - 4a. 배출 실패 처리 후 배출 장치로부터 배출 완료 신호가 도착한 경우 시스템은 상태·재고·금액을 변경하지 않고 그 신호를 ''지연 배출''(음료
+    종류, 시각)로 기록한다.
+
+    - 3a. 전액 반환에 필요한 동전이 부족한 경우에도 시스템은 보유 동전으로 가능한 조합으로 반환하며 요구사항 상 별도 규정이 없으므로 나머지는
+    반환 불가로 남긴다(명세 미정 사항으로 관리자에게 표시).
+
+
+    **인수 조건**
+
+    - 배출 개시 후 10초 경과까지 완료 신호 없음 → 상태 == 판매, 재고 == 배출 전 값, 누적 == 0, 반환 금액 == 버튼 시점
+    누적 + 배출 중 투입 금액
+
+    - 실패 처리 후 완료 신호 도착 → 상태·재고·누적 금액·보유량 모두 신호 도착 전과 동일
+
+    - 실패 처리 후 완료 신호 도착 → 지연 배출 기록 건수가 1 증가
+
+    - 배출 개시 후 9.9초에 완료 신호 도착 → 정상 배출로 처리(재고 −1)'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-6
+  type: epic
+  title: '[UC-06] 무조작 시 투입 금액을 자동 반환한다'
+  description: '**액터** 타이머(시간 경과)
+
+    **사전조건** 자판기가 판매 상태이고 누적 투입 금액이 0보다 크다.
+
+    **사후조건** 누적 투입 금액 전액이 반환되어 0이 되고 거래가 종료되며, 지급에 사용한 동전만큼 보유 개수가 차감된다.
+
+
+    **주 흐름**
+
+    - 1. 마지막 코인 투입, 음료 선택 또는 반환 레버 조작 이후 30초가 경과한다.
+
+    - 2. 시스템이 누적 투입 금액 전액을 반환하고 사용한 동전만큼 액면가별 보유 개수를 차감한다.
+
+    - 3. 시스템이 누적 투입 금액을 0으로 하여 화면에 표시하고 거래를 종료한다.
+
+
+    **대안/예외 흐름**
+
+    - 1a. 30초 이내에 코인 투입, 음료 선택 또는 반환 레버 조작이 발생한 경우 시스템은 타이머를 재시작하고 자동 반환하지 않는다.
+
+    - 1b. 누적 투입 금액이 0인 경우 시스템은 자동 반환을 수행하지 않는다.
+
+    - 1c. 배출 진행 중(완료 대기)인 경우 음료 선택이 마지막 조작이므로 배출 처리(UC-02/UC-05)가 우선하며 이후 남은 누적 금액부터
+    30초를 계산한다.
+
+
+    **인수 조건**
+
+    - 누적 500원 상태에서 30초간 조작 없음 → 반환 금액 == 500, 누적 == 0, 화면 표시 == 0
+
+    - 누적 500원 상태에서 20초 뒤 100원 투입, 그로부터 29초 경과 → 자동 반환 미발생, 누적 == 600
+
+    - 누적 500원 상태에서 20초 뒤 100원 투입, 그로부터 30초 경과 → 반환 금액 == 600
+
+    - 누적 0원 상태에서 30초 경과 → 반환 동작 없음'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-06
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-7
+  type: epic
+  title: '[UC-07] 관리 모드에 진입한다'
+  description: '**액터** 관리자
+
+    **사전조건** 관리자가 전용 키를 소지하고 있고, 자판기는 판매 상태·판매 중지 상태 또는 배출 완료 대기 중이다.
+
+    **사후조건** 누적 투입 금액이 0이고 잔여 금액은 반환되었으며, 자판기는 관리 모드이다.
+
+
+    **주 흐름**
+
+    - 1. 관리자가 전용 키로 관리 모드 진입을 요청한다.
+
+    - 2. 시스템이 누적 투입 금액이 남아 있으면 그 금액 전액을 반환하고 사용한 동전만큼 보유 개수를 차감한다.
+
+    - 3. 시스템이 누적 투입 금액을 0으로 하고 화면에 표시한다.
+
+    - 4. 시스템이 관리 모드로 전환한다.
+
+
+    **대안/예외 흐름**
+
+    - 1a. 전용 키가 아닌 수단으로 진입이 시도된 경우 시스템은 관리 모드로 전환하지 않고 현재 상태를 유지한다.
+
+    - 1b. 배출 완료를 기다리는 중에 진입이 요청된 경우 시스템은 진입을 허용하며, 남아 있는 누적 투입 금액(배출 중 투입분 포함)을 반환한
+    뒤 관리 모드로 전환한다.
+
+    - 2a. 누적 투입 금액이 0인 경우 시스템은 반환 없이 관리 모드로 전환한다.
+
+    - 4a. 관리 모드 중 코인이 투입된 경우 시스템은 그 코인을 그대로 되돌려 보낸다(UC-01 2d).
+
+
+    **인수 조건**
+
+    - 판매 상태·누적 300원에서 전용 키 조작 → 반환 금액 == 300, 누적 == 0, 상태 == 관리 모드
+
+    - 누적 0원에서 전용 키 조작 → 반환 동작 없음, 상태 == 관리 모드
+
+    - 배출 완료 대기 중 전용 키 조작 → 상태 == 관리 모드
+
+    - 판매 중지 상태에서 전용 키 조작 → 상태 == 관리 모드
+
+    - 전용 키 없이 진입 시도 → 상태 변화 없음'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-8
+  type: epic
+  title: '[UC-08] 재고와 동전을 보충한다'
+  description: '**액터** 관리자
+
+    **사전조건** 자판기가 관리 모드이다.
+
+    **사후조건** 지시된 음료의 재고와 액면가별 동전 보유 개수가 지시 수량만큼 증가하고, 보충된 금액이 누적 기록되며, 자판기는 판매 상태(모든
+    재고가 0이면 판매 중지 상태)로 돌아간다.
+
+
+    **주 흐름**
+
+    - 1. 관리자가 보충 지시(음료 종류별 수량 및/또는 액면가별 동전 수량)를 입력한다.
+
+    - 2. 시스템이 지시의 모든 대상이 등록된 3종 음료 또는 100원·500원·1000원 액면가이고, 모든 수량이 1 이상의 정수임을 검증한다.
+
+    - 3. 시스템이 지시된 수량만큼 음료별 재고와 액면가별 보유 개수를 증가시키고 보충된 금액을 기록한다.
+
+    - 4. 관리자가 보충 종료를 지시한다.
+
+    - 5. 시스템이 종료 시점의 재고를 확인하여 재고가 1 이상인 음료가 있으면 판매 상태로 돌아간다.
+
+
+    **대안/예외 흐름**
+
+    - 2a. 지시에 등록되지 않은 음료나 허용되지 않은 액면가가 하나라도 포함된 경우 시스템은 지시 전체를 거부하고 관리자에게 알리며 재고·보유량을
+    변경하지 않는다.
+
+    - 2b. 지시에 0 이하 또는 정수가 아닌 수량이 하나라도 포함된 경우 시스템은 지시 전체를 거부하고 관리자에게 알리며 재고·보유량을 변경하지
+    않는다.
+
+    - 5a. 종료 시점에 모든 음료의 재고가 0인 경우 시스템은 판매 중지 상태로 돌아간다.
+
+
+    **인수 조건**
+
+    - 음료A 재고 0에서 보충 5 → 음료A 재고 == 5, 다른 음료 재고 변화 없음
+
+    - 100원 보유 2개에서 100원 10개 보충 → 100원 보유 == 12, 보충된 금액 기록 += 1000
+
+    - 음료A 3개 + 미등록 음료D 2개 지시 → 거부 알림 발생, 음료A 재고 변화 없음
+
+    - 음료A 3개 + 500원 0개 지시 → 거부 알림 발생, 재고·보유량 변화 없음
+
+    - 50원 5개 보충 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 보충 종료 시 재고 합 ≥ 1 → 상태 == 판매; 재고 합 == 0 → 상태 == 판매 중지'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-08
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-9
+  type: epic
+  title: '[UC-09] 동전을 회수한다'
+  description: '**액터** 관리자
+
+    **사전조건** 자판기가 관리 모드이다.
+
+    **사후조건** 지시된 액면가의 보유 개수가 회수 개수만큼 감소하고 회수된 금액이 누적 기록되며, 보유량 합계는 미반환 보관액 이상으로 유지된다.
+
+
+    **주 흐름**
+
+    - 1. 관리자가 액면가별 회수 수량을 입력한다.
+
+    - 2. 시스템이 모든 대상이 100원·500원·1000원 액면가이고 모든 수량이 1 이상의 정수이며 각 액면가 보유 개수 이내임을 검증한다.
+
+    - 3. 시스템이 회수 후 보유량 합계가 미반환 보관액 이상임을 확인한다.
+
+    - 4. 시스템이 지시된 개수만큼 해당 액면가의 보유 개수를 차감하고 회수된 금액을 기록한다.
+
+    - 5. 시스템이 회수 결과를 관리자에게 표시한다.
+
+
+    **대안/예외 흐름**
+
+    - 2a. 허용되지 않은 액면가나 0 이하의 수량이 하나라도 포함된 경우 시스템은 지시 전체를 거부하고 관리자에게 알리며 보유량을 변경하지
+    않는다.
+
+    - 2b. 어느 액면가의 회수 수량이 보유 개수를 초과하는 경우 시스템은 지시 전체를 거부하고 관리자에게 알린다.
+
+    - 3a. 회수 후 보유량 합계가 미반환 보관액보다 작아지는 경우 시스템은 지시 전체를 거부하고 관리자에게 알리며 보유량을 변경하지 않는다.
+
+
+    **인수 조건**
+
+    - 500원 보유 10개, 미반환 보관액 0에서 500원 4개 회수 → 500원 보유 == 6, 회수된 금액 기록 += 2000
+
+    - 보유 합계 3000원, 미반환 보관액 1000원에서 합계 2500원 회수 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 보유 합계 3000원, 미반환 보관액 1000원에서 합계 2000원 회수 지시 → 승인, 회수 후 합계 == 1000
+
+    - 500원 2개 + 100원 0개 회수 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 1000원 보유 1개에서 1000원 2개 회수 지시 → 거부 알림 발생'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-09
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-10
+  type: epic
+  title: '[UC-10] 지연 배출 기록과 미반환 보관액을 확인·회수한다'
+  description: '**액터** 관리자
+
+    **사전조건** 자판기가 관리 모드이다.
+
+    **사후조건** 관리자가 지연 배출 기록과 미반환 보관액을 확인했으며, 미반환 보관액 회수를 지시한 경우 그 금액이 지급되고 미반환 보관액
+    기록과 보유량이 그만큼 감소한다.
+
+
+    **주 흐름**
+
+    - 1. 관리자가 지연 배출 기록 조회를 요청한다.
+
+    - 2. 시스템이 지연 배출 기록(음료 종류, 발생 시각, 건수)을 표시한다.
+
+    - 3. 관리자가 지연 배출된 음료의 재고를 보충/조정한다(UC-08).
+
+    - 4. 관리자가 미반환 보관액 조회를 요청한다.
+
+    - 5. 시스템이 현재 미반환 보관액을 표시한다.
+
+    - 6. 관리자가 미반환 보관액 회수를 지시한다.
+
+    - 7. 시스템이 미반환 보관액에 해당하는 동전을 지급하고, 사용한 동전만큼 액면가별 보유 개수를 차감하며, 미반환 보관액 기록을 0으로 갱신한다.
+
+
+    **대안/예외 흐름**
+
+    - 2a. 지연 배출 기록이 없는 경우 시스템은 ''기록 없음''을 표시한다.
+
+    - 6a. 미반환 보관액이 0인 경우 시스템은 회수를 수행하지 않고 관리자에게 알린다.
+
+    - 7a. 보유 동전으로 미반환 보관액을 정확히 구성할 수 없는 경우 시스템은 회수를 거부하고 관리자에게 알리며 보유량·기록을 변경하지 않는다.
+
+    - 7b. [모호, REQ-64] 미반환 보관액 회수 시 기록을 감소시키는지 문서에 명시되어 있지 않다. 본 유스케이스는 ''회수한 만큼 미반환
+    보관액 기록을 감소시킨다''는 가정을 채택하며, 채택 여부는 발주자 확인 대상이다.
+
+
+    **인수 조건**
+
+    - 지연 배출 기록 2건 존재 시 조회 결과 건수 == 2 이고 각 건에 음료 종류와 시각이 포함된다
+
+    - 미반환 보관액 300원 상태에서 조회 → 표시값 == 300
+
+    - 미반환 보관액 300원 회수 → 지급 합계 == 300, 회수 후 미반환 보관액 == 0, 보유량 합계가 300 감소
+
+    - 미반환 보관액 0원에서 회수 지시 → 지급 없음, 알림 발생
+
+    - 미반환 보관액 회수 후에도 REQ-24 의 보유량 합계 등식이 성립한다'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-10
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-11
+  type: epic
+  title: '[UC-11] 재고 소진 시 판매를 중지한다'
+  description: '**액터** 고객
+
+    **사전조건** 자판기가 판매 상태이고 재고가 1인 음료 1종을 제외한 모든 음료의 재고가 0이다.
+
+    **사후조건** 자판기가 판매 중지 상태이며 코인을 받지 않는다.
+
+
+    **주 흐름**
+
+    - 1. 고객이 마지막 재고 음료를 구매한다(UC-02).
+
+    - 2. 시스템이 배출 완료 후 재고를 차감하여 모든 음료의 재고가 0임을 확인한다.
+
+    - 3. 시스템이 거스름돈을 지급하고 판매 중지 상태로 전환한다.
+
+    - 4. 고객이 코인을 투입하면 시스템이 그 코인을 그대로 되돌려 보낸다.
+
+
+    **대안/예외 흐름**
+
+    - 2a. 배출이 실패로 처리된 경우 재고가 차감되지 않으므로 시스템은 판매 상태를 유지한다.
+
+    - 3a. 배출 중 투입된 금액이 남아 있는 경우 시스템은 판매 중지 전환 시 그 금액을 전액 반환한다.
+
+    - 4a. 관리자가 관리 모드에 진입하여 보충한 뒤 종료 시점에 재고가 1 이상이면 시스템은 판매 상태로 돌아간다(UC-08).
+
+
+    **인수 조건**
+
+    - 재고 (1,0,0)에서 음료A 구매 완료 → 재고 == (0,0,0), 상태 == 판매 중지
+
+    - 판매 중지 상태에서 500원 투입 → 코인 반환, 누적 == 0, 보유량 변화 없음
+
+    - 재고 (1,0,0)에서 음료A 배출 실패 → 재고 == (1,0,0), 상태 == 판매
+
+    - 판매 중지 상태에서 재고 보충 후 관리 모드 종료 → 상태 == 판매'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-11
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-12
+  type: epic
+  title: '[UC-12] 정전 후 재기동한다'
+  description: '**액터** 전원(정전/복전)
+
+    **사전조건** 자판기가 동작 중 전원이 끊겼다가 다시 공급된다.
+
+    **사후조건** 누적 투입 금액이 0이고, 정전 시점의 투입 금액이 미반환 보관액으로 기록되어 동전 보유량에 남아 있으며, 자판기는 내부 보존
+    재고에 따라 판매 또는 판매 중지 상태이다.
+
+
+    **주 흐름**
+
+    - 1. 전원이 끊긴다.
+
+    - 2. 전원이 다시 공급되어 자판기가 재기동한다.
+
+    - 3. 시스템이 정전 시점의 누적 투입 금액을 미반환 보관액에 더해 기록하고 해당 동전을 물리적으로 반환하지 않은 채 보유량에 남긴다.
+
+    - 4. 시스템이 누적 투입 금액을 0으로 하여 화면에 표시한다.
+
+    - 5. 시스템이 외부 정보 없이 내부에 보존된 음료 종류별 재고만으로 상태를 판정하여, 재고가 1 이상인 음료가 있으면 판매 상태, 모두
+    0이면 판매 중지 상태로 시작한다.
+
+
+    **대안/예외 흐름**
+
+    - 3a. 정전 시점에 배출이 개시되었고 완료 전이었던 경우 시스템은 해당 음료의 재고를 1 차감하고 그 음료 가격을 판매된 금액으로 계상하며,
+    미반환 보관액은 (정전 시점 누적 금액 − 음료 가격)으로만 잡는다.
+
+    - 3b. 정전 시점 누적 투입 금액이 0이었던 경우 시스템은 미반환 보관액을 변경하지 않는다.
+
+    - 3c. 정전 시점이 관리 모드였던 경우 시스템은 누적 금액 0으로 재기동하고 5단계의 판정에 따라 판매/판매 중지 상태로 시작한다.
+
+    - 5a. 재기동 시 외부에서 재고 정보가 제공되더라도 시스템은 이를 무시하고 내부 보존 재고만 사용한다.
+
+
+    **인수 조건**
+
+    - 누적 1500원(배출 미개시) 중 정전 후 재기동 → 누적 == 0, 미반환 보관액 += 1500, 보유량 합계 == 정전 직전 값, 물리
+    반환 없음
+
+    - 가격 700원 음료 배출 개시 후 완료 전 정전, 누적 1000원 → 재기동 후 재고 −1, 판매된 금액 += 700, 미반환 보관액 +=
+    300, 누적 == 0
+
+    - 내부 재고 (0,0,0)으로 재기동 → 상태 == 판매 중지; 내부 재고 (0,1,0) → 상태 == 판매
+
+    - 재기동 후 REQ-24 의 보유량 합계 등식이 성립한다
+
+    - 재기동 과정에서 외부 통신·외부 재고 입력이 발생하지 않는다'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-12
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-13
+  type: epic
+  title: '[UC-13] 동전 보유량 정합성을 검증한다'
+  description: '**액터** 관리자
+
+    **사전조건** 자판기가 관리 모드이다.
+
+    **사후조건** 관리자가 액면가별 보유량과 합계, 그리고 합계 등식의 성립 여부를 확인했다.
+
+
+    **주 흐름**
+
+    - 1. 관리자가 동전 보유량 조회를 요청한다.
+
+    - 2. 시스템이 100원·500원·1000원 액면가별 보유 개수와 합계 금액을 표시한다.
+
+    - 3. 시스템이 (초기 보유액) + (보충된 금액) − (회수된 금액) + (판매된 음료 가격의 합) + (미정산 누적 투입 금액) + (미반환
+    보관액) 을 계산하여 합계와 함께 표시한다.
+
+
+    **대안/예외 흐름**
+
+    - 3a. 계산값과 실제 보유량 합계가 일치하지 않는 경우 시스템은 불일치를 관리자에게 알린다.
+
+
+    **인수 조건**
+
+    - 임의의 코인 투입·구매·반환·보충·회수·정전 시나리오 실행 후 어느 시점에서나 보유량 합계 == 초기 보유액 + 보충 − 회수 + 판매
+    합 + 미정산 누적 금액 + 미반환 보관액
+
+    - 관리 모드 조회 시 액면가 3종 각각의 개수와 합계가 표시되고, 합계 == Σ(액면가 × 개수)
+
+    - 되돌려 보낸 코인(비액면가·인식 실패·판매 중지·관리 모드)은 어떤 항에도 반영되지 않는다'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-13
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-14
+  type: story
+  title: '[T-001] SELLING --INSERT_COIN--> SELLING'
+  description: 'FSM 전이 `T-001` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `INSERT_COIN`
+
+    - 도착: `SELLING`
+
+    - 가드: `recognized && amount in {100,500,1000}`
+
+    - 동작: `credit += amount; coins[amount] += 1; display(credit); updateButtons();
+    restartIdleTimer()`
+
+
+    유스케이스: [UC-01] 코인을 투입하여 누적 금액을 올린다
+
+
+    인수 조건:
+
+    - 누적 0원 상태에서 500원 투입 후 화면 표시값 == 500
+
+    - 누적 500원 상태에서 1000원 투입 후 누적 == 1500 이고 1000원 보유 개수가 투입 전보다 정확히 1 크다
+
+    - 50원 코인 투입 시 코인이 반환되고 누적 금액·모든 액면가 보유 개수가 투입 전과 동일하다
+
+    - 인식 실패 코인 투입 시 코인이 반환되고 누적 금액·보유 개수가 투입 전과 동일하다
+
+    - 판매 중지 상태·관리 모드에서 500원 투입 시 코인이 반환되고 누적 금액·보유 개수가 투입 전과 동일하다
+
+    - 어떤 시점에도 화면에 표시되는 값 == 현재 누적 투입 금액
+
+    - 누적 금액 ≥ 가격 이고 재고 ≥ 1 인 음료 버튼만 활성화 상태이고, 조건 미충족 음료 버튼은 비활성 상태이다
+
+
+    **완료 조건: `test_t_001` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-001
+  usecase_ref: UC-01
+  signature: 2142e4e58014
+  dod_tests:
+  - tests/test_fsm.py::test_t_001
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-15
+  type: story
+  title: '[T-002] SELLING --INSERT_COIN--> SELLING'
+  description: 'FSM 전이 `T-002` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `INSERT_COIN`
+
+    - 도착: `SELLING`
+
+    - 가드: `recognized && !(amount in {100,500,1000})`
+
+    - 동작: `ejectCoin()`
+
+
+    유스케이스: [UC-01] 코인을 투입하여 누적 금액을 올린다
+
+
+    인수 조건:
+
+    - 누적 0원 상태에서 500원 투입 후 화면 표시값 == 500
+
+    - 누적 500원 상태에서 1000원 투입 후 누적 == 1500 이고 1000원 보유 개수가 투입 전보다 정확히 1 크다
+
+    - 50원 코인 투입 시 코인이 반환되고 누적 금액·모든 액면가 보유 개수가 투입 전과 동일하다
+
+    - 인식 실패 코인 투입 시 코인이 반환되고 누적 금액·보유 개수가 투입 전과 동일하다
+
+    - 판매 중지 상태·관리 모드에서 500원 투입 시 코인이 반환되고 누적 금액·보유 개수가 투입 전과 동일하다
+
+    - 어떤 시점에도 화면에 표시되는 값 == 현재 누적 투입 금액
+
+    - 누적 금액 ≥ 가격 이고 재고 ≥ 1 인 음료 버튼만 활성화 상태이고, 조건 미충족 음료 버튼은 비활성 상태이다
+
+
+    **완료 조건: `test_t_002` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-002
+  usecase_ref: UC-01
+  signature: 2be4ac84117f
+  dod_tests:
+  - tests/test_fsm.py::test_t_002
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-16
+  type: story
+  title: '[T-003] SELLING --INSERT_COIN--> SELLING'
+  description: 'FSM 전이 `T-003` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `INSERT_COIN`
+
+    - 도착: `SELLING`
+
+    - 가드: `!recognized`
+
+    - 동작: `ejectCoin()`
+
+
+    유스케이스: [UC-01] 코인을 투입하여 누적 금액을 올린다
+
+
+    인수 조건:
+
+    - 누적 0원 상태에서 500원 투입 후 화면 표시값 == 500
+
+    - 누적 500원 상태에서 1000원 투입 후 누적 == 1500 이고 1000원 보유 개수가 투입 전보다 정확히 1 크다
+
+    - 50원 코인 투입 시 코인이 반환되고 누적 금액·모든 액면가 보유 개수가 투입 전과 동일하다
+
+    - 인식 실패 코인 투입 시 코인이 반환되고 누적 금액·보유 개수가 투입 전과 동일하다
+
+    - 판매 중지 상태·관리 모드에서 500원 투입 시 코인이 반환되고 누적 금액·보유 개수가 투입 전과 동일하다
+
+    - 어떤 시점에도 화면에 표시되는 값 == 현재 누적 투입 금액
+
+    - 누적 금액 ≥ 가격 이고 재고 ≥ 1 인 음료 버튼만 활성화 상태이고, 조건 미충족 음료 버튼은 비활성 상태이다
+
+
+    **완료 조건: `test_t_003` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-003
+  usecase_ref: UC-01
+  signature: 4cffd029fb84
+  dod_tests:
+  - tests/test_fsm.py::test_t_003
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-17
+  type: story
+  title: '[T-004] SOLD_OUT --INSERT_COIN--> SOLD_OUT'
+  description: 'FSM 전이 `T-004` 구현
+
+
+    - 출발: `SOLD_OUT`
+
+    - 이벤트: `INSERT_COIN`
+
+    - 도착: `SOLD_OUT`
+
+    - 가드: `없음`
+
+    - 동작: `ejectCoin()`
+
+
+    유스케이스: [UC-01] 코인을 투입하여 누적 금액을 올린다
+
+
+    인수 조건:
+
+    - 누적 0원 상태에서 500원 투입 후 화면 표시값 == 500
+
+    - 누적 500원 상태에서 1000원 투입 후 누적 == 1500 이고 1000원 보유 개수가 투입 전보다 정확히 1 크다
+
+    - 50원 코인 투입 시 코인이 반환되고 누적 금액·모든 액면가 보유 개수가 투입 전과 동일하다
+
+    - 인식 실패 코인 투입 시 코인이 반환되고 누적 금액·보유 개수가 투입 전과 동일하다
+
+    - 판매 중지 상태·관리 모드에서 500원 투입 시 코인이 반환되고 누적 금액·보유 개수가 투입 전과 동일하다
+
+    - 어떤 시점에도 화면에 표시되는 값 == 현재 누적 투입 금액
+
+    - 누적 금액 ≥ 가격 이고 재고 ≥ 1 인 음료 버튼만 활성화 상태이고, 조건 미충족 음료 버튼은 비활성 상태이다
+
+
+    **완료 조건: `test_t_004` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-004
+  usecase_ref: UC-01
+  signature: ec0f3b17feeb
+  dod_tests:
+  - tests/test_fsm.py::test_t_004
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-18
+  type: story
+  title: '[T-005] ADMIN_MODE --INSERT_COIN--> ADMIN_MODE'
+  description: 'FSM 전이 `T-005` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `INSERT_COIN`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `없음`
+
+    - 동작: `ejectCoin()`
+
+
+    유스케이스: [UC-01] 코인을 투입하여 누적 금액을 올린다
+
+
+    인수 조건:
+
+    - 누적 0원 상태에서 500원 투입 후 화면 표시값 == 500
+
+    - 누적 500원 상태에서 1000원 투입 후 누적 == 1500 이고 1000원 보유 개수가 투입 전보다 정확히 1 크다
+
+    - 50원 코인 투입 시 코인이 반환되고 누적 금액·모든 액면가 보유 개수가 투입 전과 동일하다
+
+    - 인식 실패 코인 투입 시 코인이 반환되고 누적 금액·보유 개수가 투입 전과 동일하다
+
+    - 판매 중지 상태·관리 모드에서 500원 투입 시 코인이 반환되고 누적 금액·보유 개수가 투입 전과 동일하다
+
+    - 어떤 시점에도 화면에 표시되는 값 == 현재 누적 투입 금액
+
+    - 누적 금액 ≥ 가격 이고 재고 ≥ 1 인 음료 버튼만 활성화 상태이고, 조건 미충족 음료 버튼은 비활성 상태이다
+
+
+    **완료 조건: `test_t_005` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-005
+  usecase_ref: UC-01
+  signature: b7c69bd0683c
+  dod_tests:
+  - tests/test_fsm.py::test_t_005
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-19
+  type: story
+  title: '[T-010] SELLING --PRESS_BUTTON--> AWAITING_DISPENSE'
+  description: 'FSM 전이 `T-010` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `PRESS_BUTTON`
+
+    - 도착: `AWAITING_DISPENSE`
+
+    - 가드: `credit >= price[drink] && stock[drink] >= 1 && canMakeChange(credit - price[drink])`
+
+    - 동작: `pending.drink = drink; pending.change = credit - price[drink]; pending.credit
+    = credit; startDispense(drink) within 2s; startDispenseTimer(10s); restartIdleTimer()`
+
+
+    유스케이스: [UC-02] 음료를 선택하여 구매한다
+
+
+    인수 조건:
+
+    - 가격 700원 음료, 누적 1000원에서 버튼 누름 → 음료 1개 배출, 재고 −1, 거스름돈 300원 지급, 지급 후 누적 == 0
+
+    - 가격 1000원 음료, 누적 1000원에서 버튼 누름 → 음료 배출되고 거스름돈 지급 동작이 발생하지 않는다
+
+    - 거스름돈 300원 지급에 100원 3개 사용 시 100원 보유 개수가 정확히 3 감소하고 다른 액면가는 변화 없다
+
+    - 가격 700원 음료, 누적 1000원, 100원 보유 0개·500원 보유 0개 → 배출되지 않고 1000원 전액 반환, 재고 변화 없음,
+    상태 == 판매
+
+    - 버튼 누름 시각과 배출 개시 시각의 차 ≤ 2초
+
+    - 비활성 버튼을 눌렀을 때 누적 금액·재고·보유량·상태 모두 변화 없음
+
+
+    **완료 조건: `test_t_010` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-010
+  usecase_ref: UC-02
+  signature: 2df2e0099300
+  dod_tests:
+  - tests/test_fsm.py::test_t_010
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-20
+  type: story
+  title: '[T-011] SELLING --PRESS_BUTTON--> SELLING'
+  description: 'FSM 전이 `T-011` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `PRESS_BUTTON`
+
+    - 도착: `SELLING`
+
+    - 가드: `credit >= price[drink] && stock[drink] >= 1 && !canMakeChange(credit -
+    price[drink])`
+
+    - 동작: `payout(credit); coins -= used; credit = 0; display(0); updateButtons()`
+
+
+    유스케이스: [UC-02] 음료를 선택하여 구매한다
+
+
+    인수 조건:
+
+    - 가격 700원 음료, 누적 1000원에서 버튼 누름 → 음료 1개 배출, 재고 −1, 거스름돈 300원 지급, 지급 후 누적 == 0
+
+    - 가격 1000원 음료, 누적 1000원에서 버튼 누름 → 음료 배출되고 거스름돈 지급 동작이 발생하지 않는다
+
+    - 거스름돈 300원 지급에 100원 3개 사용 시 100원 보유 개수가 정확히 3 감소하고 다른 액면가는 변화 없다
+
+    - 가격 700원 음료, 누적 1000원, 100원 보유 0개·500원 보유 0개 → 배출되지 않고 1000원 전액 반환, 재고 변화 없음,
+    상태 == 판매
+
+    - 버튼 누름 시각과 배출 개시 시각의 차 ≤ 2초
+
+    - 비활성 버튼을 눌렀을 때 누적 금액·재고·보유량·상태 모두 변화 없음
+
+
+    **완료 조건: `test_t_011` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-011
+  usecase_ref: UC-02
+  signature: e75ab5d2c14b
+  dod_tests:
+  - tests/test_fsm.py::test_t_011
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-21
+  type: story
+  title: '[T-012] SELLING --PRESS_BUTTON--> SELLING'
+  description: 'FSM 전이 `T-012` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `PRESS_BUTTON`
+
+    - 도착: `SELLING`
+
+    - 가드: `credit < price[drink] || stock[drink] < 1`
+
+    - 동작: `없음`
+
+
+    유스케이스: [UC-02] 음료를 선택하여 구매한다
+
+
+    인수 조건:
+
+    - 가격 700원 음료, 누적 1000원에서 버튼 누름 → 음료 1개 배출, 재고 −1, 거스름돈 300원 지급, 지급 후 누적 == 0
+
+    - 가격 1000원 음료, 누적 1000원에서 버튼 누름 → 음료 배출되고 거스름돈 지급 동작이 발생하지 않는다
+
+    - 거스름돈 300원 지급에 100원 3개 사용 시 100원 보유 개수가 정확히 3 감소하고 다른 액면가는 변화 없다
+
+    - 가격 700원 음료, 누적 1000원, 100원 보유 0개·500원 보유 0개 → 배출되지 않고 1000원 전액 반환, 재고 변화 없음,
+    상태 == 판매
+
+    - 버튼 누름 시각과 배출 개시 시각의 차 ≤ 2초
+
+    - 비활성 버튼을 눌렀을 때 누적 금액·재고·보유량·상태 모두 변화 없음
+
+
+    **완료 조건: `test_t_012` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-012
+  usecase_ref: UC-02
+  signature: 54e583fbfd8c
+  dod_tests:
+  - tests/test_fsm.py::test_t_012
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-22
+  type: story
+  title: '[T-013] AWAITING_DISPENSE --DISPENSE_DONE--> SELLING'
+  description: 'FSM 전이 `T-013` 구현
+
+
+    - 출발: `AWAITING_DISPENSE`
+
+    - 이벤트: `DISPENSE_DONE`
+
+    - 도착: `SELLING`
+
+    - 가드: `stockAfterDecrement(pending.drink) > 0 || anyOtherStock() > 0`
+
+    - 동작: `stock[pending.drink] -= 1; soldAmount += price[pending.drink]; if pending.change
+    > 0: payout(pending.change); coins -= used; credit -= price[pending.drink] + pending.change;
+    display(credit); updateButtons(); clearPending(); restartIdleTimer()`
+
+
+    유스케이스: [UC-02] 음료를 선택하여 구매한다
+
+
+    인수 조건:
+
+    - 가격 700원 음료, 누적 1000원에서 버튼 누름 → 음료 1개 배출, 재고 −1, 거스름돈 300원 지급, 지급 후 누적 == 0
+
+    - 가격 1000원 음료, 누적 1000원에서 버튼 누름 → 음료 배출되고 거스름돈 지급 동작이 발생하지 않는다
+
+    - 거스름돈 300원 지급에 100원 3개 사용 시 100원 보유 개수가 정확히 3 감소하고 다른 액면가는 변화 없다
+
+    - 가격 700원 음료, 누적 1000원, 100원 보유 0개·500원 보유 0개 → 배출되지 않고 1000원 전액 반환, 재고 변화 없음,
+    상태 == 판매
+
+    - 버튼 누름 시각과 배출 개시 시각의 차 ≤ 2초
+
+    - 비활성 버튼을 눌렀을 때 누적 금액·재고·보유량·상태 모두 변화 없음
+
+
+    **완료 조건: `test_t_013` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-013
+  usecase_ref: UC-02
+  signature: 8283f156e8a5
+  dod_tests:
+  - tests/test_fsm.py::test_t_013
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-23
+  type: story
+  title: '[T-014] AWAITING_DISPENSE --PRESS_BUTTON--> AWAITING_DISPENSE'
+  description: 'FSM 전이 `T-014` 구현
+
+
+    - 출발: `AWAITING_DISPENSE`
+
+    - 이벤트: `PRESS_BUTTON`
+
+    - 도착: `AWAITING_DISPENSE`
+
+    - 가드: `없음`
+
+    - 동작: `없음`
+
+
+    유스케이스: [UC-02] 음료를 선택하여 구매한다
+
+
+    인수 조건:
+
+    - 가격 700원 음료, 누적 1000원에서 버튼 누름 → 음료 1개 배출, 재고 −1, 거스름돈 300원 지급, 지급 후 누적 == 0
+
+    - 가격 1000원 음료, 누적 1000원에서 버튼 누름 → 음료 배출되고 거스름돈 지급 동작이 발생하지 않는다
+
+    - 거스름돈 300원 지급에 100원 3개 사용 시 100원 보유 개수가 정확히 3 감소하고 다른 액면가는 변화 없다
+
+    - 가격 700원 음료, 누적 1000원, 100원 보유 0개·500원 보유 0개 → 배출되지 않고 1000원 전액 반환, 재고 변화 없음,
+    상태 == 판매
+
+    - 버튼 누름 시각과 배출 개시 시각의 차 ≤ 2초
+
+    - 비활성 버튼을 눌렀을 때 누적 금액·재고·보유량·상태 모두 변화 없음
+
+
+    **완료 조건: `test_t_014` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-014
+  usecase_ref: UC-02
+  signature: fc4d6cd9d8cb
+  dod_tests:
+  - tests/test_fsm.py::test_t_014
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-24
+  type: story
+  title: '[T-015] AWAITING_DISPENSE --PULL_RETURN_LEVER--> AWAITING_DISPENSE'
+  description: 'FSM 전이 `T-015` 구현
+
+
+    - 출발: `AWAITING_DISPENSE`
+
+    - 이벤트: `PULL_RETURN_LEVER`
+
+    - 도착: `AWAITING_DISPENSE`
+
+    - 가드: `없음`
+
+    - 동작: `없음`
+
+
+    유스케이스: [UC-02] 음료를 선택하여 구매한다
+
+
+    인수 조건:
+
+    - 가격 700원 음료, 누적 1000원에서 버튼 누름 → 음료 1개 배출, 재고 −1, 거스름돈 300원 지급, 지급 후 누적 == 0
+
+    - 가격 1000원 음료, 누적 1000원에서 버튼 누름 → 음료 배출되고 거스름돈 지급 동작이 발생하지 않는다
+
+    - 거스름돈 300원 지급에 100원 3개 사용 시 100원 보유 개수가 정확히 3 감소하고 다른 액면가는 변화 없다
+
+    - 가격 700원 음료, 누적 1000원, 100원 보유 0개·500원 보유 0개 → 배출되지 않고 1000원 전액 반환, 재고 변화 없음,
+    상태 == 판매
+
+    - 버튼 누름 시각과 배출 개시 시각의 차 ≤ 2초
+
+    - 비활성 버튼을 눌렀을 때 누적 금액·재고·보유량·상태 모두 변화 없음
+
+
+    **완료 조건: `test_t_015` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-015
+  usecase_ref: UC-02
+  signature: 5e290e6cf778
+  dod_tests:
+  - tests/test_fsm.py::test_t_015
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-25
+  type: story
+  title: '[T-016] AWAITING_DISPENSE --IDLE_TIMEOUT--> AWAITING_DISPENSE'
+  description: 'FSM 전이 `T-016` 구현
+
+
+    - 출발: `AWAITING_DISPENSE`
+
+    - 이벤트: `IDLE_TIMEOUT`
+
+    - 도착: `AWAITING_DISPENSE`
+
+    - 가드: `없음`
+
+    - 동작: `없음`
+
+
+    유스케이스: [UC-06] 무조작 시 투입 금액을 자동 반환한다
+
+
+    인수 조건:
+
+    - 누적 500원 상태에서 30초간 조작 없음 → 반환 금액 == 500, 누적 == 0, 화면 표시 == 0
+
+    - 누적 500원 상태에서 20초 뒤 100원 투입, 그로부터 29초 경과 → 자동 반환 미발생, 누적 == 600
+
+    - 누적 500원 상태에서 20초 뒤 100원 투입, 그로부터 30초 경과 → 반환 금액 == 600
+
+    - 누적 0원 상태에서 30초 경과 → 반환 동작 없음
+
+
+    **완료 조건: `test_t_016` 통과**'
+  status: done
+  parent: SWF-6
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-016
+  usecase_ref: UC-06
+  signature: ad170541ce30
+  dod_tests:
+  - tests/test_fsm.py::test_t_016
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-26
+  type: story
+  title: '[T-020] AWAITING_DISPENSE --DISPENSE_DONE--> SOLD_OUT'
+  description: 'FSM 전이 `T-020` 구현
+
+
+    - 출발: `AWAITING_DISPENSE`
+
+    - 이벤트: `DISPENSE_DONE`
+
+    - 도착: `SOLD_OUT`
+
+    - 가드: `stockAfterDecrement(pending.drink) == 0 && anyOtherStock() == 0`
+
+    - 동작: `stock[pending.drink] -= 1; soldAmount += price[pending.drink]; if pending.change
+    > 0: payout(pending.change); coins -= used; credit -= price[pending.drink] + pending.change;
+    if credit > 0: payout(credit); coins -= used; credit = 0; display(0); disableAllButtons();
+    clearPending()`
+
+
+    유스케이스: [UC-11] 재고 소진 시 판매를 중지한다
+
+
+    인수 조건:
+
+    - 재고 (1,0,0)에서 음료A 구매 완료 → 재고 == (0,0,0), 상태 == 판매 중지
+
+    - 판매 중지 상태에서 500원 투입 → 코인 반환, 누적 == 0, 보유량 변화 없음
+
+    - 재고 (1,0,0)에서 음료A 배출 실패 → 재고 == (1,0,0), 상태 == 판매
+
+    - 판매 중지 상태에서 재고 보충 후 관리 모드 종료 → 상태 == 판매
+
+
+    **완료 조건: `test_t_020` 통과**'
+  status: done
+  parent: SWF-11
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-020
+  usecase_ref: UC-11
+  signature: 09c5c95c6d59
+  dod_tests:
+  - tests/test_fsm.py::test_t_020
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-27
+  type: story
+  title: '[T-030] SELLING --PULL_RETURN_LEVER--> SELLING'
+  description: 'FSM 전이 `T-030` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `PULL_RETURN_LEVER`
+
+    - 도착: `SELLING`
+
+    - 가드: `credit > 0`
+
+    - 동작: `payout(credit); coins -= used; credit = 0; display(0); disableAllButtons();
+    restartIdleTimer()`
+
+
+    유스케이스: [UC-03] 반환 레버로 투입 금액을 돌려받는다
+
+
+    인수 조건:
+
+    - 누적 1500원 상태에서 레버 조작 → 반환 금액 합계 == 1500, 조작 후 누적 == 0, 화면 표시 == 0
+
+    - 반환에 1000원 1개·500원 1개 사용 시 1000원·500원 보유 개수가 각각 1씩 감소
+
+    - 누적 0원 상태에서 레버 조작 → 반환 동작 없음, 보유량 변화 없음
+
+    - 레버 조작 후 모든 음료 버튼이 비활성 상태
+
+
+    **완료 조건: `test_t_030` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-030
+  usecase_ref: UC-03
+  signature: 83ed24db2a47
+  dod_tests:
+  - tests/test_fsm.py::test_t_030
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-28
+  type: story
+  title: '[T-031] SELLING --PULL_RETURN_LEVER--> SELLING'
+  description: 'FSM 전이 `T-031` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `PULL_RETURN_LEVER`
+
+    - 도착: `SELLING`
+
+    - 가드: `credit == 0`
+
+    - 동작: `없음`
+
+
+    유스케이스: [UC-03] 반환 레버로 투입 금액을 돌려받는다
+
+
+    인수 조건:
+
+    - 누적 1500원 상태에서 레버 조작 → 반환 금액 합계 == 1500, 조작 후 누적 == 0, 화면 표시 == 0
+
+    - 반환에 1000원 1개·500원 1개 사용 시 1000원·500원 보유 개수가 각각 1씩 감소
+
+    - 누적 0원 상태에서 레버 조작 → 반환 동작 없음, 보유량 변화 없음
+
+    - 레버 조작 후 모든 음료 버튼이 비활성 상태
+
+
+    **완료 조건: `test_t_031` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-031
+  usecase_ref: UC-03
+  signature: 8a2095e4456b
+  dod_tests:
+  - tests/test_fsm.py::test_t_031
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-29
+  type: story
+  title: '[T-032] SOLD_OUT --PULL_RETURN_LEVER--> SOLD_OUT'
+  description: 'FSM 전이 `T-032` 구현
+
+
+    - 출발: `SOLD_OUT`
+
+    - 이벤트: `PULL_RETURN_LEVER`
+
+    - 도착: `SOLD_OUT`
+
+    - 가드: `없음`
+
+    - 동작: `없음`
+
+
+    유스케이스: [UC-03] 반환 레버로 투입 금액을 돌려받는다
+
+
+    인수 조건:
+
+    - 누적 1500원 상태에서 레버 조작 → 반환 금액 합계 == 1500, 조작 후 누적 == 0, 화면 표시 == 0
+
+    - 반환에 1000원 1개·500원 1개 사용 시 1000원·500원 보유 개수가 각각 1씩 감소
+
+    - 누적 0원 상태에서 레버 조작 → 반환 동작 없음, 보유량 변화 없음
+
+    - 레버 조작 후 모든 음료 버튼이 비활성 상태
+
+
+    **완료 조건: `test_t_032` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-032
+  usecase_ref: UC-03
+  signature: 1453ec8cb303
+  dod_tests:
+  - tests/test_fsm.py::test_t_032
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-30
+  type: story
+  title: '[T-033] ADMIN_MODE --PULL_RETURN_LEVER--> ADMIN_MODE'
+  description: 'FSM 전이 `T-033` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `PULL_RETURN_LEVER`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `없음`
+
+    - 동작: `없음`
+
+
+    유스케이스: [UC-03] 반환 레버로 투입 금액을 돌려받는다
+
+
+    인수 조건:
+
+    - 누적 1500원 상태에서 레버 조작 → 반환 금액 합계 == 1500, 조작 후 누적 == 0, 화면 표시 == 0
+
+    - 반환에 1000원 1개·500원 1개 사용 시 1000원·500원 보유 개수가 각각 1씩 감소
+
+    - 누적 0원 상태에서 레버 조작 → 반환 동작 없음, 보유량 변화 없음
+
+    - 레버 조작 후 모든 음료 버튼이 비활성 상태
+
+
+    **완료 조건: `test_t_033` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-033
+  usecase_ref: UC-03
+  signature: 30af68430f87
+  dod_tests:
+  - tests/test_fsm.py::test_t_033
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-31
+  type: story
+  title: '[T-040] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE'
+  description: 'FSM 전이 `T-040` 구현
+
+
+    - 출발: `AWAITING_DISPENSE`
+
+    - 이벤트: `INSERT_COIN`
+
+    - 도착: `AWAITING_DISPENSE`
+
+    - 가드: `recognized && amount in {100,500,1000}`
+
+    - 동작: `credit += amount; coins[amount] += 1; display(credit)`
+
+
+    유스케이스: [UC-04] 배출 진행 중에 코인을 투입한다
+
+
+    인수 조건:
+
+    - 가격 700원, 누적 1000원에서 버튼 누름 후 배출 중 500원 투입 → 완료 시 거스름돈 == 300, 완료 후 누적 == 500,
+    화면 표시 == 500
+
+    - 배출 중 500원 투입 시 500원 보유 개수가 투입 전보다 1 크다
+
+    - 완료 후 남은 500원으로 가격 500원 이하 음료(재고 ≥ 1) 버튼이 활성화된다
+
+
+    **완료 조건: `test_t_040` 통과**'
+  status: done
+  parent: SWF-4
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-040
+  usecase_ref: UC-04
+  signature: 4d9409ffdcd3
+  dod_tests:
+  - tests/test_fsm.py::test_t_040
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-32
+  type: story
+  title: '[T-041] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE'
+  description: 'FSM 전이 `T-041` 구현
+
+
+    - 출발: `AWAITING_DISPENSE`
+
+    - 이벤트: `INSERT_COIN`
+
+    - 도착: `AWAITING_DISPENSE`
+
+    - 가드: `!recognized || !(amount in {100,500,1000})`
+
+    - 동작: `ejectCoin()`
+
+
+    유스케이스: [UC-04] 배출 진행 중에 코인을 투입한다
+
+
+    인수 조건:
+
+    - 가격 700원, 누적 1000원에서 버튼 누름 후 배출 중 500원 투입 → 완료 시 거스름돈 == 300, 완료 후 누적 == 500,
+    화면 표시 == 500
+
+    - 배출 중 500원 투입 시 500원 보유 개수가 투입 전보다 1 크다
+
+    - 완료 후 남은 500원으로 가격 500원 이하 음료(재고 ≥ 1) 버튼이 활성화된다
+
+
+    **완료 조건: `test_t_041` 통과**'
+  status: done
+  parent: SWF-4
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-041
+  usecase_ref: UC-04
+  signature: f150fa6c8887
+  dod_tests:
+  - tests/test_fsm.py::test_t_041
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-33
+  type: story
+  title: '[T-050] AWAITING_DISPENSE --DISPENSE_TIMEOUT--> SELLING'
+  description: 'FSM 전이 `T-050` 구현
+
+
+    - 출발: `AWAITING_DISPENSE`
+
+    - 이벤트: `DISPENSE_TIMEOUT`
+
+    - 도착: `SELLING`
+
+    - 가드: `없음`
+
+    - 동작: `payout(credit) with available coins; coins -= used; unpaidRemainder = credit
+    - paid; credit = 0; display(0); disableAllButtons(); clearPending(); restartIdleTimer()`
+
+
+    유스케이스: [UC-05] 배출 실패를 처리한다
+
+
+    인수 조건:
+
+    - 배출 개시 후 10초 경과까지 완료 신호 없음 → 상태 == 판매, 재고 == 배출 전 값, 누적 == 0, 반환 금액 == 버튼 시점
+    누적 + 배출 중 투입 금액
+
+    - 실패 처리 후 완료 신호 도착 → 상태·재고·누적 금액·보유량 모두 신호 도착 전과 동일
+
+    - 실패 처리 후 완료 신호 도착 → 지연 배출 기록 건수가 1 증가
+
+    - 배출 개시 후 9.9초에 완료 신호 도착 → 정상 배출로 처리(재고 −1)
+
+
+    **완료 조건: `test_t_050` 통과**'
+  status: done
+  parent: SWF-5
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-050
+  usecase_ref: UC-05
+  signature: c24fbf1bca7d
+  dod_tests:
+  - tests/test_fsm.py::test_t_050
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-34
+  type: story
+  title: '[T-051] SELLING --DISPENSE_DONE--> SELLING'
+  description: 'FSM 전이 `T-051` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `DISPENSE_DONE`
+
+    - 도착: `SELLING`
+
+    - 가드: `없음`
+
+    - 동작: `delayedDispenseLog.append(drink, now)`
+
+
+    유스케이스: [UC-05] 배출 실패를 처리한다
+
+
+    인수 조건:
+
+    - 배출 개시 후 10초 경과까지 완료 신호 없음 → 상태 == 판매, 재고 == 배출 전 값, 누적 == 0, 반환 금액 == 버튼 시점
+    누적 + 배출 중 투입 금액
+
+    - 실패 처리 후 완료 신호 도착 → 상태·재고·누적 금액·보유량 모두 신호 도착 전과 동일
+
+    - 실패 처리 후 완료 신호 도착 → 지연 배출 기록 건수가 1 증가
+
+    - 배출 개시 후 9.9초에 완료 신호 도착 → 정상 배출로 처리(재고 −1)
+
+
+    **완료 조건: `test_t_051` 통과**'
+  status: done
+  parent: SWF-5
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-051
+  usecase_ref: UC-05
+  signature: ac57f3bb4bc0
+  dod_tests:
+  - tests/test_fsm.py::test_t_051
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-35
+  type: story
+  title: '[T-052] SOLD_OUT --DISPENSE_DONE--> SOLD_OUT'
+  description: 'FSM 전이 `T-052` 구현
+
+
+    - 출발: `SOLD_OUT`
+
+    - 이벤트: `DISPENSE_DONE`
+
+    - 도착: `SOLD_OUT`
+
+    - 가드: `없음`
+
+    - 동작: `delayedDispenseLog.append(drink, now)`
+
+
+    유스케이스: [UC-05] 배출 실패를 처리한다
+
+
+    인수 조건:
+
+    - 배출 개시 후 10초 경과까지 완료 신호 없음 → 상태 == 판매, 재고 == 배출 전 값, 누적 == 0, 반환 금액 == 버튼 시점
+    누적 + 배출 중 투입 금액
+
+    - 실패 처리 후 완료 신호 도착 → 상태·재고·누적 금액·보유량 모두 신호 도착 전과 동일
+
+    - 실패 처리 후 완료 신호 도착 → 지연 배출 기록 건수가 1 증가
+
+    - 배출 개시 후 9.9초에 완료 신호 도착 → 정상 배출로 처리(재고 −1)
+
+
+    **완료 조건: `test_t_052` 통과**'
+  status: done
+  parent: SWF-5
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-052
+  usecase_ref: UC-05
+  signature: d2afdc19c6bf
+  dod_tests:
+  - tests/test_fsm.py::test_t_052
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-36
+  type: story
+  title: '[T-053] ADMIN_MODE --DISPENSE_DONE--> ADMIN_MODE'
+  description: 'FSM 전이 `T-053` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `DISPENSE_DONE`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `없음`
+
+    - 동작: `delayedDispenseLog.append(drink, now)`
+
+
+    유스케이스: [UC-05] 배출 실패를 처리한다
+
+
+    인수 조건:
+
+    - 배출 개시 후 10초 경과까지 완료 신호 없음 → 상태 == 판매, 재고 == 배출 전 값, 누적 == 0, 반환 금액 == 버튼 시점
+    누적 + 배출 중 투입 금액
+
+    - 실패 처리 후 완료 신호 도착 → 상태·재고·누적 금액·보유량 모두 신호 도착 전과 동일
+
+    - 실패 처리 후 완료 신호 도착 → 지연 배출 기록 건수가 1 증가
+
+    - 배출 개시 후 9.9초에 완료 신호 도착 → 정상 배출로 처리(재고 −1)
+
+
+    **완료 조건: `test_t_053` 통과**'
+  status: done
+  parent: SWF-5
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-053
+  usecase_ref: UC-05
+  signature: 7850351888b3
+  dod_tests:
+  - tests/test_fsm.py::test_t_053
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-37
+  type: story
+  title: '[T-060] SELLING --IDLE_TIMEOUT--> SELLING'
+  description: 'FSM 전이 `T-060` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `IDLE_TIMEOUT`
+
+    - 도착: `SELLING`
+
+    - 가드: `credit > 0`
+
+    - 동작: `payout(credit); coins -= used; credit = 0; display(0); disableAllButtons()`
+
+
+    유스케이스: [UC-06] 무조작 시 투입 금액을 자동 반환한다
+
+
+    인수 조건:
+
+    - 누적 500원 상태에서 30초간 조작 없음 → 반환 금액 == 500, 누적 == 0, 화면 표시 == 0
+
+    - 누적 500원 상태에서 20초 뒤 100원 투입, 그로부터 29초 경과 → 자동 반환 미발생, 누적 == 600
+
+    - 누적 500원 상태에서 20초 뒤 100원 투입, 그로부터 30초 경과 → 반환 금액 == 600
+
+    - 누적 0원 상태에서 30초 경과 → 반환 동작 없음
+
+
+    **완료 조건: `test_t_060` 통과**'
+  status: done
+  parent: SWF-6
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-060
+  usecase_ref: UC-06
+  signature: 0d9da537e7d3
+  dod_tests:
+  - tests/test_fsm.py::test_t_060
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-38
+  type: story
+  title: '[T-061] SELLING --IDLE_TIMEOUT--> SELLING'
+  description: 'FSM 전이 `T-061` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `IDLE_TIMEOUT`
+
+    - 도착: `SELLING`
+
+    - 가드: `credit == 0`
+
+    - 동작: `없음`
+
+
+    유스케이스: [UC-06] 무조작 시 투입 금액을 자동 반환한다
+
+
+    인수 조건:
+
+    - 누적 500원 상태에서 30초간 조작 없음 → 반환 금액 == 500, 누적 == 0, 화면 표시 == 0
+
+    - 누적 500원 상태에서 20초 뒤 100원 투입, 그로부터 29초 경과 → 자동 반환 미발생, 누적 == 600
+
+    - 누적 500원 상태에서 20초 뒤 100원 투입, 그로부터 30초 경과 → 반환 금액 == 600
+
+    - 누적 0원 상태에서 30초 경과 → 반환 동작 없음
+
+
+    **완료 조건: `test_t_061` 통과**'
+  status: done
+  parent: SWF-6
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-061
+  usecase_ref: UC-06
+  signature: 169adef37abe
+  dod_tests:
+  - tests/test_fsm.py::test_t_061
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-39
+  type: story
+  title: '[T-070] SELLING --ADMIN_KEY--> ADMIN_MODE'
+  description: 'FSM 전이 `T-070` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `ADMIN_KEY`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `valid_key && credit > 0`
+
+    - 동작: `payout(credit); coins -= used; credit = 0; display(0); stopIdleTimer()`
+
+
+    유스케이스: [UC-07] 관리 모드에 진입한다
+
+
+    인수 조건:
+
+    - 판매 상태·누적 300원에서 전용 키 조작 → 반환 금액 == 300, 누적 == 0, 상태 == 관리 모드
+
+    - 누적 0원에서 전용 키 조작 → 반환 동작 없음, 상태 == 관리 모드
+
+    - 배출 완료 대기 중 전용 키 조작 → 상태 == 관리 모드
+
+    - 판매 중지 상태에서 전용 키 조작 → 상태 == 관리 모드
+
+    - 전용 키 없이 진입 시도 → 상태 변화 없음
+
+
+    **완료 조건: `test_t_070` 통과**'
+  status: done
+  parent: SWF-7
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-070
+  usecase_ref: UC-07
+  signature: e4e53eeccec9
+  dod_tests:
+  - tests/test_fsm.py::test_t_070
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-40
+  type: story
+  title: '[T-071] SELLING --ADMIN_KEY--> ADMIN_MODE'
+  description: 'FSM 전이 `T-071` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `ADMIN_KEY`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `valid_key && credit == 0`
+
+    - 동작: `display(0); stopIdleTimer()`
+
+
+    유스케이스: [UC-07] 관리 모드에 진입한다
+
+
+    인수 조건:
+
+    - 판매 상태·누적 300원에서 전용 키 조작 → 반환 금액 == 300, 누적 == 0, 상태 == 관리 모드
+
+    - 누적 0원에서 전용 키 조작 → 반환 동작 없음, 상태 == 관리 모드
+
+    - 배출 완료 대기 중 전용 키 조작 → 상태 == 관리 모드
+
+    - 판매 중지 상태에서 전용 키 조작 → 상태 == 관리 모드
+
+    - 전용 키 없이 진입 시도 → 상태 변화 없음
+
+
+    **완료 조건: `test_t_071` 통과**'
+  status: done
+  parent: SWF-7
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-071
+  usecase_ref: UC-07
+  signature: 9b4bf469cc0f
+  dod_tests:
+  - tests/test_fsm.py::test_t_071
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-41
+  type: story
+  title: '[T-072] SELLING --ADMIN_KEY--> SELLING'
+  description: 'FSM 전이 `T-072` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `ADMIN_KEY`
+
+    - 도착: `SELLING`
+
+    - 가드: `!valid_key`
+
+    - 동작: `없음`
+
+
+    유스케이스: [UC-07] 관리 모드에 진입한다
+
+
+    인수 조건:
+
+    - 판매 상태·누적 300원에서 전용 키 조작 → 반환 금액 == 300, 누적 == 0, 상태 == 관리 모드
+
+    - 누적 0원에서 전용 키 조작 → 반환 동작 없음, 상태 == 관리 모드
+
+    - 배출 완료 대기 중 전용 키 조작 → 상태 == 관리 모드
+
+    - 판매 중지 상태에서 전용 키 조작 → 상태 == 관리 모드
+
+    - 전용 키 없이 진입 시도 → 상태 변화 없음
+
+
+    **완료 조건: `test_t_072` 통과**'
+  status: done
+  parent: SWF-7
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-072
+  usecase_ref: UC-07
+  signature: c8c198ada316
+  dod_tests:
+  - tests/test_fsm.py::test_t_072
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-42
+  type: story
+  title: '[T-073] SOLD_OUT --ADMIN_KEY--> ADMIN_MODE'
+  description: 'FSM 전이 `T-073` 구현
+
+
+    - 출발: `SOLD_OUT`
+
+    - 이벤트: `ADMIN_KEY`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `valid_key`
+
+    - 동작: `display(0)`
+
+
+    유스케이스: [UC-07] 관리 모드에 진입한다
+
+
+    인수 조건:
+
+    - 판매 상태·누적 300원에서 전용 키 조작 → 반환 금액 == 300, 누적 == 0, 상태 == 관리 모드
+
+    - 누적 0원에서 전용 키 조작 → 반환 동작 없음, 상태 == 관리 모드
+
+    - 배출 완료 대기 중 전용 키 조작 → 상태 == 관리 모드
+
+    - 판매 중지 상태에서 전용 키 조작 → 상태 == 관리 모드
+
+    - 전용 키 없이 진입 시도 → 상태 변화 없음
+
+
+    **완료 조건: `test_t_073` 통과**'
+  status: done
+  parent: SWF-7
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-073
+  usecase_ref: UC-07
+  signature: fbb3d974012d
+  dod_tests:
+  - tests/test_fsm.py::test_t_073
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-43
+  type: story
+  title: '[T-074] SOLD_OUT --ADMIN_KEY--> SOLD_OUT'
+  description: 'FSM 전이 `T-074` 구현
+
+
+    - 출발: `SOLD_OUT`
+
+    - 이벤트: `ADMIN_KEY`
+
+    - 도착: `SOLD_OUT`
+
+    - 가드: `!valid_key`
+
+    - 동작: `없음`
+
+
+    유스케이스: [UC-07] 관리 모드에 진입한다
+
+
+    인수 조건:
+
+    - 판매 상태·누적 300원에서 전용 키 조작 → 반환 금액 == 300, 누적 == 0, 상태 == 관리 모드
+
+    - 누적 0원에서 전용 키 조작 → 반환 동작 없음, 상태 == 관리 모드
+
+    - 배출 완료 대기 중 전용 키 조작 → 상태 == 관리 모드
+
+    - 판매 중지 상태에서 전용 키 조작 → 상태 == 관리 모드
+
+    - 전용 키 없이 진입 시도 → 상태 변화 없음
+
+
+    **완료 조건: `test_t_074` 통과**'
+  status: done
+  parent: SWF-7
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-074
+  usecase_ref: UC-07
+  signature: a511dfea5d93
+  dod_tests:
+  - tests/test_fsm.py::test_t_074
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-44
+  type: story
+  title: '[T-075] AWAITING_DISPENSE --ADMIN_KEY--> ADMIN_MODE'
+  description: 'FSM 전이 `T-075` 구현
+
+
+    - 출발: `AWAITING_DISPENSE`
+
+    - 이벤트: `ADMIN_KEY`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `valid_key`
+
+    - 동작: `stopDispenseTimer(); if credit > 0: payout(credit); coins -= used; credit
+    = 0; display(0); clearPending()`
+
+
+    유스케이스: [UC-07] 관리 모드에 진입한다
+
+
+    인수 조건:
+
+    - 판매 상태·누적 300원에서 전용 키 조작 → 반환 금액 == 300, 누적 == 0, 상태 == 관리 모드
+
+    - 누적 0원에서 전용 키 조작 → 반환 동작 없음, 상태 == 관리 모드
+
+    - 배출 완료 대기 중 전용 키 조작 → 상태 == 관리 모드
+
+    - 판매 중지 상태에서 전용 키 조작 → 상태 == 관리 모드
+
+    - 전용 키 없이 진입 시도 → 상태 변화 없음
+
+
+    **완료 조건: `test_t_075` 통과**'
+  status: done
+  parent: SWF-7
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-075
+  usecase_ref: UC-07
+  signature: 97d20c6bf28c
+  dod_tests:
+  - tests/test_fsm.py::test_t_075
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-45
+  type: story
+  title: '[T-076] AWAITING_DISPENSE --ADMIN_KEY--> AWAITING_DISPENSE'
+  description: 'FSM 전이 `T-076` 구현
+
+
+    - 출발: `AWAITING_DISPENSE`
+
+    - 이벤트: `ADMIN_KEY`
+
+    - 도착: `AWAITING_DISPENSE`
+
+    - 가드: `!valid_key`
+
+    - 동작: `없음`
+
+
+    유스케이스: [UC-07] 관리 모드에 진입한다
+
+
+    인수 조건:
+
+    - 판매 상태·누적 300원에서 전용 키 조작 → 반환 금액 == 300, 누적 == 0, 상태 == 관리 모드
+
+    - 누적 0원에서 전용 키 조작 → 반환 동작 없음, 상태 == 관리 모드
+
+    - 배출 완료 대기 중 전용 키 조작 → 상태 == 관리 모드
+
+    - 판매 중지 상태에서 전용 키 조작 → 상태 == 관리 모드
+
+    - 전용 키 없이 진입 시도 → 상태 변화 없음
+
+
+    **완료 조건: `test_t_076` 통과**'
+  status: done
+  parent: SWF-7
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-076
+  usecase_ref: UC-07
+  signature: 5edb8bfebdd8
+  dod_tests:
+  - tests/test_fsm.py::test_t_076
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-46
+  type: story
+  title: '[T-077] ADMIN_MODE --ADMIN_KEY--> ADMIN_MODE'
+  description: 'FSM 전이 `T-077` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `ADMIN_KEY`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `없음`
+
+    - 동작: `없음`
+
+
+    유스케이스: [UC-07] 관리 모드에 진입한다
+
+
+    인수 조건:
+
+    - 판매 상태·누적 300원에서 전용 키 조작 → 반환 금액 == 300, 누적 == 0, 상태 == 관리 모드
+
+    - 누적 0원에서 전용 키 조작 → 반환 동작 없음, 상태 == 관리 모드
+
+    - 배출 완료 대기 중 전용 키 조작 → 상태 == 관리 모드
+
+    - 판매 중지 상태에서 전용 키 조작 → 상태 == 관리 모드
+
+    - 전용 키 없이 진입 시도 → 상태 변화 없음
+
+
+    **완료 조건: `test_t_077` 통과**'
+  status: done
+  parent: SWF-7
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-077
+  usecase_ref: UC-07
+  signature: 07ef1e31c008
+  dod_tests:
+  - tests/test_fsm.py::test_t_077
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-47
+  type: story
+  title: '[T-080] ADMIN_MODE --REFILL_REQUEST--> ADMIN_MODE'
+  description: 'FSM 전이 `T-080` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `REFILL_REQUEST`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `allTargetsRegistered(items) && allQtyPositiveInt(items)`
+
+    - 동작: `for d in items.drinks: stock[d] += qty; for c in items.coins: coins[c]
+    += qty; refilledAmount += sum(c * qty)`
+
+
+    유스케이스: [UC-08] 재고와 동전을 보충한다
+
+
+    인수 조건:
+
+    - 음료A 재고 0에서 보충 5 → 음료A 재고 == 5, 다른 음료 재고 변화 없음
+
+    - 100원 보유 2개에서 100원 10개 보충 → 100원 보유 == 12, 보충된 금액 기록 += 1000
+
+    - 음료A 3개 + 미등록 음료D 2개 지시 → 거부 알림 발생, 음료A 재고 변화 없음
+
+    - 음료A 3개 + 500원 0개 지시 → 거부 알림 발생, 재고·보유량 변화 없음
+
+    - 50원 5개 보충 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 보충 종료 시 재고 합 ≥ 1 → 상태 == 판매; 재고 합 == 0 → 상태 == 판매 중지
+
+
+    **완료 조건: `test_t_080` 통과**'
+  status: done
+  parent: SWF-8
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-080
+  usecase_ref: UC-08
+  signature: 3ff738a15509
+  dod_tests:
+  - tests/test_fsm.py::test_t_080
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-48
+  type: story
+  title: '[T-081] ADMIN_MODE --REFILL_REQUEST--> ADMIN_MODE'
+  description: 'FSM 전이 `T-081` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `REFILL_REQUEST`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `!allTargetsRegistered(items)`
+
+    - 동작: `notifyAdmin(REJECT_UNKNOWN_TARGET)`
+
+
+    유스케이스: [UC-08] 재고와 동전을 보충한다
+
+
+    인수 조건:
+
+    - 음료A 재고 0에서 보충 5 → 음료A 재고 == 5, 다른 음료 재고 변화 없음
+
+    - 100원 보유 2개에서 100원 10개 보충 → 100원 보유 == 12, 보충된 금액 기록 += 1000
+
+    - 음료A 3개 + 미등록 음료D 2개 지시 → 거부 알림 발생, 음료A 재고 변화 없음
+
+    - 음료A 3개 + 500원 0개 지시 → 거부 알림 발생, 재고·보유량 변화 없음
+
+    - 50원 5개 보충 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 보충 종료 시 재고 합 ≥ 1 → 상태 == 판매; 재고 합 == 0 → 상태 == 판매 중지
+
+
+    **완료 조건: `test_t_081` 통과**'
+  status: done
+  parent: SWF-8
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-081
+  usecase_ref: UC-08
+  signature: b7878144ad33
+  dod_tests:
+  - tests/test_fsm.py::test_t_081
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-49
+  type: story
+  title: '[T-082] ADMIN_MODE --REFILL_REQUEST--> ADMIN_MODE'
+  description: 'FSM 전이 `T-082` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `REFILL_REQUEST`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `allTargetsRegistered(items) && !allQtyPositiveInt(items)`
+
+    - 동작: `notifyAdmin(REJECT_INVALID_QTY)`
+
+
+    유스케이스: [UC-08] 재고와 동전을 보충한다
+
+
+    인수 조건:
+
+    - 음료A 재고 0에서 보충 5 → 음료A 재고 == 5, 다른 음료 재고 변화 없음
+
+    - 100원 보유 2개에서 100원 10개 보충 → 100원 보유 == 12, 보충된 금액 기록 += 1000
+
+    - 음료A 3개 + 미등록 음료D 2개 지시 → 거부 알림 발생, 음료A 재고 변화 없음
+
+    - 음료A 3개 + 500원 0개 지시 → 거부 알림 발생, 재고·보유량 변화 없음
+
+    - 50원 5개 보충 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 보충 종료 시 재고 합 ≥ 1 → 상태 == 판매; 재고 합 == 0 → 상태 == 판매 중지
+
+
+    **완료 조건: `test_t_082` 통과**'
+  status: done
+  parent: SWF-8
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-082
+  usecase_ref: UC-08
+  signature: ea75494c7645
+  dod_tests:
+  - tests/test_fsm.py::test_t_082
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-50
+  type: story
+  title: '[T-083] ADMIN_MODE --ADMIN_EXIT--> SELLING'
+  description: 'FSM 전이 `T-083` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `ADMIN_EXIT`
+
+    - 도착: `SELLING`
+
+    - 가드: `totalStock() >= 1`
+
+    - 동작: `credit = 0; display(0); updateButtons()`
+
+
+    유스케이스: [UC-08] 재고와 동전을 보충한다
+
+
+    인수 조건:
+
+    - 음료A 재고 0에서 보충 5 → 음료A 재고 == 5, 다른 음료 재고 변화 없음
+
+    - 100원 보유 2개에서 100원 10개 보충 → 100원 보유 == 12, 보충된 금액 기록 += 1000
+
+    - 음료A 3개 + 미등록 음료D 2개 지시 → 거부 알림 발생, 음료A 재고 변화 없음
+
+    - 음료A 3개 + 500원 0개 지시 → 거부 알림 발생, 재고·보유량 변화 없음
+
+    - 50원 5개 보충 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 보충 종료 시 재고 합 ≥ 1 → 상태 == 판매; 재고 합 == 0 → 상태 == 판매 중지
+
+
+    **완료 조건: `test_t_083` 통과**'
+  status: done
+  parent: SWF-8
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-083
+  usecase_ref: UC-08
+  signature: 061937a5be66
+  dod_tests:
+  - tests/test_fsm.py::test_t_083
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-51
+  type: story
+  title: '[T-084] ADMIN_MODE --ADMIN_EXIT--> SOLD_OUT'
+  description: 'FSM 전이 `T-084` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `ADMIN_EXIT`
+
+    - 도착: `SOLD_OUT`
+
+    - 가드: `totalStock() == 0`
+
+    - 동작: `credit = 0; display(0); disableAllButtons()`
+
+
+    유스케이스: [UC-08] 재고와 동전을 보충한다
+
+
+    인수 조건:
+
+    - 음료A 재고 0에서 보충 5 → 음료A 재고 == 5, 다른 음료 재고 변화 없음
+
+    - 100원 보유 2개에서 100원 10개 보충 → 100원 보유 == 12, 보충된 금액 기록 += 1000
+
+    - 음료A 3개 + 미등록 음료D 2개 지시 → 거부 알림 발생, 음료A 재고 변화 없음
+
+    - 음료A 3개 + 500원 0개 지시 → 거부 알림 발생, 재고·보유량 변화 없음
+
+    - 50원 5개 보충 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 보충 종료 시 재고 합 ≥ 1 → 상태 == 판매; 재고 합 == 0 → 상태 == 판매 중지
+
+
+    **완료 조건: `test_t_084` 통과**'
+  status: done
+  parent: SWF-8
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-084
+  usecase_ref: UC-08
+  signature: 790780f6c6c9
+  dod_tests:
+  - tests/test_fsm.py::test_t_084
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-52
+  type: story
+  title: '[T-090] ADMIN_MODE --COLLECT_COINS_REQUEST--> ADMIN_MODE'
+  description: 'FSM 전이 `T-090` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `COLLECT_COINS_REQUEST`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `allDenomsValid(items) && allQtyPositiveInt(items) && allWithinHolding(items)
+    && holdingAfter(items) >= unreturnedAmount`
+
+    - 동작: `for c in items: coins[c] -= qty; collectedAmount += sum(c * qty); showAdmin(result)`
+
+
+    유스케이스: [UC-09] 동전을 회수한다
+
+
+    인수 조건:
+
+    - 500원 보유 10개, 미반환 보관액 0에서 500원 4개 회수 → 500원 보유 == 6, 회수된 금액 기록 += 2000
+
+    - 보유 합계 3000원, 미반환 보관액 1000원에서 합계 2500원 회수 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 보유 합계 3000원, 미반환 보관액 1000원에서 합계 2000원 회수 지시 → 승인, 회수 후 합계 == 1000
+
+    - 500원 2개 + 100원 0개 회수 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 1000원 보유 1개에서 1000원 2개 회수 지시 → 거부 알림 발생
+
+
+    **완료 조건: `test_t_090` 통과**'
+  status: done
+  parent: SWF-9
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-090
+  usecase_ref: UC-09
+  signature: 03923ca75152
+  dod_tests:
+  - tests/test_fsm.py::test_t_090
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-53
+  type: story
+  title: '[T-091] ADMIN_MODE --COLLECT_COINS_REQUEST--> ADMIN_MODE'
+  description: 'FSM 전이 `T-091` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `COLLECT_COINS_REQUEST`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `!allDenomsValid(items) || !allQtyPositiveInt(items)`
+
+    - 동작: `notifyAdmin(REJECT_INVALID_REQUEST)`
+
+
+    유스케이스: [UC-09] 동전을 회수한다
+
+
+    인수 조건:
+
+    - 500원 보유 10개, 미반환 보관액 0에서 500원 4개 회수 → 500원 보유 == 6, 회수된 금액 기록 += 2000
+
+    - 보유 합계 3000원, 미반환 보관액 1000원에서 합계 2500원 회수 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 보유 합계 3000원, 미반환 보관액 1000원에서 합계 2000원 회수 지시 → 승인, 회수 후 합계 == 1000
+
+    - 500원 2개 + 100원 0개 회수 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 1000원 보유 1개에서 1000원 2개 회수 지시 → 거부 알림 발생
+
+
+    **완료 조건: `test_t_091` 통과**'
+  status: done
+  parent: SWF-9
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-091
+  usecase_ref: UC-09
+  signature: b335e1519cef
+  dod_tests:
+  - tests/test_fsm.py::test_t_091
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-54
+  type: story
+  title: '[T-092] ADMIN_MODE --COLLECT_COINS_REQUEST--> ADMIN_MODE'
+  description: 'FSM 전이 `T-092` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `COLLECT_COINS_REQUEST`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `allDenomsValid(items) && allQtyPositiveInt(items) && !allWithinHolding(items)`
+
+    - 동작: `notifyAdmin(REJECT_EXCEEDS_HOLDING)`
+
+
+    유스케이스: [UC-09] 동전을 회수한다
+
+
+    인수 조건:
+
+    - 500원 보유 10개, 미반환 보관액 0에서 500원 4개 회수 → 500원 보유 == 6, 회수된 금액 기록 += 2000
+
+    - 보유 합계 3000원, 미반환 보관액 1000원에서 합계 2500원 회수 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 보유 합계 3000원, 미반환 보관액 1000원에서 합계 2000원 회수 지시 → 승인, 회수 후 합계 == 1000
+
+    - 500원 2개 + 100원 0개 회수 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 1000원 보유 1개에서 1000원 2개 회수 지시 → 거부 알림 발생
+
+
+    **완료 조건: `test_t_092` 통과**'
+  status: done
+  parent: SWF-9
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-092
+  usecase_ref: UC-09
+  signature: 5f01c2f7c3d3
+  dod_tests:
+  - tests/test_fsm.py::test_t_092
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-55
+  type: story
+  title: '[T-093] ADMIN_MODE --COLLECT_COINS_REQUEST--> ADMIN_MODE'
+  description: 'FSM 전이 `T-093` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `COLLECT_COINS_REQUEST`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `allDenomsValid(items) && allQtyPositiveInt(items) && allWithinHolding(items)
+    && holdingAfter(items) < unreturnedAmount`
+
+    - 동작: `notifyAdmin(REJECT_BELOW_UNRETURNED)`
+
+
+    유스케이스: [UC-09] 동전을 회수한다
+
+
+    인수 조건:
+
+    - 500원 보유 10개, 미반환 보관액 0에서 500원 4개 회수 → 500원 보유 == 6, 회수된 금액 기록 += 2000
+
+    - 보유 합계 3000원, 미반환 보관액 1000원에서 합계 2500원 회수 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 보유 합계 3000원, 미반환 보관액 1000원에서 합계 2000원 회수 지시 → 승인, 회수 후 합계 == 1000
+
+    - 500원 2개 + 100원 0개 회수 지시 → 거부 알림 발생, 보유량 변화 없음
+
+    - 1000원 보유 1개에서 1000원 2개 회수 지시 → 거부 알림 발생
+
+
+    **완료 조건: `test_t_093` 통과**'
+  status: done
+  parent: SWF-9
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-093
+  usecase_ref: UC-09
+  signature: 2477a84ac221
+  dod_tests:
+  - tests/test_fsm.py::test_t_093
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-56
+  type: story
+  title: '[T-100] ADMIN_MODE --QUERY_DELAYED_DISPENSE--> ADMIN_MODE'
+  description: 'FSM 전이 `T-100` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `QUERY_DELAYED_DISPENSE`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `delayedDispenseLog.size > 0`
+
+    - 동작: `showAdmin(delayedDispenseLog)`
+
+
+    유스케이스: [UC-10] 지연 배출 기록과 미반환 보관액을 확인·회수한다
+
+
+    인수 조건:
+
+    - 지연 배출 기록 2건 존재 시 조회 결과 건수 == 2 이고 각 건에 음료 종류와 시각이 포함된다
+
+    - 미반환 보관액 300원 상태에서 조회 → 표시값 == 300
+
+    - 미반환 보관액 300원 회수 → 지급 합계 == 300, 회수 후 미반환 보관액 == 0, 보유량 합계가 300 감소
+
+    - 미반환 보관액 0원에서 회수 지시 → 지급 없음, 알림 발생
+
+    - 미반환 보관액 회수 후에도 REQ-24 의 보유량 합계 등식이 성립한다
+
+
+    **완료 조건: `test_t_100` 통과**'
+  status: done
+  parent: SWF-10
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-100
+  usecase_ref: UC-10
+  signature: d46526b7fb95
+  dod_tests:
+  - tests/test_fsm.py::test_t_100
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-57
+  type: story
+  title: '[T-101] ADMIN_MODE --QUERY_DELAYED_DISPENSE--> ADMIN_MODE'
+  description: 'FSM 전이 `T-101` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `QUERY_DELAYED_DISPENSE`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `delayedDispenseLog.size == 0`
+
+    - 동작: `showAdmin(NO_RECORDS)`
+
+
+    유스케이스: [UC-10] 지연 배출 기록과 미반환 보관액을 확인·회수한다
+
+
+    인수 조건:
+
+    - 지연 배출 기록 2건 존재 시 조회 결과 건수 == 2 이고 각 건에 음료 종류와 시각이 포함된다
+
+    - 미반환 보관액 300원 상태에서 조회 → 표시값 == 300
+
+    - 미반환 보관액 300원 회수 → 지급 합계 == 300, 회수 후 미반환 보관액 == 0, 보유량 합계가 300 감소
+
+    - 미반환 보관액 0원에서 회수 지시 → 지급 없음, 알림 발생
+
+    - 미반환 보관액 회수 후에도 REQ-24 의 보유량 합계 등식이 성립한다
+
+
+    **완료 조건: `test_t_101` 통과**'
+  status: done
+  parent: SWF-10
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-101
+  usecase_ref: UC-10
+  signature: a2b15adc28ef
+  dod_tests:
+  - tests/test_fsm.py::test_t_101
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-58
+  type: story
+  title: '[T-102] ADMIN_MODE --QUERY_UNRETURNED--> ADMIN_MODE'
+  description: 'FSM 전이 `T-102` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `QUERY_UNRETURNED`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `없음`
+
+    - 동작: `showAdmin(unreturnedAmount)`
+
+
+    유스케이스: [UC-10] 지연 배출 기록과 미반환 보관액을 확인·회수한다
+
+
+    인수 조건:
+
+    - 지연 배출 기록 2건 존재 시 조회 결과 건수 == 2 이고 각 건에 음료 종류와 시각이 포함된다
+
+    - 미반환 보관액 300원 상태에서 조회 → 표시값 == 300
+
+    - 미반환 보관액 300원 회수 → 지급 합계 == 300, 회수 후 미반환 보관액 == 0, 보유량 합계가 300 감소
+
+    - 미반환 보관액 0원에서 회수 지시 → 지급 없음, 알림 발생
+
+    - 미반환 보관액 회수 후에도 REQ-24 의 보유량 합계 등식이 성립한다
+
+
+    **완료 조건: `test_t_102` 통과**'
+  status: done
+  parent: SWF-10
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-102
+  usecase_ref: UC-10
+  signature: 94aa9af7aa34
+  dod_tests:
+  - tests/test_fsm.py::test_t_102
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-59
+  type: story
+  title: '[T-103] ADMIN_MODE --COLLECT_UNRETURNED_REQUEST--> ADMIN_MODE'
+  description: 'FSM 전이 `T-103` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `COLLECT_UNRETURNED_REQUEST`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `unreturnedAmount > 0 && canMakeChange(unreturnedAmount)`
+
+    - 동작: `payout(unreturnedAmount); coins -= used; unreturnedAmount = 0`
+
+
+    유스케이스: [UC-10] 지연 배출 기록과 미반환 보관액을 확인·회수한다
+
+
+    인수 조건:
+
+    - 지연 배출 기록 2건 존재 시 조회 결과 건수 == 2 이고 각 건에 음료 종류와 시각이 포함된다
+
+    - 미반환 보관액 300원 상태에서 조회 → 표시값 == 300
+
+    - 미반환 보관액 300원 회수 → 지급 합계 == 300, 회수 후 미반환 보관액 == 0, 보유량 합계가 300 감소
+
+    - 미반환 보관액 0원에서 회수 지시 → 지급 없음, 알림 발생
+
+    - 미반환 보관액 회수 후에도 REQ-24 의 보유량 합계 등식이 성립한다
+
+
+    **완료 조건: `test_t_103` 통과**'
+  status: done
+  parent: SWF-10
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-103
+  usecase_ref: UC-10
+  signature: 652e5ec66174
+  dod_tests:
+  - tests/test_fsm.py::test_t_103
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-60
+  type: story
+  title: '[T-104] ADMIN_MODE --COLLECT_UNRETURNED_REQUEST--> ADMIN_MODE'
+  description: 'FSM 전이 `T-104` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `COLLECT_UNRETURNED_REQUEST`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `unreturnedAmount == 0`
+
+    - 동작: `notifyAdmin(NOTHING_TO_COLLECT)`
+
+
+    유스케이스: [UC-10] 지연 배출 기록과 미반환 보관액을 확인·회수한다
+
+
+    인수 조건:
+
+    - 지연 배출 기록 2건 존재 시 조회 결과 건수 == 2 이고 각 건에 음료 종류와 시각이 포함된다
+
+    - 미반환 보관액 300원 상태에서 조회 → 표시값 == 300
+
+    - 미반환 보관액 300원 회수 → 지급 합계 == 300, 회수 후 미반환 보관액 == 0, 보유량 합계가 300 감소
+
+    - 미반환 보관액 0원에서 회수 지시 → 지급 없음, 알림 발생
+
+    - 미반환 보관액 회수 후에도 REQ-24 의 보유량 합계 등식이 성립한다
+
+
+    **완료 조건: `test_t_104` 통과**'
+  status: done
+  parent: SWF-10
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-104
+  usecase_ref: UC-10
+  signature: b93c19d48348
+  dod_tests:
+  - tests/test_fsm.py::test_t_104
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-61
+  type: story
+  title: '[T-105] ADMIN_MODE --COLLECT_UNRETURNED_REQUEST--> ADMIN_MODE'
+  description: 'FSM 전이 `T-105` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `COLLECT_UNRETURNED_REQUEST`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `unreturnedAmount > 0 && !canMakeChange(unreturnedAmount)`
+
+    - 동작: `notifyAdmin(REJECT_CANNOT_COMPOSE)`
+
+
+    유스케이스: [UC-10] 지연 배출 기록과 미반환 보관액을 확인·회수한다
+
+
+    인수 조건:
+
+    - 지연 배출 기록 2건 존재 시 조회 결과 건수 == 2 이고 각 건에 음료 종류와 시각이 포함된다
+
+    - 미반환 보관액 300원 상태에서 조회 → 표시값 == 300
+
+    - 미반환 보관액 300원 회수 → 지급 합계 == 300, 회수 후 미반환 보관액 == 0, 보유량 합계가 300 감소
+
+    - 미반환 보관액 0원에서 회수 지시 → 지급 없음, 알림 발생
+
+    - 미반환 보관액 회수 후에도 REQ-24 의 보유량 합계 등식이 성립한다
+
+
+    **완료 조건: `test_t_105` 통과**'
+  status: done
+  parent: SWF-10
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-105
+  usecase_ref: UC-10
+  signature: 85d887758f9d
+  dod_tests:
+  - tests/test_fsm.py::test_t_105
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-62
+  type: story
+  title: '[T-130] ADMIN_MODE --QUERY_COIN_INVENTORY--> ADMIN_MODE'
+  description: 'FSM 전이 `T-130` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `QUERY_COIN_INVENTORY`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `holdingTotal() == initialAmount + refilledAmount - collectedAmount + soldAmount
+    + credit + unreturnedAmount`
+
+    - 동작: `showAdmin(coins, holdingTotal(), expectedTotal())`
+
+
+    유스케이스: [UC-13] 동전 보유량 정합성을 검증한다
+
+
+    인수 조건:
+
+    - 임의의 코인 투입·구매·반환·보충·회수·정전 시나리오 실행 후 어느 시점에서나 보유량 합계 == 초기 보유액 + 보충 − 회수 + 판매
+    합 + 미정산 누적 금액 + 미반환 보관액
+
+    - 관리 모드 조회 시 액면가 3종 각각의 개수와 합계가 표시되고, 합계 == Σ(액면가 × 개수)
+
+    - 되돌려 보낸 코인(비액면가·인식 실패·판매 중지·관리 모드)은 어떤 항에도 반영되지 않는다
+
+
+    **완료 조건: `test_t_130` 통과**'
+  status: done
+  parent: SWF-13
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-130
+  usecase_ref: UC-13
+  signature: 55d00f1a17a6
+  dod_tests:
+  - tests/test_fsm.py::test_t_130
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-63
+  type: story
+  title: '[T-131] ADMIN_MODE --QUERY_COIN_INVENTORY--> ADMIN_MODE'
+  description: 'FSM 전이 `T-131` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `QUERY_COIN_INVENTORY`
+
+    - 도착: `ADMIN_MODE`
+
+    - 가드: `holdingTotal() != initialAmount + refilledAmount - collectedAmount + soldAmount
+    + credit + unreturnedAmount`
+
+    - 동작: `showAdmin(coins, holdingTotal(), expectedTotal()); notifyAdmin(MISMATCH)`
+
+
+    유스케이스: [UC-13] 동전 보유량 정합성을 검증한다
+
+
+    인수 조건:
+
+    - 임의의 코인 투입·구매·반환·보충·회수·정전 시나리오 실행 후 어느 시점에서나 보유량 합계 == 초기 보유액 + 보충 − 회수 + 판매
+    합 + 미정산 누적 금액 + 미반환 보관액
+
+    - 관리 모드 조회 시 액면가 3종 각각의 개수와 합계가 표시되고, 합계 == Σ(액면가 × 개수)
+
+    - 되돌려 보낸 코인(비액면가·인식 실패·판매 중지·관리 모드)은 어떤 항에도 반영되지 않는다
+
+
+    **완료 조건: `test_t_131` 통과**'
+  status: done
+  parent: SWF-13
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-131
+  usecase_ref: UC-13
+  signature: 971c6f1ff30c
+  dod_tests:
+  - tests/test_fsm.py::test_t_131
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-64
+  type: story
+  title: '[T-120] SELLING --POWER_LOST--> POWERED_OFF'
+  description: 'FSM 전이 `T-120` 구현
+
+
+    - 출발: `SELLING`
+
+    - 이벤트: `POWER_LOST`
+
+    - 도착: `POWERED_OFF`
+
+    - 가드: `없음`
+
+    - 동작: `persist(credit, stock, coins, pending=none)`
+
+
+    유스케이스: [UC-12] 정전 후 재기동한다
+
+
+    인수 조건:
+
+    - 누적 1500원(배출 미개시) 중 정전 후 재기동 → 누적 == 0, 미반환 보관액 += 1500, 보유량 합계 == 정전 직전 값, 물리
+    반환 없음
+
+    - 가격 700원 음료 배출 개시 후 완료 전 정전, 누적 1000원 → 재기동 후 재고 −1, 판매된 금액 += 700, 미반환 보관액 +=
+    300, 누적 == 0
+
+    - 내부 재고 (0,0,0)으로 재기동 → 상태 == 판매 중지; 내부 재고 (0,1,0) → 상태 == 판매
+
+    - 재기동 후 REQ-24 의 보유량 합계 등식이 성립한다
+
+    - 재기동 과정에서 외부 통신·외부 재고 입력이 발생하지 않는다
+
+
+    **완료 조건: `test_t_120` 통과**'
+  status: done
+  parent: SWF-12
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-120
+  usecase_ref: UC-12
+  signature: 115cc29dc1b6
+  dod_tests:
+  - tests/test_fsm.py::test_t_120
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-65
+  type: story
+  title: '[T-121] SOLD_OUT --POWER_LOST--> POWERED_OFF'
+  description: 'FSM 전이 `T-121` 구현
+
+
+    - 출발: `SOLD_OUT`
+
+    - 이벤트: `POWER_LOST`
+
+    - 도착: `POWERED_OFF`
+
+    - 가드: `없음`
+
+    - 동작: `persist(credit=0, stock, coins, pending=none)`
+
+
+    유스케이스: [UC-12] 정전 후 재기동한다
+
+
+    인수 조건:
+
+    - 누적 1500원(배출 미개시) 중 정전 후 재기동 → 누적 == 0, 미반환 보관액 += 1500, 보유량 합계 == 정전 직전 값, 물리
+    반환 없음
+
+    - 가격 700원 음료 배출 개시 후 완료 전 정전, 누적 1000원 → 재기동 후 재고 −1, 판매된 금액 += 700, 미반환 보관액 +=
+    300, 누적 == 0
+
+    - 내부 재고 (0,0,0)으로 재기동 → 상태 == 판매 중지; 내부 재고 (0,1,0) → 상태 == 판매
+
+    - 재기동 후 REQ-24 의 보유량 합계 등식이 성립한다
+
+    - 재기동 과정에서 외부 통신·외부 재고 입력이 발생하지 않는다
+
+
+    **완료 조건: `test_t_121` 통과**'
+  status: done
+  parent: SWF-12
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-121
+  usecase_ref: UC-12
+  signature: 5c2e4cf0cc14
+  dod_tests:
+  - tests/test_fsm.py::test_t_121
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-66
+  type: story
+  title: '[T-122] AWAITING_DISPENSE --POWER_LOST--> POWERED_OFF'
+  description: 'FSM 전이 `T-122` 구현
+
+
+    - 출발: `AWAITING_DISPENSE`
+
+    - 이벤트: `POWER_LOST`
+
+    - 도착: `POWERED_OFF`
+
+    - 가드: `없음`
+
+    - 동작: `persist(credit, stock, coins, pending)`
+
+
+    유스케이스: [UC-12] 정전 후 재기동한다
+
+
+    인수 조건:
+
+    - 누적 1500원(배출 미개시) 중 정전 후 재기동 → 누적 == 0, 미반환 보관액 += 1500, 보유량 합계 == 정전 직전 값, 물리
+    반환 없음
+
+    - 가격 700원 음료 배출 개시 후 완료 전 정전, 누적 1000원 → 재기동 후 재고 −1, 판매된 금액 += 700, 미반환 보관액 +=
+    300, 누적 == 0
+
+    - 내부 재고 (0,0,0)으로 재기동 → 상태 == 판매 중지; 내부 재고 (0,1,0) → 상태 == 판매
+
+    - 재기동 후 REQ-24 의 보유량 합계 등식이 성립한다
+
+    - 재기동 과정에서 외부 통신·외부 재고 입력이 발생하지 않는다
+
+
+    **완료 조건: `test_t_122` 통과**'
+  status: done
+  parent: SWF-12
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-122
+  usecase_ref: UC-12
+  signature: 0ecb97933ce6
+  dod_tests:
+  - tests/test_fsm.py::test_t_122
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-67
+  type: story
+  title: '[T-123] ADMIN_MODE --POWER_LOST--> POWERED_OFF'
+  description: 'FSM 전이 `T-123` 구현
+
+
+    - 출발: `ADMIN_MODE`
+
+    - 이벤트: `POWER_LOST`
+
+    - 도착: `POWERED_OFF`
+
+    - 가드: `없음`
+
+    - 동작: `persist(credit=0, stock, coins, pending=none)`
+
+
+    유스케이스: [UC-12] 정전 후 재기동한다
+
+
+    인수 조건:
+
+    - 누적 1500원(배출 미개시) 중 정전 후 재기동 → 누적 == 0, 미반환 보관액 += 1500, 보유량 합계 == 정전 직전 값, 물리
+    반환 없음
+
+    - 가격 700원 음료 배출 개시 후 완료 전 정전, 누적 1000원 → 재기동 후 재고 −1, 판매된 금액 += 700, 미반환 보관액 +=
+    300, 누적 == 0
+
+    - 내부 재고 (0,0,0)으로 재기동 → 상태 == 판매 중지; 내부 재고 (0,1,0) → 상태 == 판매
+
+    - 재기동 후 REQ-24 의 보유량 합계 등식이 성립한다
+
+    - 재기동 과정에서 외부 통신·외부 재고 입력이 발생하지 않는다
+
+
+    **완료 조건: `test_t_123` 통과**'
+  status: done
+  parent: SWF-12
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-123
+  usecase_ref: UC-12
+  signature: 1e7302b035c1
+  dod_tests:
+  - tests/test_fsm.py::test_t_123
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-68
+  type: story
+  title: '[T-124] POWERED_OFF --POWER_RESTORED--> SELLING'
+  description: 'FSM 전이 `T-124` 구현
+
+
+    - 출발: `POWERED_OFF`
+
+    - 이벤트: `POWER_RESTORED`
+
+    - 도착: `SELLING`
+
+    - 가드: `totalStockAfterRecovery() >= 1`
+
+    - 동작: `if pending: stock[pending.drink] -= 1; soldAmount += price[pending.drink];
+    credit -= price[pending.drink]; if credit > 0: unreturnedAmount += credit; credit
+    = 0; display(0); clearPending(); updateButtons()`
+
+
+    유스케이스: [UC-12] 정전 후 재기동한다
+
+
+    인수 조건:
+
+    - 누적 1500원(배출 미개시) 중 정전 후 재기동 → 누적 == 0, 미반환 보관액 += 1500, 보유량 합계 == 정전 직전 값, 물리
+    반환 없음
+
+    - 가격 700원 음료 배출 개시 후 완료 전 정전, 누적 1000원 → 재기동 후 재고 −1, 판매된 금액 += 700, 미반환 보관액 +=
+    300, 누적 == 0
+
+    - 내부 재고 (0,0,0)으로 재기동 → 상태 == 판매 중지; 내부 재고 (0,1,0) → 상태 == 판매
+
+    - 재기동 후 REQ-24 의 보유량 합계 등식이 성립한다
+
+    - 재기동 과정에서 외부 통신·외부 재고 입력이 발생하지 않는다
+
+
+    **완료 조건: `test_t_124` 통과**'
+  status: done
+  parent: SWF-12
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-124
+  usecase_ref: UC-12
+  signature: 5410006e8e9e
+  dod_tests:
+  - tests/test_fsm.py::test_t_124
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-69
+  type: story
+  title: '[T-125] POWERED_OFF --POWER_RESTORED--> SOLD_OUT'
+  description: 'FSM 전이 `T-125` 구현
+
+
+    - 출발: `POWERED_OFF`
+
+    - 이벤트: `POWER_RESTORED`
+
+    - 도착: `SOLD_OUT`
+
+    - 가드: `totalStockAfterRecovery() == 0`
+
+    - 동작: `if pending: stock[pending.drink] -= 1; soldAmount += price[pending.drink];
+    credit -= price[pending.drink]; if credit > 0: unreturnedAmount += credit; credit
+    = 0; display(0); clearPending(); disableAllButtons()`
+
+
+    유스케이스: [UC-12] 정전 후 재기동한다
+
+
+    인수 조건:
+
+    - 누적 1500원(배출 미개시) 중 정전 후 재기동 → 누적 == 0, 미반환 보관액 += 1500, 보유량 합계 == 정전 직전 값, 물리
+    반환 없음
+
+    - 가격 700원 음료 배출 개시 후 완료 전 정전, 누적 1000원 → 재기동 후 재고 −1, 판매된 금액 += 700, 미반환 보관액 +=
+    300, 누적 == 0
+
+    - 내부 재고 (0,0,0)으로 재기동 → 상태 == 판매 중지; 내부 재고 (0,1,0) → 상태 == 판매
+
+    - 재기동 후 REQ-24 의 보유량 합계 등식이 성립한다
+
+    - 재기동 과정에서 외부 통신·외부 재고 입력이 발생하지 않는다
+
+
+    **완료 조건: `test_t_125` 통과**'
+  status: done
+  parent: SWF-12
+  labels:
+  - auto
+  - transition
+  fsm_ref: T-125
+  usecase_ref: UC-12
+  signature: 69d311def3a7
+  dod_tests:
+  - tests/test_fsm.py::test_t_125
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-70
+  type: subtask
+  title: T-001.1 INSERT_COIN 이벤트 수신 시 SELLING 상태 유지 전이(T-001)의 guard를 구현한다
+  description: app/vending_machine.py의 VendingMachine.handle에 SELLING 상태에서 INSERT_COIN
+    이벤트를 받으면 코인 인식 여부와 액면가가 VALID_DENOMS({100,500,1000})에 속하는지 검사하는 guard를 추가하고, 통과
+    시 전이 id "T-001"을 반환하며 상태를 SELLING으로 유지한다. guard 실패(미인식·비허용 액면가)는 T-001로 처리하지 않는다.
+  status: done
+  parent: SWF-14
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-001
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-71
+  type: subtask
+  title: T-001.2 T-001 action(누적 금액·보유 개수 갱신, 화면 표시, 버튼 갱신, 유휴 타이머 재시작)을 구현한다
+  description: 같은 handle 분기의 action으로 credit에 액면가를 더하고 coins[amount]를 1 증가시킨 뒤 display(credit)로
+    표시값을 갱신하고, updateButtons()로 누적 금액 ≥ 가격 이고 재고 ≥ 1 인 음료 버튼만 활성화하며, restartIdleTimer()로
+    30초 유휴 타이머를 재장전한다. 반환 코인(refunded)·held는 변경하지 않는다.
+  status: done
+  parent: SWF-14
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-001
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-72
+  type: subtask
+  title: T-002.1 T-002 전이(POWERED_OFF --POWER_ON--> SOLD_OUT, guard !dispense_pending
+    && 재고 전무)를 app/vending_machine.py 전이표에 맞춰 검증·보완한다
+  description: app/vending_machine.py 의 _T("T-002", POWERED_OFF, "POWER_ON", SOLD_OUT,
+    _not_pending_empty, _power_on_settle) 항목과 _not_pending_empty 가드가 tests/test_fsm.py::test_t_002
+    의 기대(재고 모두 0 이고 dispense_pending 아님일 때만 T-002, 재고 있으면 T-001/IDLE, dispense_pending
+    이면 T-003/T-004)와 일치하도록 확인하고 필요 시 수정한다.
+  status: done
+  parent: SWF-15
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-002
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-73
+  type: subtask
+  title: T-002.2 _power_on_settle 액션이 credit=0·display(0)·모든 버튼 비활성·admin_requested=False
+    를 수행하고 stock/coins/held 는 건드리지 않도록 보장한다
+  description: app/vending_machine.py 의 _power_on_settle 을 점검해 누적 금액 초기화, 화면 0 표시,
+    버튼 전부 비활성, admin_requested 리셋만 수행하고 재고·동전 보유량·held 는 그대로 유지하도록(잔여 credit 은 환급
+    없이 소멸) 구현한다. 전이 명세(SELLING/INSERT_COIN/ejectCoin)와 테스트(POWERED_OFF/POWER_ON)가
+    불일치하므로 실제 검증 기준인 테스트를 따른다.
+  status: done
+  parent: SWF-15
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-002
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-74
+  type: subtask
+  title: T-003.1 T-003 가드 _pending_stocked 구현·검증
+  description: app/vending_machine.py 의 _pending_stocked 가 dispense_pending 이고 selected
+    음료의 재고가 2 이상(차감 후 ≥1)일 때만 참을 반환하도록 확인·보정한다. 재고 1이면 거짓(T-004), dispense_pending
+    아니면 거짓(T-001/T-002)이어야 한다.
+  status: done
+  parent: SWF-16
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-003
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-75
+  type: subtask
+  title: T-003.2 T-003 액션 _power_on_finish_dispense 구현·검증
+  description: app/vending_machine.py 의 _power_on_finish_dispense 가 selected 음료 재고를
+    1 차감하고 dispense_pending=False, admin_requested=False 로 리셋한 뒤 정산(credit=0, display(0),
+    버튼 비활성)을 수행하되 coins·held 는 변경하지 않고 refunded 를 비우도록 한다. 전이 테이블의 _T("T-003", POWERED_OFF,
+    "POWER_ON", IDLE, ...) 등록을 확인한다.
+  status: done
+  parent: SWF-16
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-003
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-76
+  type: subtask
+  title: T-004.1 T-004 가드 `_pending_last` 를 완성한다
+  description: app/vending_machine.py 의 `_pending_last` 가 "dispense_pending 이 참이고,
+    선택 음료 재고를 1 차감하면 모든 음료 재고 합이 0" 일 때만 참을 반환하도록 구현한다. dispense_pending 이 거짓이거나(→T-001/T-002)
+    차감 후에도 재고가 남으면(→T-003) 거짓을 반환해야 하며, 전이 테이블 순서(T-001~T-004)와 충돌하지 않게 다른 가드와 상호
+    배타적으로 만든다.
+  status: done
+  parent: SWF-17
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-004
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-77
+  type: subtask
+  title: T-004.2 T-004 액션 `_power_on_finish_dispense` 를 완성한다
+  description: app/vending_machine.py 의 `_power_on_finish_dispense` 가 선택 음료 재고를 1
+    차감하고 dispense_pending=False, admin_requested=False, credit=0, selected 해제, display(0),
+    버튼 전부 비활성(assert_settled 조건) 을 수행하되, coins 딕셔너리와 held 값은 변경하지 않도록 구현한다. T-003
+    과 공유되는 함수이므로 상태 결정은 전이 테이블에 맡기고 액션은 부수효과만 담당하게 한다.
+  status: done
+  parent: SWF-17
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-004
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-78
+  type: subtask
+  title: T-005.1 ADMIN_MODE 상태에서 INSERT_COIN 이벤트를 T-005로 라우팅하고 ejectCoin()을 호출한다
+  description: app/vending_machine.py의 VendingMachine.handle() 전이 표에 (ADMIN_MODE,
+    INSERT_COIN) 항목을 추가한다. guard 없이 ejectCoin()을 실행해 투입된 코인을 vm.ejected에 그대로 기록하고,
+    credit·display·coins·stock·enabled_buttons·held·admin_display 등 나머지 상태는 변경하지 않으며,
+    상태는 ADMIN_MODE에 머무르고 "T-005"를 반환한다.
+  status: done
+  parent: SWF-18
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-005
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-79
+  type: bug
+  title: '[자동] SWF-18 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-18 — [T-005] ADMIN_MODE --INSERT_COIN--> ADMIN_MODE
+
+    FSM 전이: T-005
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓이 요구하는 ADMIN_MODE --INSERT_COIN--> ADMIN_MODE 전이는 이미 T-070 으로
+    구현·테스트(test_t_070 이 "T-070" 반환을 요구)되어 있고, tests/test_fsm.py 에 test_t_005 가 존재하지
+    않아 "T-005" 로 구현하면 test_t_070 이 깨지고 완료 조건(test_t_005 통과)은 충족 불가능하다.
+
+    ```'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-005
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_005
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-80
+  type: subtask
+  title: T-010.1 T-010 전이 가드 구현
+  description: app/vending_machine.py 의 VendingMachine.handle 에 SELLING 상태에서 PRESS_BUTTON
+    이벤트를 받았을 때 credit >= price[drink], stock[drink] >= 1, canMakeChange(credit - price[drink])
+    를 모두 검사하는 가드를 추가한다. canMakeChange 가 없으면 보유 동전(coins)으로 거스름돈을 구성할 수 있는지 판정하는 헬퍼를
+    같은 파일에 구현한다. 가드 위반 시 전이 없이 상태·credit·stock·coins 를 그대로 둔다.
+  status: done
+  parent: SWF-19
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-010
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-81
+  type: subtask
+  title: T-010.2 T-010 전이 액션 구현 및 AWAITING_DISPENSE 진입
+  description: 가드 통과 시 pending.drink/pending.change/pending.credit 을 기록하고, startDispense(drink)를
+    2초 이내(즉시) 호출하며, dispense_timer=10s 설정과 idle_timer 재시작을 수행한 뒤 상태를 AWAITING_DISPENSE
+    로 바꾸고 "T-010" 을 반환하도록 app/vending_machine.py 를 수정한다. pending 을 담을 자료구조와 startDispense
+    훅이 없으면 함께 추가한다.
+  status: done
+  parent: SWF-19
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-010
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-82
+  type: bug
+  title: '[자동] SWF-19 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-19 — [T-010] SELLING --PRESS_BUTTON--> AWAITING_DISPENSE
+
+    FSM 전이: T-010
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓은 T-010을 SELLING--PRESS_BUTTON-->AWAITING_DISPENSE로 정의하지만, 고정된
+    테스트 test_t_010은 IDLE--INSERT_COIN-->HAS_CREDIT을 검증하며 SELLING/AWAITING_DISPENSE
+    상태는 테스트·코드 어디에도 존재하지 않음 (해당 테스트는 현재 구현으로 이미 통과함; 티켓 의도에 해당하는 전이는 T-024로 구현되어 있음).
+
+    ```'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-010
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_010
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-83
+  type: subtask
+  title: T-011.1 T-011 전이 정의와 test_t_011 불일치를 확인하고 기준을 확정한다
+  description: docs/transitions 또는 fsm 정의와 tests/test_fsm.py::test_t_011 을 비교해, T-011
+    이 "PRESS_BUTTON 거스름돈 불가 전액 반환"인지 "INSERT_COIN 비정상 액면가 배출"인지 확정하고 잘못된 쪽(테스트 id
+    매핑 또는 전이 표)을 수정한다.
+  status: done
+  parent: SWF-20
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-011
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-84
+  type: subtask
+  title: T-011.2 canMakeChange 헬퍼를 VendingMachine 에 구현한다
+  description: app/vending_machine.py 에 보유 동전(coins)으로 주어진 금액을 구성할 수 있는지 판단하는 canMakeChange(amount)
+    메서드를 추가한다(그리디 또는 완전탐색, amount==0 이면 True).
+  status: done
+  parent: SWF-20
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-011
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-85
+  type: subtask
+  title: T-011.3 payout 헬퍼로 금액을 지급하고 액면가별 보유 개수를 차감한다
+  description: app/vending_machine.py 에 payout(amount) 를 추가해 사용한 동전을 ejected/지급 기록에
+    남기고 coins 에서 액면가별로 차감한다. T-011 의 "투입 금액 전액 반환"과 정상 거스름돈 지급 양쪽에서 재사용 가능하게 만든다.
+  status: done
+  parent: SWF-20
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-011
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-86
+  type: subtask
+  title: T-011.4 SELLING 상태 PRESS_BUTTON 핸들러에 T-011 분기를 추가한다
+  description: app/vending_machine.py 의 handle("PRESS_BUTTON", drink=...) 에서 credit
+    >= price[drink] and stock[drink] >= 1 and not canMakeChange(credit - price[drink])
+    이면 payout(credit); credit = 0; display(0); updateButtons() 를 수행하고 상태를 SELLING
+    으로 유지한 뒤 "T-011" 을 반환한다. 재고·배출은 변경하지 않는다.
+  status: done
+  parent: SWF-20
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-011
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-87
+  type: subtask
+  title: T-012.1 T-012 guard 조건을 판정하는 헬퍼를 VendingMachine에 추가한다
+  description: app/vending_machine.py의 VendingMachine에 `_button_inactive(drink)` 같은
+    내부 메서드를 만들어 `credit < price[drink] or stock[drink] < 1` 을 반환하게 한다. price/stock
+    딕셔너리 접근과 알 수 없는 drink 처리(비활성으로 간주)를 포함한다.
+  status: done
+  parent: SWF-21
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-012
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-88
+  type: subtask
+  title: T-012.2 SELLING 상태의 PRESS_BUTTON 핸들러에 T-012 자기전이 분기를 연결한다
+  description: app/vending_machine.py의 `handle("PRESS_BUTTON", drink=...)` 처리에서 현재
+    상태가 SELLING이고 guard가 참이면 상태·credit·stock·coins·ejected를 전혀 변경하지 않고 상태를 SELLING으로
+    유지한 채 "T-012"를 반환하도록 한다. guard가 거짓이면 기존 배출 전이(T-013 등)로 넘어가게 해서 다른 전이의 반환값을 가로채지
+    않도록 한다.
+  status: done
+  parent: SWF-21
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-012
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-89
+  type: subtask
+  title: T-012.3 테스트 파일과 전이 정의의 불일치를 확인·정정한다
+  description: tests/test_fsm.py::test_t_012는 IDLE 상태에서 `INSERT_COIN(recognized=False)`
+    → UNKNOWN_COIN 배출을 검증하고 있어 T-012(SELLING/PRESS_BUTTON) 정의와 맞지 않는다. 전이 ID 매핑표(FSM
+    정의 문서 또는 handle 반환값 목록)를 대조해 어느 쪽이 맞는지 확정하고, 구현의 반환 ID 혹은 전이 정의 문서 중 잘못된 쪽을 바로잡는다(테스트
+    자체는 수정하지 않는다).
+  status: done
+  parent: SWF-21
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-012
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-90
+  type: subtask
+  title: T-013.1 T-013 전이에 대한 DISPENSE_DONE 핸들러 뼈대와 guard를 추가한다
+  description: app/vending_machine.py의 VendingMachine에 AWAITING_DISPENSE 상태에서 DISPENSE_DONE
+    이벤트를 받는 분기를 만들고, guard(stockAfterDecrement(pending.drink) > 0 || anyOtherStock()
+    > 0)를 헬퍼로 구현하여 통과 시 "T-013"을 반환하고 SELLING으로 전이하도록 한다
+  status: done
+  parent: SWF-22
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-013
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-91
+  type: subtask
+  title: T-013.2 재고 차감·판매액 가산·거스름돈 지급 및 동전 차감 액션을 구현한다
+  description: 같은 핸들러 안에서 stock[pending.drink] -= 1, soldAmount += price, pending.change
+    > 0이면 payout(pending.change)을 호출해 액면가별 coins를 사용 개수만큼 차감하는 로직을 app/vending_machine.py에
+    작성한다
+  status: done
+  parent: SWF-22
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-013
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-92
+  type: subtask
+  title: T-013.3 credit 갱신·표시·버튼 갱신·pending 정리·유휴 타이머 재시작을 마무리한다
+  description: credit -= price + pending.change 후 display(credit), updateButtons(),
+    clearPending(), restartIdleTimer()를 순서대로 호출하도록 app/vending_machine.py 핸들러 끝부분을
+    완성한다
+  status: done
+  parent: SWF-22
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-013
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-93
+  type: bug
+  title: '[자동] SWF-22 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-22 — [T-013] AWAITING_DISPENSE --DISPENSE_DONE--> SELLING
+
+    FSM 전이: T-013
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓 SWF-22는 T-013을 `AWAITING_DISPENSE --DISPENSE_DONE--> SELLING`(재고
+    차감·거스름돈 지급)으로 정의하지만, 고정된 명세 `tests/test_fsm.py::test_t_013`은 T-013을 `IDLE --PRESS_BUTTON-->
+    IDLE` 무동작 전이로 규정하며 이미 통과 중이다. `AWAITING_DISPENSE`/`SELLING`/`pending`/`soldAmount`는
+    코드와 테스트 어디에도 존재하지 않고, 티켓이 기술한 행위는 이미 T-050/T-051(`DISPENSING --DISPENSE_DONE-->`)로
+    구현·검증되어 있어 티켓의 전이 정의가 테스트 명세와 양립할 수 없다.
+
+    ```'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-013
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_013
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-94
+  type: subtask
+  title: T-014.1 AWAITING_DISPENSE 상태에서 PRESS_BUTTON 이벤트를 무시하는 자기 전이 T-014를 FSM 전이
+    테이블에 추가한다
+  description: 'app/vending_machine.py의 VendingMachine 전이 테이블(또는 handle 분기)에 (AWAITING_DISPENSE/DISPENSING,
+    PRESS_BUTTON) → 동일 상태, guard 없음, action 없음 항목을 추가하고 handle()이 전이 id "T-014"를 반환하도록
+    한다. 누적 금액·재고·보유 동전·refunded·진행 중인 배출의 거스름돈 등 어떤 관측값도 변경하지 않아야 한다(UC 1a: 비활성 버튼은
+    아무 일도 하지 않음).'
+  status: done
+  parent: SWF-23
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-014
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-95
+  type: bug
+  title: '[자동] SWF-23 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-23 — [T-014] AWAITING_DISPENSE --PRESS_BUTTON--> AWAITING_DISPENSE
+
+    FSM 전이: T-014
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓은 T-014를 `AWAITING_DISPENSE --PRESS_BUTTON--> AWAITING_DISPENSE`
+    로 정의하지만, 고정된 테스트 `test_t_014` 는 `IDLE --PULL_LEVER--> IDLE` 을 T-014로 검증한다(이미 구현·통과
+    중). `AWAITING_DISPENSE` 상태는 코드베이스에 존재하지 않으며 해당 동작은 `DISPENSING` 의 T-043으로 구현되어
+    있어, 티켓대로 구현하면 테스트와 충돌한다.
+
+    ```'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-014
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_014
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-96
+  type: subtask
+  title: T-015.1 AWAITING_DISPENSE 상태에서 PULL_RETURN_LEVER 이벤트를 무시하는 자기 전이 T-015를 추가한다
+  description: app/vending_machine.py의 VendingMachine.handle()에 (AWAITING_DISPENSE,
+    PULL_RETURN_LEVER) 분기를 추가하여 상태·누적 금액·재고·보유 동전·진행 중 배출의 거스름돈을 일절 변경하지 않고 "T-015"를
+    반환하도록 만든다.
+  status: done
+  parent: SWF-24
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-015
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-97
+  type: bug
+  title: '[자동] SWF-24 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-24 — [T-015] AWAITING_DISPENSE --PULL_RETURN_LEVER--> AWAITING_DISPENSE
+
+    FSM 전이: T-015
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓은 T-015를 AWAITING_DISPENSE/PULL_RETURN_LEVER 자기 전이로 정의하지만, 고정된
+    테스트 test_t_015는 T-015를 IDLE/IDLE_TIMEOUT 자기 전이로 검증하며 이미 통과 중이다 — 티켓의 전이 정의(상태·이벤트
+    이름)가 테스트 명세와 불일치.
+
+    ```'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-015
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_015
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-98
+  type: subtask
+  title: T-016.1 AWAITING_DISPENSE 상태에서 IDLE_TIMEOUT 이벤트를 자기 전이(T-016)로 처리하도록 FSM
+    전이 테이블에 추가한다
+  description: 'app/vending_machine.py의 VendingMachine 전이 테이블(또는 handle 분기)에 (AWAITING_DISPENSE,
+    IDLE_TIMEOUT) → AWAITING_DISPENSE 항목을 추가하고 전이 id "T-016"을 반환하도록 한다. guard·action이
+    없으므로 상태 변경 외에 coins, refunded, 누적 금액 등 어떤 관측값도 변경하지 않아야 한다(유스케이스 1c: 배출 대기 중에는
+    자동 반환을 수행하지 않음).'
+  status: done
+  parent: SWF-25
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-016
+  usecase_ref: UC-06
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-99
+  type: bug
+  title: '[자동] SWF-25 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-25 — [T-016] AWAITING_DISPENSE --IDLE_TIMEOUT--> AWAITING_DISPENSE
+
+    FSM 전이: T-016
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓은 존재하지 않는 구판 상태 AWAITING_DISPENSE의 IDLE_TIMEOUT 자기 전이를 T-016으로
+    요구하지만, 고정 테스트 test_t_016은 IDLE --REQUEST_ADMIN[valid_key]--> ADMIN_MODE를 T-016으로
+    규정하며 이미 통과함(구판 의도에 해당하는 현행 전이는 T-045로 이미 구현됨).
+
+    ```'
+  status: done
+  parent: SWF-6
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-016
+  usecase_ref: UC-06
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_016
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-100
+  type: subtask
+  title: T-020.1 AWAITING_DISPENSE 상태에서 DISPENSE_DONE 이벤트 분기와 T-020 guard를 추가한다
+  description: app/vending_machine.py의 VendingMachine.handle에 AWAITING_DISPENSE +
+    DISPENSE_DONE 분기를 추가하고, "차감 후 pending.drink 재고 == 0 이고 다른 모든 음료 재고 == 0"일 때만 T-020으로
+    진입하도록 guard 헬퍼(stock_after_decrement, any_other_stock)를 구현한다. guard 거짓이면 이 전이를
+    타지 않고 기존 전이로 넘긴다.
+  status: done
+  parent: SWF-26
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-020
+  usecase_ref: UC-11
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-101
+  type: subtask
+  title: T-020.2 T-020 action의 재고·매출·거스름돈·잔여 크레딧 정산 로직을 구현한다
+  description: 같은 분기 안에서 stock[pending.drink] -= 1, sold_amount += price[pending.drink],
+    pending.change > 0이면 payout(change)로 코인 보유량 차감, credit -= price + change, 남은 credit
+    > 0이면 전액 payout 후 credit = 0 순서로 처리한다. payout 헬퍼가 없으면 코인 보유량을 큰 단위부터 소진하는 형태로
+    app/vending_machine.py에 추가한다.
+  status: done
+  parent: SWF-26
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-020
+  usecase_ref: UC-11
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-102
+  type: subtask
+  title: T-020.3 SOLD_OUT 전환 시 표시·버튼·pending 정리와 코인 거부 동작을 마무리한다
+  description: action 끝에 display(0), disable_all_buttons(), clear_pending()을 호출하고
+    state = SOLD_OUT, 반환값 "T-020"을 확정한다. SOLD_OUT 상태에서 INSERT_COIN이 오면 코인을 그대로 반환(credit·coins
+    변화 없음)하는 기존 전이가 있는지 확인하고 없으면 최소 구현을 추가한다. 참고로 제공된 test_t_020은 HAS_CREDIT + INSERT_COIN(1000)
+    시나리오를 검증하고 있어 이 전이 정의(AWAITING_DISPENSE + DISPENSE_DONE)와 불일치하므로, 구현 후 테스트 ID
+    매핑 오류를 별도로 보고한다.
+  status: done
+  parent: SWF-26
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-020
+  usecase_ref: UC-11
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-103
+  type: bug
+  title: '[자동] SWF-26 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-26 — [T-020] AWAITING_DISPENSE --DISPENSE_DONE--> SOLD_OUT
+
+    FSM 전이: T-020
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓 SWF-26의 전이 정의(AWAITING_DISPENSE --DISPENSE_DONE--> SOLD_OUT)는
+    이전 판 FSM의 것이며, 현행 판(INTERFACE.md, T-001~T-085)에서 T-020은 HAS_CREDIT --INSERT_COIN-->
+    HAS_CREDIT이고 test_t_020도 이를 검증해 이미 통과한다. 티켓이 의도한 동작은 T-051/T-060으로 이미 구현되어 있어
+    티켓 ID 매핑을 수정해야 한다.
+
+    ```'
+  status: done
+  parent: SWF-11
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-020
+  usecase_ref: UC-11
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_020
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-104
+  type: subtask
+  title: T-030.1 SELLING 상태에 PULL_RETURN_LEVER 전이(T-030) 핸들러를 등록한다
+  description: app/vending_machine.py의 VendingMachine.handle에 SELLING 상태에서 PULL_RETURN_LEVER
+    이벤트를 받는 분기를 추가하고, guard(credit > 0)를 검사해 통과 시 "T-030"을 반환하고 상태를 SELLING으로 유지한다.
+    guard 실패(credit == 0) 시 반환·보유량 변화 없이 상태를 유지한다.
+  status: done
+  parent: SWF-27
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-030
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-105
+  type: subtask
+  title: T-030.2 반환 액션(payout·coins 차감·credit 초기화·표시·버튼 비활성화·타이머 재시작)을 구현한다
+  description: app/vending_machine.py에 T-030 액션을 구현한다. payout(credit)으로 액면가별 반환 동전을
+    계산해 refunded에 기록하고, 사용한 동전만큼 coins에서 차감하며, credit을 0으로 설정하고 display(0)·disableAllButtons()·restartIdleTimer()를
+    순서대로 호출한다. 기존 payout/display/버튼/타이머 헬퍼가 있으면 재사용한다.
+  status: done
+  parent: SWF-27
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-030
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-106
+  type: bug
+  title: '[자동] SWF-27 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-27 — [T-030] SELLING --PULL_RETURN_LEVER--> SELLING
+
+    FSM 전이: T-030
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓 SWF-27은 T-030을 `SELLING --PULL_RETURN_LEVER--> SELLING`(전액 반환·coins
+    차감)으로 정의하지만, 고정된 `tests/test_fsm.py::test_t_030`은 T-030을 `HAS_CREDIT --POWER_LOSS-->
+    POWERED_OFF`(held += credit, refunded == [], coins 불변)로 명세하며 이미 통과 중이다. `SELLING`
+    상태·`PULL_RETURN_LEVER` 이벤트는 테스트·구현 어디에도 존재하지 않아 티켓과 테스트가 양립할 수 없다.
+
+    ```'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-030
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_030
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-107
+  type: subtask
+  title: T-031.1 SELLING 상태의 PULL_RETURN_LEVER 핸들러에 credit == 0 guard 분기(T-031) 추가
+  description: app/vending_machine.py 의 SELLING 상태 PULL_RETURN_LEVER 처리에서 credit ==
+    0 이면 refunded·coins·stock·display·enabled_buttons 등 어떤 상태도 변경하지 않고 SELLING 을 유지한
+    채 "T-031" 을 반환하도록 구현한다. credit > 0 인 경우는 기존 전액 반환 전이로 흐르게 하여 guard 거짓 분기와 구분되게
+    한다.
+  status: done
+  parent: SWF-28
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-031
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-108
+  type: bug
+  title: '[자동] SWF-28 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-28 — [T-031] SELLING --PULL_RETURN_LEVER--> SELLING
+
+    FSM 전이: T-031
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 완료 조건인 `tests/test_fsm.py::test_t_031` 이 테스트 파일에 존재하지 않으며, 티켓의
+    `SELLING` 상태·`PULL_RETURN_LEVER` 이벤트·`T-031` id 는 현재 고정된 테스트 명세(상태 POWERED_OFF/IDLE/HAS_CREDIT/DISPENSING/SOLD_OUT/ADMIN_MODE,
+    이벤트 PULL_LEVER, T-030 다음이 T-040)에 없다 — 티켓이 폐기된 이전 FSM 초안 기준으로 작성된 것으로 보이며, 해당
+    동작은 이미 T-014/T-026 으로 구현·검증되어 있다.
+
+    ```'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-031
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_031
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-109
+  type: subtask
+  title: T-032.1 SOLD_OUT 상태에서 PULL_RETURN_LEVER 이벤트를 무반응 자기전이 T-032로 처리하도록 app/vending_machine.py의
+    handle 디스패치에 추가한다
+  description: app/vending_machine.py의 VendingMachine.handle에서 state == SOLD_OUT 이고
+    event == "PULL_RETURN_LEVER" 인 경우 guard·action 없이 상태를 SOLD_OUT으로 유지하고 credit/display/stock/coins/enabled_buttons/refunded
+    등 어떤 관측값도 변경하지 않은 채 "T-032"를 반환하는 분기를 기존 전이 표(딕셔너리 또는 if 체인) 형식에 맞춰 추가한다
+  status: done
+  parent: SWF-29
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-032
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-110
+  type: bug
+  title: '[자동] SWF-29 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-29 — [T-032] SOLD_OUT --PULL_RETURN_LEVER--> SOLD_OUT
+
+    FSM 전이: T-032
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 완료 조건 `tests/test_fsm.py::test_t_032`가 테스트 파일에 존재하지 않으며, 티켓이 기술한
+    전이(SOLD_OUT, 반환 레버, 무반응 자기전이)는 이미 테스트·INTERFACE.md·구현에 `T-062` / 이벤트 `PULL_LEVER`로
+    정의되어 통과 중임. 티켓의 전이 ID `T-032`와 이벤트명 `PULL_RETURN_LEVER`가 고정된 테스트 명세와 불일치.
+
+    ```'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-032
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_032
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-111
+  type: subtask
+  title: T-033.1 ADMIN_MODE 상태에서 PULL_RETURN_LEVER 이벤트를 무반응 자기 전이(T-033)로 처리한다
+  description: app/vending_machine.py의 VendingMachine.handle() 전이 표에 (ADMIN_MODE,
+    PULL_RETURN_LEVER) → ADMIN_MODE 항목을 추가하고 전이 id "T-033"을 반환한다. guard·action이 없으므로
+    credit, display, coins, stock, refunded, admin_display, 타이머 등 모든 관측 필드를 변경하지 않고
+    상태만 ADMIN_MODE로 유지한다.
+  status: done
+  parent: SWF-30
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-033
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-112
+  type: bug
+  title: '[자동] SWF-30 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-30 — [T-033] ADMIN_MODE --PULL_RETURN_LEVER--> ADMIN_MODE
+
+    FSM 전이: T-033
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 완료 조건인 `tests/test_fsm.py::test_t_033`이 존재하지 않고, 이벤트 `PULL_RETURN_LEVER`도
+    코드베이스/INTERFACE.md에 정의되지 않았음. 요구 동작은 이미 T-072(ADMIN_MODE --PULL_LEVER--> ADMIN_MODE,
+    noop)로 구현·검증되어 있으며, 티켓의 인수 조건(1500원 반환 등)은 ADMIN_MODE 무반응 전이와 모순됨.
+
+    ```'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-033
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_033
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-113
+  type: subtask
+  title: T-040.1 DISPENSING 상태에서 INSERT_COIN 이벤트를 T-040으로 분기 처리한다
+  description: app/vending_machine.py의 handle()에서 state == DISPENSING이고 event == "INSERT_COIN"이며
+    recognized이고 amount가 VALID_DENOMS에 포함될 때 "T-040"을 반환하도록 분기를 추가하고, guard가 거짓이면
+    기존 반환(거부) 경로를 그대로 타게 한다.
+  status: done
+  parent: SWF-31
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-040
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-114
+  type: subtask
+  title: T-040.2 T-040 액션(credit·coins·display 갱신)을 구현하되 배출 상태는 유지한다
+  description: 위 분기의 액션으로 credit += amount, coins[amount] += 1, display = credit를
+    수행하고, state는 DISPENSING 그대로 두며 enabled_buttons·stock·refunded·ejected 및 진행 중인
+    배출의 확정 거스름돈은 변경하지 않도록 구현한다.
+  status: done
+  parent: SWF-31
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-040
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-115
+  type: subtask
+  title: T-041.1 T-041 전이 구현 — DISPENSING 상태에서 비액면가/인식 실패 코인 INSERT_COIN 시 ejectCoin()
+  description: app/vending_machine.py의 VendingMachine.handle()에 DISPENSING 상태의 INSERT_COIN
+    분기를 추가한다. guard `not recognized or amount not in VALID_DENOMS`가 참이면 ejectCoin()으로
+    amount를 self.ejected에 추가하고, state·credit·coins는 그대로 유지한 채 "T-041"을 반환한다. guard
+    거짓(유효 액면가 + recognized)이면 이 분기를 타지 않도록 하여 다른 전이 ID가 반환되게 한다.
+  status: done
+  parent: SWF-32
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-041
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-116
+  type: subtask
+  title: T-050.1 DISPENSE_DONE 이벤트 처리기(T-050)를 AWAITING_DISPENSE 상태에 추가하고 guard 분기를
+    구현
+  description: app/vending_machine.py의 VendingMachine.handle에 AWAITING_DISPENSE(DISPENSING)
+    상태에서 DISPENSE_DONE 수신 시 dispense_timer를 None으로 하고, 재고 차감 후 재고 0이면 SOLD_OUT, admin_requested이면
+    ADMIN_MODE로 가는 우선 분기를 두며, 그 외에는 "T-050"을 반환하고 SELLING(IDLE)로 전이하는 골격을 만든다.
+  status: done
+  parent: SWF-33
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-050
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-117
+  type: subtask
+  title: T-050.2 T-050 액션(잔액 반환·동전 차감·정리)을 구현
+  description: app/vending_machine.py의 T-050 액션에서 현재 credit(배출 중 추가 수납분 포함)을 보유 동전으로
+    payout하여 refunded에 기록하고 coins에서 사용분을 차감, 남는 금액을 unpaidRemainder로 저장, credit=0·display(0)·disableAllButtons()·clearPending()·restartIdleTimer()를
+    수행하며 credit이 0이면 지급하지 않고 dispensed에 추가 기록을 남기지 않도록 한다.
+  status: done
+  parent: SWF-33
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-050
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-118
+  type: subtask
+  title: T-051.1 T-051(DISPENSING --[DISPENSE_DONE]--> SOLD_OUT, 마지막 재고) 구현을 테스트 기준으로
+    검증·보정한다
+  description: 'app/vending_machine.py 의 전이 테이블 T-051(가드 _no_admin_last, 액션 _finish_dispense)이
+    tests/test_fsm.py::test_t_051 이 요구하는 관측값을 만족하는지 확인하고 어긋나는 부분만 고친다. 확인 항목 — stop_dispense_timer
+    로 dispense_timer 가 None, stock[selected] -= 1 로 cola 0, pay_out(credit - price)
+    로 refunded == [500] 및 coins[500] 0, settle 로 credit 0·표시 0·버튼 비활성, dispensed 미변경,
+    가드 거짓(다른 음료 재고 남음 → T-050/IDLE, admin_requested → T-052/ADMIN_MODE). 주의: 입력 전이
+    명세("SELLING --DISPENSE_DONE--> SELLING, delayedDispenseLog.append")는 저장소의 T-051
+    및 검증 테스트와 일치하지 않는다. 테스트가 정본이므로 지연 배출 기록 로직은 이 서브태스크에 넣지 않고 별도 전이(IDLE/SOLD_OUT
+    상태에서의 늦은 DISPENSE_DONE, 유스케이스 4a)로 분리해 명세 정합성 이슈로 보고한다.
+
+    '
+  status: done
+  parent: SWF-34
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-051
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-119
+  type: bug
+  title: '[자동] SWF-34 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-34 — [T-051] SELLING --DISPENSE_DONE--> SELLING
+
+    FSM 전이: T-051
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓의 T-051 명세(SELLING --DISPENSE_DONE--> SELLING, delayedDispenseLog.append)는
+    저장소의 T-051(DISPENSING --DISPENSE_DONE--> SOLD_OUT, 마지막 재고)과 test_t_051 이 요구하는
+    관측값과 일치하지 않음 — 테스트가 정본이므로 기존 구현을 유지했고(테스트 통과), 지연 배출 기록은 별도 전이/티켓으로 분리 필요.
+
+    ```'
+  status: done
+  parent: SWF-5
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-051
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_051
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-120
+  type: subtask
+  title: T-052.1 DISPENSING 상태에 DISPENSE_DONE 이벤트의 T-052 전이(guard admin_requested)를
+    등록한다
+  description: app/vending_machine.py 의 VendingMachine 전이 테이블에 DISPENSING --[DISPENSE_DONE]-->
+    ADMIN_MODE 항목을 추가하고, guard 로 self.admin_requested 가 True 일 때만 "T-052" 를 반환하도록
+    한다. guard 가 거짓이면 기존 DISPENSE_DONE→IDLE 전이가 그대로 선택되어야 한다.
+  status: done
+  parent: SWF-35
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-052
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-121
+  type: subtask
+  title: T-052.2 T-052 액션을 구현한다 (재고 차감, 잔액 반환·동전 차감, 타이머 해제, admin_requested 초기화)
+  description: app/vending_machine.py 에 T-052 액션 메서드를 만들어 선택 음료 재고를 1 차감하고, 누적 금액에서
+    가격을 뺀 잔액을 보유 동전 조합으로 refunded 에 기록하며 coins 에서 차감하고, credit 을 0 으로, dispense_timer
+    를 None 으로, admin_requested 를 False 로 설정한 뒤 state 를 ADMIN_MODE 로 바꾼다. 기존 DISPENSE_DONE→IDLE
+    액션의 재고 차감·반환 로직이 있으면 공용 헬퍼로 추출해 재사용한다.
+  status: done
+  parent: SWF-35
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-052
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-122
+  type: subtask
+  title: T-053.1 DISPENSE_DONE 이벤트에 대한 ADMIN_MODE 자기 전이 T-053을 추가한다
+  description: app/vending_machine.py의 VendingMachine 전이 테이블에 (ADMIN_MODE, DISPENSE_DONE)
+    → ADMIN_MODE 항목을 등록하고 handle()이 "T-053"을 반환하게 한다. 상태·재고·누적 금액·보유 동전은 변경하지 않는다.
+  status: done
+  parent: SWF-36
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-053
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-123
+  type: subtask
+  title: T-053.2 지연 배출 기록 액션 delayedDispenseLog.append(drink, now)를 구현한다
+  description: app/vending_machine.py에 delayed_dispense_log 리스트(없으면 초기화)와 append 액션을
+    만들고, T-053 전이 시 마지막으로 배출 개시한 음료 종류와 현재 시각을 한 건 추가한다.
+  status: done
+  parent: SWF-36
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-053
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-124
+  type: bug
+  title: '[자동] SWF-36 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-36 — [T-053] ADMIN_MODE --DISPENSE_DONE--> ADMIN_MODE
+
+    FSM 전이: T-053
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓은 T-053을 `ADMIN_MODE --DISPENSE_DONE--> ADMIN_MODE`(delayedDispenseLog.append)로
+    정의하지만, 테스트 명세의 `test_t_053`은 T-053을 `DISPENSING --DISPENSE_TIMEOUT--> IDLE`(전액
+    반환)로 정의하며 이미 통과 중이고, `test_unregistered_event_is_ignored`는 `(ADMIN_MODE, DISPENSE_DONE)`이
+    미등록(None 반환·상태 불변)이어야 한다고 요구하므로 티켓의 전이를 등록하면 테스트가 깨진다.
+
+    ```'
+  status: done
+  parent: SWF-5
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-053
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_053
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-125
+  type: subtask
+  title: T-060.1 T-060 전이를 SELLING 상태의 IDLE_TIMEOUT 이벤트 핸들러에 추가한다
+  description: app/vending_machine.py의 VendingMachine.handle()에서 state == SELLING이고
+    event == "IDLE_TIMEOUT"일 때 guard(credit > 0)를 검사하고, 통과 시 "T-060"을 반환하며 상태는 SELLING을
+    유지하도록 분기를 만든다. guard 미충족(credit == 0) 시에는 이 전이를 타지 않는다.
+  status: done
+  parent: SWF-37
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-060
+  usecase_ref: UC-06
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-126
+  type: subtask
+  title: T-060.2 T-060 액션(전액 반환·동전 차감·표시 초기화·버튼 비활성화)을 구현한다
+  description: app/vending_machine.py에 payout(credit) 로직을 구현한다 — 액면가별 보유 동전(coins)에서
+    credit만큼 지급하여 ejected에 기록하고 사용한 동전만큼 coins를 차감한 뒤, credit = 0으로 설정하고 display(0)을
+    호출하고 disableAllButtons()로 모든 음료 버튼을 비활성화한다. 기존 payout/display/disableAllButtons
+    헬퍼가 있으면 재사용하고 없으면 이 파일에 추가한다.
+  status: done
+  parent: SWF-37
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-060
+  usecase_ref: UC-06
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-127
+  type: bug
+  title: '[자동] SWF-37 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-37 — [T-060] SELLING --IDLE_TIMEOUT--> SELLING
+
+    FSM 전이: T-060
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓은 T-060을 `SELLING --IDLE_TIMEOUT--> SELLING`(전액 반환)으로 정의하지만,
+    고정된 테스트 `test_t_060`은 `SOLD_OUT --INSERT_COIN--> SOLD_OUT`(코인 배출)을 명세하며 현재 구현으로
+    이미 통과한다. 코드베이스에 `SELLING` 상태는 존재하지 않으며, 티켓이 기술한 동작은 기존 T-027(`HAS_CREDIT --IDLE_TIMEOUT-->
+    IDLE`)에 이미 구현되어 있다. 티켓의 전이 id/상태명이 테스트 명세와 불일치한다.
+
+    ```'
+  status: done
+  parent: SWF-6
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-060
+  usecase_ref: UC-06
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_060
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-128
+  type: subtask
+  title: T-061.1 SELLING 상태의 IDLE_TIMEOUT 이벤트에 credit == 0 가드 자기전이 T-061 추가
+  description: app/vending_machine.py의 VendingMachine.handle에서 SELLING 상태에서 IDLE_TIMEOUT
+    이벤트 수신 시 credit == 0이면 상태·credit·재고·화면 표시 등 어떤 관측값도 변경하지 않고 "T-061"을 반환하도록 분기를
+    추가한다. credit > 0인 기존 자동 반환 전이(T-020 계열)는 그대로 두고, 가드 순서상 credit == 0 검사가 먼저 걸리도록
+    배치한다.
+  status: done
+  parent: SWF-38
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-061
+  usecase_ref: UC-06
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-129
+  type: bug
+  title: '[자동] SWF-38 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-38 — [T-061] SELLING --IDLE_TIMEOUT--> SELLING
+
+    FSM 전이: T-061
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓은 T-061을 `SELLING --IDLE_TIMEOUT--> SELLING (credit == 0)`로 정의하지만,
+    고정된 테스트 `test_t_061`은 T-061을 `SOLD_OUT --PRESS_BUTTON--> SOLD_OUT`로 명세하며(이미 구현·통과),
+    코드베이스에 `SELLING` 상태가 존재하지 않는다. 티켓이 설명하는 동작은 기존 T-015(IDLE/IDLE_TIMEOUT 무동작)에 해당하므로
+    티켓의 전이 ID/상태명 정정이 필요하다.
+
+    ```'
+  status: done
+  parent: SWF-6
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-061
+  usecase_ref: UC-06
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_061
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-130
+  type: subtask
+  title: T-070.1 ADMIN_MODE 상태에서 INSERT_COIN 이벤트를 T-070으로 처리하는 전이를 VendingMachine.handle에
+    추가한다
+  description: app/vending_machine.py의 handle()에서 state == ADMIN_MODE이고 event == "INSERT_COIN"이면
+    상태를 ADMIN_MODE로 유지한 채 "T-070"을 반환하는 분기를 추가한다. 인식된 코인(recognized=True)은 amount
+    값을, 미인식 코인(recognized=False)은 UNKNOWN_COIN을 self.ejected에 append하며, credit과 coins는
+    변경하지 않는다.
+  status: done
+  parent: SWF-39
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-070
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-131
+  type: subtask
+  title: T-071.1 T-071 전이 핸들러 구현 — SELLING/ADMIN_MODE 계열 상태에서 ADMIN_KEY 이벤트 처리
+  description: app/vending_machine.py의 VendingMachine.handle에 ADMIN_KEY(테스트에서는 PRESS_BUTTON
+    매핑 확인 필요) 이벤트 분기를 추가한다. guard `valid_key and credit == 0`이 참이면 display(0)·stopIdleTimer()를
+    실행하고 상태를 ADMIN_MODE로 설정한 뒤 "T-071"을 반환한다. guard가 거짓(키 무효 또는 credit>0)이면 상태·크레딧·타이머·재고를
+    변경하지 않고 그대로 둔다(1a, credit>0 반환 흐름은 별도 전이 담당).
+  status: done
+  parent: SWF-40
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-071
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-132
+  type: subtask
+  title: T-071.2 테스트 헬퍼 admin()/snapshot()이 전제하는 관측값 계약 확인 및 정합화
+  description: tests/test_fsm.py의 admin()/snapshot() 헬퍼가 참조하는 VendingMachine 속성(state,
+    credit, 재고, 타이머 상태, display 값)이 T-071 처리 전후에 동일하게 유지되도록 handle 경로가 부수효과 없이 동작하는지
+    점검하고, 누락된 속성/타이머 정지 API(stopIdleTimer)가 있으면 app/vending_machine.py에 추가한다.
+  status: done
+  parent: SWF-40
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-071
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-133
+  type: subtask
+  title: T-072.1 ADMIN_MODE 상태에서 ADMIN_KEY 이벤트의 valid_key 가드 불충족 시 자기 전이 T-072를 처리하도록
+    구현
+  description: app/vending_machine.py의 VendingMachine.handle에 ADMIN_MODE 상태·ADMIN_KEY
+    이벤트(테스트에서는 "PULL_LEVER"로 표기된 비정상 키 수단) 분기를 추가한다. valid_key 가드가 거짓이면 상태를 ADMIN_MODE로
+    유지하고, 누적 투입 금액·보유 동전·표시 내용 등 어떤 내부 상태도 변경하지 않으며 반환값으로 "T-072"를 돌려준다.
+  status: done
+  parent: SWF-41
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-072
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-134
+  type: subtask
+  title: T-073.1 ADMIN_KEY 이벤트를 SOLD_OUT 상태에서 T-073으로 라우팅하는 전이 항목을 추가한다
+  description: 'app/vending_machine.py의 전이 테이블(SOLD_OUT 블록, T-063 옆)에 _T("T-073",
+    SOLD_OUT, "ADMIN_KEY", ADMIN_MODE, _valid_key, <action>) 를 추가한다. 기존 T-073(ADMIN_MODE,
+    "REFILL")과 id가 충돌하므로, 기존 REFILL 전이의 id를 유지할지/재번호할지 결정하여 테이블 주석에 근거를 남긴다. guard는
+    기존 _valid_key(payload의 valid_key)를 재사용한다.
+
+    '
+  status: done
+  parent: SWF-42
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-073
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-135
+  type: subtask
+  title: T-073.2 T-073 action으로 credit=0, display(0) 처리를 수행하는 함수를 연결한다
+  description: 'app/vending_machine.py에서 SOLD_OUT 진입 시 credit은 이미 0이므로 기존 _settle(credit=0;
+    display(0); disable_all_buttons())을 T-073 action으로 사용하거나, display(0)만 수행하는 _admin_enter_display0
+    헬퍼를 추가해 연결한다. 유스케이스 2a(누적 0원이면 반환 없음)에 맞게 pay_out이 호출되지 않아야 하며 notifications에
+    아무것도 추가되지 않아야 한다.
+
+    '
+  status: done
+  parent: SWF-42
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-073
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-136
+  type: subtask
+  title: T-073.3 전용 키가 아닌 ADMIN_KEY 요청은 SOLD_OUT을 유지하도록 보완 전이를 추가한다
+  description: 'app/vending_machine.py 전이 테이블에 _T(<id>, SOLD_OUT, "ADMIN_KEY", SOLD_OUT,
+    _invalid_key, _noop)를 추가해 대안 흐름 1a(유효하지 않은 키 → 상태 변화 없음)를 보장한다. T-064(REQUEST_ADMIN
+    버전)와 동일한 패턴을 따른다.
+
+    '
+  status: done
+  parent: SWF-42
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-073
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-137
+  type: bug
+  title: '[자동] SWF-42 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-42 — [T-073] SOLD_OUT --ADMIN_KEY--> ADMIN_MODE
+
+    FSM 전이: T-073
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 테스트 명세의 T-073은 ADMIN_MODE --REFILL--> ADMIN_MODE(이미 구현·통과)인데, 티켓은
+    동일 id T-073을 SOLD_OUT --ADMIN_KEY--> ADMIN_MODE로 정의함. ADMIN_KEY 이벤트는 테스트 어디에도
+    없고 해당 동작은 이미 T-063(SOLD_OUT --REQUEST_ADMIN--> ADMIN_MODE)으로 존재하므로, 티켓의 전이 id/이벤트명을
+    FSM 명세와 맞춰 재발행해야 함.
+
+    ```'
+  status: done
+  parent: SWF-7
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-073
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_073
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-138
+  type: subtask
+  title: T-074.1 SOLD_OUT 상태에서 ADMIN_KEY 이벤트에 대해 !valid_key 가드로 자기 전이 T-074를 추가한다
+  description: app/vending_machine.py의 VendingMachine.handle에 SOLD_OUT 상태의 ADMIN_KEY
+    처리 분기를 추가한다. valid_key 인자가 거짓이면 상태를 SOLD_OUT으로 유지하고 누적 금액·재고·보유 동전을 변경하지 않은 채
+    "T-074"를 반환하고, 참이면 기존 관리 모드 진입 전이(SOLD_OUT→ADMIN_MODE)로 넘긴다. 필요하면 valid_key 판정
+    헬퍼를 다른 상태의 ADMIN_KEY 처리와 공용으로 둔다.
+  status: done
+  parent: SWF-43
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-074
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-139
+  type: subtask
+  title: T-075.1 AWAITING_DISPENSE 상태에서 ADMIN_KEY 이벤트의 T-075 전이를 등록한다
+  description: app/vending_machine.py의 VendingMachine.handle()에 AWAITING_DISPENSE
+    + ADMIN_KEY 조합을 추가하고, guard valid_key가 참이면 ADMIN_MODE로 전이하며 "T-075"를 반환하고, 거짓이면
+    상태를 유지하고 다른 전이 id를 반환하도록 분기를 만든다.
+  status: done
+  parent: SWF-44
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-075
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-140
+  type: subtask
+  title: T-075.2 T-075 전이 액션(타이머 정지·잔액 반환·잔액 표시·대기 해제)을 구현한다
+  description: 해당 분기 안에서 stopDispenseTimer()로 10초 배출 타이머를 취소하고, credit > 0이면 payout(credit)으로
+    잔액을 반환하며 사용한 동전만큼 coins를 차감한 뒤 credit = 0, display(0), clearPending()을 순서대로 호출한다.
+    credit == 0이면 payout/coins 차감을 건너뛴다.
+  status: done
+  parent: SWF-44
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-075
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-141
+  type: subtask
+  title: T-076.1 AWAITING_DISPENSE 상태에 ADMIN_KEY 자기전이 T-076(guard !valid_key) 추가
+  description: app/vending_machine.py의 VendingMachine.handle() 전이 테이블에 AWAITING_DISPENSE
+    상태에서 ADMIN_KEY 이벤트를 받았을 때 valid_key가 거짓이면 상태 변화·반환·잔액 변경 없이 AWAITING_DISPENSE를
+    유지하고 전이 ID "T-076"을 반환하도록 구현한다. valid_key가 참이면 기존 관리 모드 진입 전이(T-076이 아닌 ID)가 그대로
+    선택되도록 guard 평가 순서를 맞춘다.
+  status: done
+  parent: SWF-45
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-076
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-142
+  type: subtask
+  title: T-076.2 tests/test_fsm.py::test_t_076과 전이 정의 불일치 해소
+  description: 주어진 테스트는 admin(stock=..., credit=300) 헬퍼와 END_REFILL 이벤트로 ADMIN_MODE→SOLD_OUT
+    전이를 T-076으로 검사하고 있어 전이 정의(AWAITING_DISPENSE --ADMIN_KEY--> AWAITING_DISPENSE,
+    guard !valid_key)와 맞지 않는다. 전이 스펙(id/상태/이벤트)을 기준으로 삼아 테스트 생성 단계의 매핑 오류를 검토 보고에
+    기록하고, 구현은 스펙의 T-076을 따르되 테스트가 요구하는 admin()/assert_settled 헬퍼가 tests/conftest.py
+    또는 test_fsm.py에 존재하는지 확인해 누락 시 보고한다.
+  status: done
+  parent: SWF-45
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-076
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-143
+  type: subtask
+  title: T-077.1 ADMIN_MODE 상태에서 QUERY_HELD 이벤트에 대한 T-077 자기 전이를 구현한다
+  description: app/vending_machine.py의 VendingMachine.handle에 ADMIN_MODE 상태·QUERY_HELD
+    이벤트 분기를 추가한다. 상태·held·coins는 변경하지 않고 admin_display를 현재 held 값으로 설정한 뒤 "T-077"을
+    반환한다(held가 0이어도 admin_display == 0이 되도록 None이 아닌 값을 대입).
+  status: done
+  parent: SWF-46
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-077
+  usecase_ref: UC-07
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-144
+  type: subtask
+  title: T-080.1 T-080 전이 등록 및 guard 구현 — 보충 지시 항목 검증
+  description: app/vending_machine.py의 ADMIN_MODE 상태에 REFILL_REQUEST(테스트 기준 COLLECT_COINS)
+    이벤트 핸들러를 추가하고, 지시된 모든 대상이 등록 음료 또는 VALID_DENOMS(100/500/1000)이며 모든 수량이 1 이상의 정수인지
+    확인하는 guard(allTargetsRegistered && allQtyPositiveInt)를 구현한다. guard 거짓(50원·5000원
+    등 미허용 액면가, 0 이하 수량, 미등록 음료)일 때 상태를 ADMIN_MODE로 유지하고 notifications에 REJECTED를 추가하며
+    stock/coins를 변경하지 않고 "T-080"을 반환한다. 정상 액면가·정상 수량은 이 전이에 걸리지 않도록 한다.
+  status: done
+  parent: SWF-47
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-080
+  usecase_ref: UC-08
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-145
+  type: subtask
+  title: T-080.2 T-080 action 구현 — 재고·동전 증가 및 보충 금액 누적
+  description: app/vending_machine.py의 VendingMachine에 refilledAmount 필드를 추가하고, guard
+    통과 시 items.drinks의 각 음료 stock을 지시 수량만큼, items.coins의 각 액면가 coins 보유 개수를 지시 수량만큼
+    증가시키며 refilledAmount에 sum(액면가 × 수량)을 누적하는 action을 구현한다.
+  status: done
+  parent: SWF-47
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-080
+  usecase_ref: UC-08
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-146
+  type: subtask
+  title: T-081.1 T-081(ADMIN_MODE --COLLECT_HELD--> ADMIN_MODE, held == 0) 구현을 검증하고
+    정합성을 맞춘다
+  description: app/vending_machine.py의 전이 테이블 항목 T-081(_held_zero guard, _noop action)이
+    tests/test_fsm.py::test_t_081을 통과하는지 확인하고, guard가 held == 0일 때만 참이며 상태·스냅샷·notifications가
+    변하지 않음을 보장한다. held > 0이면 T-082/T-083으로 분기되도록 테이블 순서를 확인한다. 전이 명세의 REFILL_REQUEST/allTargetsRegistered
+    표기는 INTERFACE.md의 T-081 정의와 불일치하므로 명세 쪽 오기로 기록한다.
+  status: done
+  parent: SWF-48
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-081
+  usecase_ref: UC-08
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-147
+  type: subtask
+  title: T-082.1 allQtyPositiveInt(items) 가드 헬퍼를 VendingMachine에 추가한다
+  description: app/vending_machine.py에 보충 지시의 모든 수량이 1 이상의 정수(bool 제외)인지 검사하는 헬퍼를
+    만든다. 기존 allTargetsRegistered 헬퍼와 같은 위치·스타일로 둔다.
+  status: done
+  parent: SWF-49
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-082
+  usecase_ref: UC-08
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-148
+  type: subtask
+  title: T-082.2 ADMIN_MODE에서 REFILL_REQUEST 전이 T-082(수량 무효 거부)를 구현한다
+  description: app/vending_machine.py의 handle()에서 state == ADMIN_MODE, event == REFILL_REQUEST,
+    allTargetsRegistered(items) && !allQtyPositiveInt(items)일 때 재고·동전 보유량을 변경하지 않고
+    notifications에 REJECT_INVALID_QTY를 추가하며 ADMIN_MODE를 유지하고 "T-082"를 반환한다. T-080(정상
+    보충)·T-081(미등록 대상 거부)보다 뒤, 가드 우선순위가 겹치지 않도록 배치한다.
+  status: done
+  parent: SWF-49
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-082
+  usecase_ref: UC-08
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-149
+  type: bug
+  title: '[자동] SWF-49 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-49 — [T-082] ADMIN_MODE --REFILL_REQUEST--> ADMIN_MODE
+
+    FSM 전이: T-082
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓은 T-082를 `ADMIN_MODE --REFILL_REQUEST--> ADMIN_MODE`(수량 무효 거부,
+    REJECT_INVALID_QTY)로 정의하지만, 고정된 테스트 `test_t_082`는 T-082를 `ADMIN_MODE --COLLECT_HELD-->
+    ADMIN_MODE`(held 회수)로 정의하며 이미 통과함. 테스트 어디에도 `REFILL_REQUEST`/`REJECT_INVALID_QTY`가
+    없고, 수량 무효 거부는 이미 T-074(`REFILL`, `REJECTED`)로 검증됨 — 티켓의 전이 id·이벤트명이 테스트 명세와 불일치.
+
+    ```'
+  status: done
+  parent: SWF-8
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-082
+  usecase_ref: UC-08
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_082
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-150
+  type: subtask
+  title: T-083.1 T-083 (ADMIN_MODE --COLLECT_HELD--> ADMIN_MODE, held 지급 불가 시 REJECTED)
+    구현을 테스트 기준으로 확정한다
+  description: 'app/vending_machine.py 의 전이 테이블에는 이미 `_T("T-083", ADMIN_MODE, "COLLECT_HELD",
+    ADMIN_MODE, _held_unpayable, _reject)` 가 있고, 가드 `_held_unpayable` (held > 0 and
+    not can_pay(held)) 과 액션 `_reject` (notifications.append(REJECTED), held·coins
+    불변) 가 tests/test_fsm.py::test_t_083 의 4개 케이스와 정확히 일치한다. tests/test_fsm.py::test_t_083
+    을 실행해 통과를 확인하고, 실패 시에만 가드가 `_can_pay` 를 통해 100/500/1000 보유 개수로 held 구성 가능 여부를
+    판정하는지와 T-081(held==0)/T-082(지급 가능)와 상호 배타적인지 맞춘다. 주의: 이 작업 설명의 전이 정의(ADMIN_EXIT,
+    guard totalStock() >= 1, credit=0; display(0); updateButtons())는 id T-083 및 검증
+    테스트와 불일치한다. 그 전이는 관리 모드 종료→SELLING 전이(별도 id)이며 이 서브태스크 범위에 포함하지 않는다.
+
+    '
+  status: done
+  parent: SWF-50
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-083
+  usecase_ref: UC-08
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-151
+  type: subtask
+  title: T-084.1 ADMIN_MODE 상태에 ADMIN_EXIT 이벤트 처리와 totalStock() == 0 가드를 추가한다
+  description: app/vending_machine.py의 VendingMachine.handle()에서 state == ADMIN_MODE이고
+    이벤트가 ADMIN_EXIT일 때 totalStock() == 0이면 T-084 분기로 진입하도록 가드 분기를 추가한다. 가드가 거짓이면 기존
+    판매 복귀 전이가 그대로 처리되도록 우선순위를 정한다.
+  status: done
+  parent: SWF-51
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-084
+  usecase_ref: UC-08
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-152
+  type: subtask
+  title: T-084.2 T-084 액션(credit=0, display(0), disableAllButtons)과 SOLD_OUT 전이를 구현한다
+  description: 위 분기에서 credit을 0으로 초기화하고 display(0)를 호출한 뒤 disableAllButtons()를 실행하고,
+    state를 SOLD_OUT으로 바꾼 후 전이 id "T-084"를 반환하도록 app/vending_machine.py에 구현한다. disableAllButtons/totalStock
+    헬퍼가 없으면 같은 파일에 추가한다.
+  status: done
+  parent: SWF-51
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-084
+  usecase_ref: UC-08
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-153
+  type: bug
+  title: '[자동] SWF-51 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-51 — [T-084] ADMIN_MODE --ADMIN_EXIT--> SOLD_OUT
+
+    FSM 전이: T-084
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 티켓은 T-084를 `ADMIN_MODE --ADMIN_EXIT--> SOLD_OUT`(가드 totalStock()==0,
+    settle 액션)으로 정의하지만, 고정된 `test_t_084`는 T-084를 `ADMIN_MODE --REQUEST_ADMIN--> ADMIN_MODE`
+    무동작 자기전이(스냅샷 불변)로 요구한다. 두 정의는 같은 id에 대해 이벤트·목표 상태·액션이 모두 달라 양립 불가하며, 티켓이 요구하는
+    동작은 이미 T-076(END_REFILL→SOLD_OUT)으로 구현·테스트되어 있다. 현재 구현으로 test_t_084는 통과한다.
+
+    ```'
+  status: done
+  parent: SWF-8
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-084
+  usecase_ref: UC-08
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_084
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-154
+  type: subtask
+  title: T-090.1 COLLECT_COINS_REQUEST 가드 헬퍼를 구현한다
+  description: app/vending_machine.py에 items(액면가→수량)를 검증하는 헬퍼를 추가한다. 모든 키가 VALID_DENOMS에
+    속하는지, 모든 수량이 1 이상의 정수인지, 각 액면가 수량이 현재 coins 보유 개수 이내인지, 회수 후 보유 합계가 미반환 보관액(held)
+    이상인지를 하나의 불리언으로 반환한다.
+  status: done
+  parent: SWF-52
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-090
+  usecase_ref: UC-09
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-155
+  type: subtask
+  title: T-090.2 ADMIN_MODE에서 COLLECT_COINS_REQUEST 전이(T-090)를 handle에 연결한다
+  description: app/vending_machine.py의 ADMIN_MODE 이벤트 분기에 COLLECT_COINS_REQUEST를 추가한다.
+    가드 참이면 items의 각 액면가에 대해 coins[c] -= qty를 적용하고 collectedAmount(회수 누적액)에 sum(c*qty)를
+    더한 뒤 admin_display에 회수 결과를 기록하고 "T-090"을 반환한다. 가드 거짓이면 보유량·누적액을 변경하지 않고 거부 알림(notifications)을
+    남기며 ADMIN_MODE를 유지한다.
+  status: done
+  parent: SWF-52
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-090
+  usecase_ref: UC-09
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-156
+  type: bug
+  title: '[자동] SWF-52 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-52 — [T-090] ADMIN_MODE --COLLECT_COINS_REQUEST--> ADMIN_MODE
+
+    FSM 전이: T-090
+
+    시도 횟수: 1
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: 완료 조건 `tests/test_fsm.py::test_t_090` 이 저장소에 존재하지 않아 통과 여부를 확인할
+    수 없음 (구현은 티켓 명세·인수 조건대로 완료, 기존 69개 테스트 통과)
+
+    ```'
+  status: done
+  parent: SWF-9
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-090
+  usecase_ref: UC-09
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_090
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-157
+  type: subtask
+  title: T-091.1 COLLECT_COINS_REQUEST 요청 검증 헬퍼를 app/vending_machine.py에 추가한다
+  description: items(액면가→수량)에 대해 allDenomsValid(모든 키가 VALID_DENOMS에 속함)와 allQtyPositiveInt(모든
+    값이 1 이상의 정수)를 판정하는 헬퍼를 추가한다. 기존 T-090 등에서 유사 검증이 있으면 재사용한다.
+  status: done
+  parent: SWF-53
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-091
+  usecase_ref: UC-09
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-158
+  type: subtask
+  title: T-091.2 ADMIN_MODE에서 COLLECT_COINS_REQUEST 거부 전이 T-091을 handle에 구현한다
+  description: app/vending_machine.py의 ADMIN_MODE 분기에 COLLECT_COINS_REQUEST 처리 시 guard(액면가
+    무효 또는 수량 비양수)가 참이면 notifications에 REJECT_INVALID_REQUEST를 기록하고 상태·coins·held 등
+    다른 관측값은 변경하지 않은 채 "T-091"을 반환한다. 다른 회수 전이(수량 초과/보관액 미달/정상 승인)의 guard 판정 순서보다 앞서
+    평가되도록 배치한다.
+  status: done
+  parent: SWF-53
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-091
+  usecase_ref: UC-09
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-159
+  type: subtask
+  title: T-091.3 INTERFACE.md 전이 표에 T-091 항목을 반영한다
+  description: INTERFACE.md의 ADMIN_MODE 전이 표에 T-091(COLLECT_COINS_REQUEST, guard,
+    notifyAdmin(REJECT_INVALID_REQUEST))을 기존 항목 형식에 맞춰 추가한다.
+  status: done
+  parent: SWF-53
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-091
+  usecase_ref: UC-09
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-160
+  type: bug
+  title: '[자동] SWF-53 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-53 — [T-091] ADMIN_MODE --COLLECT_COINS_REQUEST--> ADMIN_MODE
+
+    FSM 전이: T-091
+
+    시도 횟수: 2
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: tests/test_fsm.py 에 test_t_091 (및 test_t_090) 테스트 함수가 존재하지 않아 pytest
+    가 "not found" 로 실패함. 테스트 정의는 test_t_085 까지만 있음. 구현(app/vending_machine.py 의 T-091
+    전이)은 완료되어 있고 기존 69개 테스트는 모두 통과하므로, 테스트 파일 수정 없이는 이 실패를 해소할 수 없음 — T-091 테스트를 테스트
+    파일에 먼저 추가해야 함.`
+
+    ```'
+  status: done
+  parent: SWF-9
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-091
+  usecase_ref: UC-09
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_091
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-161
+  type: subtask
+  title: T-092.1 ADMIN_MODE COLLECT_COINS_REQUEST 핸들러에 T-092 분기 추가
+  description: app/vending_machine.py의 ADMIN_MODE 상태 COLLECT_COINS_REQUEST 처리에서, 기존
+    T-090(형식 오류) 분기 통과 후 allDenomsValid(items) && allQtyPositiveInt(items) && !allWithinHolding(items)
+    조건(어느 액면가의 회수 수량이 보유 개수를 초과)을 검사하는 분기를 추가. 성립 시 상태는 ADMIN_MODE 유지, coins/held/collected
+    등 보유량은 변경하지 않고, notifications에 REJECT_EXCEEDS_HOLDING 알림을 추가한 뒤 "T-092"를 반환. 분기
+    순서는 형식 검증(T-090) → 보유 초과(T-092) → 보관액 미달(T-091 등) → 승인 순으로 배치.
+  status: done
+  parent: SWF-54
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-092
+  usecase_ref: UC-09
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-162
+  type: subtask
+  title: T-092.2 INTERFACE.md 전이 표에 T-092 기록
+  description: INTERFACE.md의 ADMIN_MODE 전이 표에 T-092 항목(guard, action notifyAdmin(REJECT_EXCEEDS_HOLDING),
+    관측값 변화 없음)을 기존 T-09x 항목과 같은 형식으로 추가하고, 알림 상수 목록에 REJECT_EXCEEDS_HOLDING이 없으면 추가.
+  status: done
+  parent: SWF-54
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-092
+  usecase_ref: UC-09
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-163
+  type: bug
+  title: '[자동] SWF-54 실패: 명세 충돌 주장'
+  description: '원인 티켓: SWF-54 — [T-092] ADMIN_MODE --COLLECT_COINS_REQUEST--> ADMIN_MODE
+
+    FSM 전이: T-092
+
+    시도 횟수: 2
+
+    사유: 명세 충돌 주장
+
+
+    ```
+
+    SPEC_CONFLICT: tests/test_fsm.py 에 test_t_092 가 존재하지 않는다 (테스트는 test_t_085 에서 끝나며,
+    T-090/T-091/T-092 및 이들이 전제하는 COLLECT_COINS_REQUEST 이벤트를 참조하는 테스트가 전혀 없음). 실패 출력
+    "not found ... no match in any of [<Module test_fsm.py>]" 은 코드 결함이 아니라 수집 단계에서
+    테스트 함수 자체가 없어서 발생한 것이므로, 테스트 파일을 수정하지 않는 한 app 코드를 어떻게 고쳐도 통과시킬 수 없다.`
+
+    ```'
+  status: done
+  parent: SWF-9
+  labels:
+  - auto
+  - needs-human
+  - false-positive
+  fsm_ref: T-092
+  usecase_ref: UC-09
+  signature: ''
+  dod_tests:
+  - tests/test_fsm.py::test_t_092
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-164
+  type: subtask
+  title: T-093.1 T-093 전이 핸들러를 app/vending_machine.py의 ADMIN_MODE COLLECT_COINS_REQUEST
+    분기에 추가한다
+  description: 기존 T-090 승인 분기 앞에, allDenomsValid && allQtyPositiveInt && allWithinHolding
+    통과 후 holdingAfter(items) < held 인 경우를 검사하는 분기를 넣는다. 조건이 참이면 notifications에 REJECT_BELOW_UNRETURNED를
+    append하고 coins/collected_amount/held를 변경하지 않으며 state를 ADMIN_MODE로 유지하고 "T-093"을
+    반환한다. 필요 시 REJECT_BELOW_UNRETURNED 상수를 모듈 상단에 정의하고, holdingAfter 계산 헬퍼(sum(denom*qty)
+    차감 후 잔여 보유액)가 없으면 함께 추가한다.
+  status: done
+  parent: SWF-55
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-093
+  usecase_ref: UC-09
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-165
+  type: subtask
+  title: T-100.1 ADMIN_MODE 상태에 QUERY_DELAYED_DISPENSE 이벤트 핸들러(T-100) 추가
+  description: app/vending_machine.py의 handle() 디스패치에 ADMIN_MODE + QUERY_DELAYED_DISPENSE
+    분기를 추가한다. guard로 len(self.delayed_dispense_log) > 0을 검사해 참이면 admin_display에 delayed_dispense_log
+    내용(음료 종류·시각·건수가 str 표현에 포함되도록)을 표시(showAdmin)하고 상태를 ADMIN_MODE로 유지한 뒤 "T-100"을
+    반환한다. notifications는 추가하지 않는다. guard가 거짓이면 "T-100"을 반환하지 않는다(기존 규약대로 None 또는 다른
+    전이 id로 fall-through).
+  status: done
+  parent: SWF-56
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-100
+  usecase_ref: UC-10
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-166
+  type: subtask
+  title: T-101.1 T-101 전이 항목을 ADMIN_MODE/QUERY_DELAYED_DISPENSE 테이블에 추가하고 guard·action
+    구현
+  description: app/vending_machine.py의 (ADMIN_MODE, "QUERY_DELAYED_DISPENSE") 전이 리스트에
+    T-100 다음으로 ("T-101", self._g_no_delayed_records, self._a_show_no_records) 항목을
+    추가한다. T-100 구현 근처에 guard `_g_no_delayed_records`(len(self._delayed_dispense_log)
+    == 0 반환)와 action `_a_show_no_records`(self.admin_display = NO_RECORDS 설정)를 정의하며,
+    상태는 ADMIN_MODE로 유지된다. 기존 NO_RECORDS 상수(31행)를 재사용한다.
+  status: done
+  parent: SWF-57
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-101
+  usecase_ref: UC-10
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-167
+  type: subtask
+  title: T-102.1 T-102 QUERY_UNRETURNED 전이를 ADMIN_MODE 핸들러에 추가한다
+  description: app/vending_machine.py의 ADMIN_MODE 이벤트 처리에서 "QUERY_UNRETURNED" 이벤트를
+    받으면 self.admin_display = self.held 로 미반환 보관액을 표시(showAdmin)하고, 상태는 ADMIN_MODE를
+    유지하며 held·coins는 변경하지 않은 채 "T-102"를 반환하도록 구현한다. 기존 T-100/T-101(QUERY_DELAYED_DISPENSE)
+    구현 패턴과 동일한 형태로 추가한다.
+  status: done
+  parent: SWF-58
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-102
+  usecase_ref: UC-10
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-168
+  type: subtask
+  title: T-103.1 T-103 COLLECT_UNRETURNED_REQUEST 전이를 ADMIN_MODE 핸들러에 추가한다
+  description: app/vending_machine.py의 ADMIN_MODE 이벤트 처리에 COLLECT_UNRETURNED_REQUEST
+    분기를 추가한다. guard는 `held > 0 and canMakeChange(held)`이며, 통과 시 기존 payout/거스름돈 구성
+    로직으로 동전을 지급하고 사용한 액면가별 개수를 coins에서 차감한 뒤 held를 0으로 갱신하고 상태는 ADMIN_MODE를 유지하며 "T-103"을
+    반환한다. guard가 거짓(held == 0 또는 구성 불가)이면 coins·held를 변경하지 않고 "T-103"이 아닌 값을 반환하도록
+    한다(해당 경로는 T-104/T-105 등 별도 전이 대상이므로 기존 fallthrough 규칙을 따른다).
+  status: done
+  parent: SWF-59
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-103
+  usecase_ref: UC-10
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-169
+  type: subtask
+  title: T-104.1 T-104 전이 핸들러를 VendingMachine에 구현한다
+  description: app/vending_machine.py의 ADMIN_MODE 상태에서 COLLECT_UNRETURNED_REQUEST
+    이벤트 처리 시, 기존 T-103 분기보다 먼저 held == 0 가드를 검사하는 분기를 추가한다. 가드가 참이면 NOTHING_TO_COLLECT
+    상수(없으면 모듈 수준에 정의)를 notifications에 추가하고, coins/held를 변경하지 않은 채 상태를 ADMIN_MODE로
+    유지하며 "T-104"를 반환한다. 가드가 거짓이면 기존 T-103 경로로 넘어간다.
+  status: done
+  parent: SWF-60
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-104
+  usecase_ref: UC-10
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-170
+  type: subtask
+  title: T-105.1 T-105 전이 핸들러 구현 (guard + REJECT_CANNOT_COMPOSE 알림)
+  description: app/vending_machine.py의 ADMIN_MODE에서 COLLECT_UNRETURNED_REQUEST 처리
+    분기에, 기존 T-103/T-104 guard 뒤에 `held > 0 && !canMakeChange(held)` 조건을 추가하고, 참이면
+    notifications에 REJECT_CANNOT_COMPOSE를 추가한 뒤 coins/held를 변경하지 않고 ADMIN_MODE를 유지하며
+    "T-105"를 반환하도록 한다. 필요 시 REJECT_CANNOT_COMPOSE 상수가 모듈에 정의되어 있는지 확인·추가한다.
+  status: done
+  parent: SWF-61
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-105
+  usecase_ref: UC-10
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-171
+  type: subtask
+  title: T-130.1 T-130 guard용 기대 총액 계산 헬퍼(expectedTotal)와 미정산 credit 항 정리
+  description: app/vending_machine.py에 initial_amount·refilled_amount·collected_amount·sold_amount·credit·unreturned_amount를
+    합산하는 expected_total() 메서드를 추가하고, 기존 REFILL/COLLECT/DISPENSE_DONE 처리에서 해당 누적 필드가
+    갱신되는지 확인·보완한다. holding_total()이 Σ(액면가×개수)를 반환하도록 정리한다.
+  status: done
+  parent: SWF-62
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-130
+  usecase_ref: UC-13
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-172
+  type: subtask
+  title: T-130.2 ADMIN_MODE에서 QUERY_COIN_INVENTORY 전이(T-130) 처리 구현
+  description: app/vending_machine.py의 handle()에 ADMIN_MODE + QUERY_COIN_INVENTORY
+    분기를 추가한다. guard(holding_total() == expected_total())가 참이면 show_admin(coins, holding_total(),
+    expected_total())로 admin_display를 설정하고 상태를 ADMIN_MODE로 유지하며 "T-130"을 반환한다. 코인
+    보유량은 변경하지 않는다.
+  status: done
+  parent: SWF-62
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-130
+  usecase_ref: UC-13
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-173
+  type: subtask
+  title: T-130.3 guard 거짓 시 불일치(MISMATCH) 알림 경로 구현
+  description: app/vending_machine.py에서 holding_total() != expected_total()인 경우 notifications에
+    MISMATCH 상수를 추가하고 "T-130"이 아닌 값을 반환하도록 처리한다. MISMATCH 상수가 모듈에 정의되어 있는지 확인하고 없으면
+    추가한다.
+  status: done
+  parent: SWF-62
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-130
+  usecase_ref: UC-13
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-174
+  type: subtask
+  title: T-131.1 T-131 전이 처리 구현
+  description: app/vending_machine.py의 QUERY_COIN_INVENTORY 핸들러(ADMIN_MODE)에서 holdingTotal()
+    != expectedTotal()일 때 showAdmin(coins, holdingTotal(), expectedTotal())로 admin_display를
+    설정하고 notifications에 MISMATCH를 추가한 뒤 ADMIN_MODE를 유지하며 "T-131"을 반환하도록 구현한다. 정합 시(T-130)에는
+    알림이 추가되지 않도록 분기하고, coins·held는 변경하지 않는다.
+  status: done
+  parent: SWF-63
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-131
+  usecase_ref: UC-13
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-175
+  type: subtask
+  title: T-120.1 SELLING 상태에 POWER_LOST 이벤트 핸들러(T-120)를 추가한다
+  description: app/vending_machine.py의 VendingMachine.handle에서 state가 SELLING이고 event가
+    POWER_LOST일 때 credit·stock·coins를 그대로 보존하고 dispense_pending=False로 설정한 뒤 state를
+    POWERED_OFF로 바꾸고 "T-120"을 반환하도록 구현한다 (refunded에는 아무것도 추가하지 않음).
+  status: done
+  parent: SWF-64
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-120
+  usecase_ref: UC-12
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-176
+  type: subtask
+  title: T-121.1 SOLD_OUT 상태에 POWER_LOST 이벤트 전이 핸들러를 추가한다
+  description: app/vending_machine.py의 VendingMachine.handle 전이 테이블(또는 dispatch)에
+    SOLD_OUT --POWER_LOST--> POWERED_OFF 항목을 추가하고, 기존 T-120(SELLING --POWER_LOST-->)과
+    동일한 persist 액션(credit=0, stock·coins 그대로 보존, dispense_pending=False)을 재사용해 state를
+    POWERED_OFF로 바꾼 뒤 "T-121"을 반환하게 한다.
+  status: done
+  parent: SWF-65
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-121
+  usecase_ref: UC-12
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-177
+  type: subtask
+  title: T-122.1 AWAITING_DISPENSE 상태에 POWER_LOST 이벤트 전이 T-122 추가
+  description: app/vending_machine.py의 handle() 전이 테이블에 AWAITING_DISPENSE --POWER_LOST-->
+    POWERED_OFF 항목을 추가하고 전이 ID "T-122"를 반환하도록 한다. 기존 T-120/T-121(SELLING/SOLD_OUT의
+    POWER_LOST) 구현 패턴을 따르되, 전이 시 credit·stock·coins·selected·dispense_pending을 그대로
+    보존(persist)하고 재고 차감·동전 반환은 하지 않는다.
+  status: done
+  parent: SWF-66
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-122
+  usecase_ref: UC-12
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-178
+  type: subtask
+  title: T-123.1 ADMIN_MODE 상태에 POWER_LOST 이벤트 전이 T-123 추가
+  description: app/vending_machine.py의 handle() 전이 테이블(또는 상태별 분기)에 ADMIN_MODE + POWER_LOST
+    → POWERED_OFF 항목을 추가하고 전이 ID "T-123"을 반환하도록 한다. 기존 T-120~T-122(SELLING/SOLD_OUT/AWAITING_DISPENSE의
+    POWER_LOST) 구현 패턴을 그대로 따른다.
+  status: done
+  parent: SWF-67
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-123
+  usecase_ref: UC-12
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-179
+  type: subtask
+  title: T-123.2 T-123 전이 액션으로 persist(credit=0, stock, coins, pending=none) 수행
+  description: 전이 시 credit을 0으로 설정하고 stock/coins는 현재 값 그대로 보존하며 dispense_pending을
+    False로 설정한 뒤 기존 persist 헬퍼(T-120~T-122에서 사용하는 것)를 호출하도록 app/vending_machine.py에
+    구현한다. 관리 모드에서는 credit이 항상 0이므로 미반환 보관액은 변경하지 않는다(유스케이스 3b/3c).
+  status: done
+  parent: SWF-67
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-123
+  usecase_ref: UC-12
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-180
+  type: subtask
+  title: T-124.1 T-124 가드 헬퍼와 pending 정산 액션 헬퍼를 VendingMachine에 추가한다
+  description: app/vending_machine.py의 VendingMachine에 (1) pending이 있으면 해당 음료 재고를
+    1 차감한 결과 기준으로 총 재고 합계를 반환하는 total_stock_after_recovery() 메서드와, (2) pending이 있으면
+    stock[selected] -= 1, sold_amount += price, credit -= price 를 수행하고, 남은 credit
+    > 0 이면 held(미반환 보관액)에 더한 뒤 credit = 0, display = 0, selected/dispense_pending
+    초기화(clearPending), update_buttons() 호출까지 수행하는 _recover_from_power_loss() 메서드를
+    만든다. 동전(coins)과 refunded는 건드리지 않는다.
+  status: done
+  parent: SWF-68
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-124
+  usecase_ref: UC-12
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-181
+  type: subtask
+  title: T-124.2 POWERED_OFF 상태의 POWER_RESTORED 이벤트에 T-124 전이를 등록한다
+  description: app/vending_machine.py의 handle()/전이 테이블에서 state == POWERED_OFF 이고 event
+    == "POWER_RESTORED" 이며 total_stock_after_recovery() >= 1 인 경우 _recover_from_power_loss()
+    실행 후 state를 SELLING으로 바꾸고 "T-124"를 반환하도록 추가한다. 가드가 거짓인 경우(복구 후 재고 0)는 T-124를 반환하지
+    않고 SELLING으로 가지 않도록(기존 SOLD_OUT 분기 또는 미처리로) 유지한다.
+  status: done
+  parent: SWF-68
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-124
+  usecase_ref: UC-12
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-182
+  type: subtask
+  title: T-125.1 T-125 전이 등록 및 가드 구현
+  description: app/vending_machine.py의 POWERED_OFF 상태 POWER_RESTORED 처리에 T-125 분기를
+    추가한다. totalStockAfterRecovery()(pending이 있으면 해당 음료 재고 1 차감을 반영한 총 재고)가 0이면 T-125로
+    SOLD_OUT 전이, 아니면 기존 T-124(SELLING) 유지. T-124 판정도 같은 헬퍼를 쓰도록 정리한다.
+  status: done
+  parent: SWF-69
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-125
+  usecase_ref: UC-12
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-183
+  type: subtask
+  title: T-125.2 T-125 액션 구현 및 복구 로직 공통화
+  description: pending이 있으면 stock[pending.drink] -= 1, sold_amount += price, credit
+    -= price를 수행하고, credit > 0이면 held += credit, credit = 0, display(0), clearPending(),
+    disableAllButtons()를 수행한다. T-124와 동일한 복구 로직을 공통 헬퍼로 추출해 T-124/T-125가 공유하도록 하고,
+    동전 보유량 변경·물리 반환(refunded)이 발생하지 않도록 한다.
+  status: done
+  parent: SWF-69
+  labels:
+  - auto
+  - subtask
+  fsm_ref: T-125
+  usecase_ref: UC-12
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-184
+  type: bug
+  title: '[검토/high] 정전·재기동 요구사항이 프로세스 내 상태 전이로만 구현되어 실제 재기동 시 재고·동전·미반환 보관액이 전부 소실된다'
+  description: '**분류** untraced-req
+
+    **심각도** high
+
+
+    **근거**
+
+    app/vending_machine.py:946-959 의 _a_power_lost / _a_power_lost_pending 은 self.state
+    와 dispense_pending 플래그만 바꾼다. app/ 어디에도 파일·NVRAM 등 영속 저장 코드가 없고, app/__main__.py:27-29
+    make_machine() 은 항상 DEMO_STOCK/DEMO_COINS 로 새로 만든다. INTERFACE.md:88 은 persist(...)
+    를 "vm.credit·vm.stock·vm.coins 불변 보존"으로, 즉 메모리 값 유지로 정의한다. tests/test_fsm.py::test_t_120~test_t_125
+    와 tests/e2e/test_scenarios.py::test_uc12_* 는 모두 같은 파이썬 객체에 POWER_LOST→POWER_RESTORED
+    를 연달아 주입할 뿐, 객체를 버리고 다시 만드는 경로가 없다.
+
+
+    **영향**
+
+    실제 정전이면 제어 프로세스가 죽는다. 복전 후 소프트웨어는 재고·동전 보유량·미반환 보관액·pending 배출·판매 누계를 모두 잃고 데모
+    초기값으로 시작한다. REQ-25(내부 보존 재고로 판정), REQ-58/59(미반환 보관액 기록·보유), REQ-65~67(배출 중 정전
+    정산)이 전부 무효가 되고 REQ-24 등식도 깨진다. "정전은 FSM 상태다"라는 모델링이 영속성 요구를 전이 하나로 흡수해 버린 사례로,
+    검토 안내의 "제약이 전이로 표현될 수 없어 빈 채로 남은" 패턴과 같다.
+
+
+    **제안**
+
+    영속 계층(재고·동전·held·pending·sold/refilled/collected 누계·initial_amount)을 요구사항으로 명시하고
+    구현·검증하라. 요구사항 추가: "자판기는 음료 종류별 재고, 액면가별 동전 보유 개수, 미반환 보관액, 배출 진행 중 여부와 해당 음료,
+    누적 투입 금액, 보충·회수·판매 누계를 전원과 무관하게 보존되는 내부 저장소에 매 변경 시점마다 기록한다. 재기동 시 이 저장소의 값만으로
+    상태를 복원한다." 테스트는 VendingMachine 객체를 폐기하고 저장소로부터 새 객체를 만든 뒤 REQ-56~68 을 단언해야 한다.
+
+
+    **참조** REQ-25, REQ-56, REQ-57, REQ-58, REQ-59, REQ-65, REQ-66, REQ-67, REQ-68,
+    T-120, T-122, T-124, T-125, app/vending_machine.py:946, app/__main__.py:27, tests/test_fsm.py::test_t_124,
+    tests/e2e/test_scenarios.py::test_uc12_power_loss_in_selling_keeps_coins_as_unreturned
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - untraced-req
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 9fe87cd0c6f7
+  dod_tests: []
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-185
+  type: bug
+  title: '[검토/high] 지연 배출로 실물이 빠져나간 뒤 관리자가 재고를 아래로 맞출 수단이 없다'
+  description: '**분류** missing-rule
+
+    **심각도** high
+
+
+    **근거**
+
+    REQ-36 / UC-10 step 3 은 "관리자가 지연 배출 기록을 보고 재고를 맞춘다(UC-08)"고 하지만 UC-08/REQ-47/T-080
+    은 보충(증가)만 허용하고 수량 1 이상만 받는다 (app/vending_machine.py:681-687 _all_qty_positive_int,
+    0 이하 → T-082 거부). FSM 이벤트 목록(app/_fsm_spec.py:69-86)에 재고를 감소·설정하는 이벤트가 없다. 또한
+    delayed_dispense_log 는 append 만 되고(app/vending_machine.py:551-556) 확인·정리 이벤트가
+    없어 처리된 건과 미처리 건을 구분할 수 없다. tests/e2e/test_scenarios.py::test_uc10_delayed_log_and_unreturned_collection
+    은 기록 2건 조회까지만 확인하고 "재고를 맞추는" 동작은 어떤 테스트도 다루지 않는다.
+
+
+    **영향**
+
+    배출 타임아웃(T-050) 후 실물이 나가면 stock 은 그대로다(REQ-31). 관리자는 이를 기록으로 볼 수는 있지만 stock 을 1
+    줄일 수 없으므로 장부 재고 > 실물 재고가 영구히 남는다. 이후 그 음료는 재고가 있다고 표시되어 판매가 개시되고, 실물이 없으면 10초
+    타임아웃→전액 반환이 반복된다. 마지막 1개가 이런 상태면 SOLD_OUT 으로 넘어가지 못한다. T-075(F-03)와 결합하면 같은 문제가
+    관리 모드 진입마다 발생한다.
+
+
+    **제안**
+
+    요구사항 추가: "관리 모드에서 관리자는 지연 배출 기록을 확인 처리할 수 있으며, 확인 처리 시 해당 음료의 재고를 1 차감하고 그 기록을
+    처리 완료로 표시한다. 재고가 0이면 차감하지 않고 관리자에게 알린다." 또는 더 일반적으로: "관리 모드에서 관리자는 음료 종류별 재고를
+    실사 값으로 설정(0 이상의 정수)할 수 있다." 그에 맞는 이벤트·전이·테스트를 추가하라.
+
+
+    **참조** REQ-31, REQ-35, REQ-36, REQ-47, T-050, T-051, T-080, T-082, T-100, app/vending_machine.py:681,
+    app/vending_machine.py:551, tests/e2e/test_scenarios.py::test_uc10_delayed_log_and_unreturned_collection
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: todo
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - missing-rule
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: acec74918da6
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-186
+  type: bug
+  title: '[검토/medium] 배출 대기 중 관리 모드 진입(T-075)이 이미 배출 개시된 음료값까지 전액 반환하고 재고도 차감하지 않는다'
+  description: '**분류** guessed-spec
+
+    **심각도** medium
+
+
+    **근거**
+
+    T-010 은 버튼 즉시 startDispense 를 호출한다(app/vending_machine.py:439, _dispensed 에 기록).
+    그 뒤 T-075(app/vending_machine.py:648-657)는 "if credit > 0: payout(credit)" 로 음료
+    가격을 포함한 credit 전액을 지급하고 재고·soldAmount 를 건드리지 않는다. FSM T-075 notes 에 "[미규정 REQ-41]
+    … 잔여 credit 전액 반환으로만 모델링"이라 적혀 있어 추측임을 자인한다. 같은 상황의 정전(REQ-24 원문 24번, T-124)은
+    정반대로 "실물이 나갔을 가능성이 높으므로 판매 성립"으로 처리한다. tests/test_fsm.py::test_t_075 (refunded==[1000],
+    stock 불변) 와 tests/e2e/test_scenarios.py::test_uc07_alt_zero_credit_invalid_key_awaiting_and_sold_out:554-566
+    (refunded==[500,1100], stock==DEFAULT_STOCK) 이 이 추측을 그대로 굳혔다. 이후 도착하는 DISPENSE_DONE
+    은 T-053 으로 ''지연 배출''에 기록되므로 관리자 장부에는 정상 배출이 지연 배출로 남는다.
+
+
+    **영향**
+
+    관리자가 배출 대기 중 키를 돌릴 때마다 고객은 음료와 돈을 모두 받고, 장부 재고는 실물보다 1 많아진다(F-02 로 수정도 불가). 관리자
+    실수나 악의적 협업으로 반복 가능한 금전·재고 손실 경로다.
+
+
+    **제안**
+
+    REQ-40/41 을 구체화하라. 예: "배출 완료를 기다리는 중 관리 모드 진입이 요청되면 자판기는 먼저 배출 완료 신호 또는 10초 타임아웃을
+    기다려 진행 중인 거래를 REQ-5/14 대로 마무리한 뒤 관리 모드로 전환한다." 또는 정전 규칙과 통일: "배출 개시 후 관리 모드 진입
+    시 해당 음료는 판매 성립으로 보아 재고를 1 차감하고 가격을 판매액으로 잡으며, (누적 금액 − 가격)만 반환한다." 발주자 확인 전까지는
+    test_t_075 의 단언을 명세 확정으로 취급하지 말 것.
+
+
+    **참조** REQ-40, REQ-41, REQ-42, REQ-24, T-010, T-075, T-053, app/vending_machine.py:648,
+    tests/test_fsm.py::test_t_075, tests/e2e/test_scenarios.py::test_uc07_alt_zero_credit_invalid_key_awaiting_and_sold_out
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: todo
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - guessed-spec
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 5a9cddfb3db3
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-187
+  type: bug
+  title: '[검토/medium] [모호] REQ-64 가 발주자 확인 없이 ''회수 시 미반환 보관액 기록을 0으로 만든다''는 가정으로 코드·테스트에
+    굳었다'
+  description: '**분류** guessed-spec
+
+    **심각도** medium
+
+
+    **근거**
+
+    REQ-64 는 REQ-61(회수 가능)과 REQ-62/63(미반환 보관액만큼 남겨야 함)의 양립 방식이 문서에 없다고 명시한다. UC-10
+    7b 와 T-103 notes 가 "감소 가정 채택(발주자 확인 대상)"이라 적었지만 app/vending_machine.py:892-896
+    _a_collect_unreturned 는 held=0 으로 확정 구현했고, tests/test_fsm.py::test_t_103 (held==0),
+    tests/e2e/test_scenarios.py::test_uc10_delayed_log_and_unreturned_collection:725-728,
+    test_uc09_alt_rejections_respect_unreturned_amount:690-693, test_uc12_power_loss_in_selling_keeps_coins_as_unreturned:848-849
+    가 모두 그 가정을 단언한다. 확인 결과를 반영한 흔적(요구사항 개정, 티켓)은 저장소에 없다.
+
+
+    **영향**
+
+    발주자의 의도가 "미반환 보관액은 고객 반환용으로 계속 남기고 별도 대장으로 관리한다"였다면, 현재 구현은 관리자가 고객 돈을 자기 회수분으로
+    가져가면서 기록까지 지워 추적 불가능하게 만든다. 반대 의도라도 지금은 어느 쪽인지 검증할 근거가 없이 초록색만 남아 있다.
+
+
+    **제안**
+
+    발주자에게 다음 문장 중 하나를 확정받아 요구사항에 넣어라. (a) "관리자가 미반환 보관액을 회수하면 회수한 금액만큼 미반환 보관액 기록을
+    감소시키며, 회수 내역(시각·금액)은 별도 기록한다." (b) "미반환 보관액 회수는 기록을 감소시키지 않으며, 미반환 보관액 기록은 관리자가
+    명시적으로 정산 처리할 때만 0이 된다." 확정 전까지 T-103 관련 테스트에 ''가정'' 표시를 유지하라.
+
+
+    **참조** REQ-61, REQ-62, REQ-63, REQ-64, T-103, app/vending_machine.py:892, tests/test_fsm.py::test_t_103,
+    tests/e2e/test_scenarios.py::test_uc10_delayed_log_and_unreturned_collection
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: todo
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - guessed-spec
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 17d9feb04a49
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-188
+  type: bug
+  title: '[검토/medium] 30초·10초·2초 타이머 요구사항이 "외부에서 주입된 이벤트에 대한 반응"으로만 검증되고, 타이머를 실제로
+    만료시키는 구성 '
+  description: '**분류** untraced-req
+
+    **심각도** medium
+
+
+    **근거**
+
+    app/vending_machine.py:322-323, 380-381 의 _restart_idle_timer / _start_dispense_timer
+    는 정수 상수를 대입할 뿐이며 감소·만료 로직이 없다. app/__main__.py 는 시간을 전혀 다루지 않아 IDLE_TIMEOUT /
+    DISPENSE_TIMEOUT 을 사용자가 손으로 입력해야 한다. tests/e2e/test_scenarios.py::test_uc06_alt_operation_restarts_timer_and_dispense_has_priority:493-495
+    는 "20초 경과"를 vm.idle_timer = 10 으로 손으로 쓰고 재대입 여부만 확인한다. REQ-55(버튼 후 2초 내 배출 개시)는
+    test_t_010 / test_uc02 에서 dispensed 리스트에 즉시 들어간다는 것만 확인하며 시간을 재는 테스트가 없다. REQ-30
+    의 "9.9초 도착은 정상" 수용 기준(UC-05)은 test_uc05_done_before_timeout_is_normal_sale 에서
+    시간 없이 DONE 을 먼저 보내는 것으로 대체됐다.
+
+
+    **영향**
+
+    이 저장소를 그대로 올리면 무조작 30초 자동 반환(REQ-28)과 배출 10초 실패 처리(REQ-30)는 아무도 발동시키지 않아 절대 일어나지
+    않는다. 고객 돈이 credit 에 갇히고, 배출 장치 고장 시 AWAITING_DISPENSE 에 영구히 머문다.
+
+
+    **제안**
+
+    타이머 구동 계층(시계 주입 가능)을 구현 범위에 명시하고, "마지막 조작 시각 + 30초 경과 시 IDLE_TIMEOUT 을, 배출 개시
+    시각 + 10초 경과 시 DISPENSE_TIMEOUT 을 시스템이 스스로 발생시킨다"를 요구사항/유스케이스에 추가하라. 가짜 시계로 29.9초/30초,
+    9.9초/10초 경계를 검증하는 테스트를 추가하라.
+
+
+    **참조** REQ-28, REQ-29, REQ-30, REQ-55, T-016, T-050, T-060, app/vending_machine.py:322,
+    app/__main__.py, tests/e2e/test_scenarios.py::test_uc06_alt_operation_restarts_timer_and_dispense_has_priority,
+    tests/test_fsm.py::test_t_010
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - untraced-req
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 6ca5fb594cce
+  dod_tests: []
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-189
+  type: bug
+  title: '[검토/low] T-050 의 ''동전 부족 시 부분 반환'' 분기는 도달 불가능한 추측이면서 REQ-24 등식 테스트를 느슨하게
+    만들었다'
+  description: '**분류** guessed-spec
+
+    **심각도** low
+
+
+    **근거**
+
+    app/vending_machine.py:535-547 _a_dispense_failed 는 _payout_available 로 가능한 만큼만
+    지급하고 unpaid_remainder 를 기록한다(541행은 += 가 아니라 = 라 두 번째 발생 시 덮어씀). unpaid_remainder
+    를 관리자에게 보여 주는 이벤트·전이는 없다(UC-05 3a 는 "관리자에게 표시"라 함). tests/e2e/test_scenarios.py:96-107
+    assert_req24(vm, unpaid) 는 REQ-24 등식에 unpaid 항을 더하고, 1133행은 unpaid != 0 이면 T-130
+    확인을 건너뛴다 — REQ-24 원문 "이 밖의 항은 없다"와 어긋난다. 한편 credit 을 이룬 코인은 지급 전까지 항상 동전통에 남아
+    있으므로(checked 참조) 이 분기는 정상 흐름에서 실행되지 않고, random_walk 의 unpaid 도 항상 0 이다.
+
+
+    **영향**
+
+    지금 당장 돈이 새지는 않는다. 그러나 명세에 없는 항이 불변식 테스트에 들어가 있어, 장래 어떤 회귀로 반환이 실패해도 테스트가 그 금액을
+    unpaid 로 흡수해 초록으로 남을 수 있다.
+
+
+    **제안**
+
+    T-050 을 다른 반환 전이와 같이 payout(credit) 로 단순화하고 unpaid_remainder 와 assert_req24 의
+    unpaid 인자를 제거하라. 부분 반환이 정말 필요하다면 요구사항에 "반환 불가 잔액" 항과 관리자 표시 방법을 먼저 명시하라.
+
+
+    **참조** REQ-24, REQ-32, T-050, app/vending_machine.py:535, tests/e2e/test_scenarios.py::assert_req24,
+    tests/e2e/test_scenarios.py::test_invariants_hold_over_random_event_sequence
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: todo
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - guessed-spec
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: f384744fb33c
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-190
+  type: bug
+  title: '[검토/low] AWAITING_DISPENSE·POWERED_OFF 단위 테스트가 T-010 을 거치지 않고 상태를 주입해, 구현이
+    테스트용'
+  description: '**분류** vacuous-test
+
+    **심각도** low
+
+
+    **근거**
+
+    tests/test_fsm.py::test_t_013, test_t_020, test_t_122, test_t_124, test_t_125
+    는 make(AWAITING_DISPENSE, credit=…, selected=…) 로 pending 없이 시작한다. 이를 통과시키기 위해
+    app/vending_machine.py:446-461 _resolve_pending 은 pending 이 비면 "현재 credit − 가격"으로
+    거스름돈을 재구성한다 — 이는 DISPENSE_DONE 시점 credit(배출 중 투입분 포함)을 쓰는 것으로 REQ-12/REQ-14 와
+    정반대 규칙이다. 따라서 단위 테스트 수준에서는 "거스름돈은 버튼 시점 금액으로 확정"(REQ-14)이 전혀 검증되지 않으며, T-010 이
+    pending 을 기록하지 않는 회귀가 생겨도 test_fsm.py 는 전부 통과한다(e2e test_uc04 만 잡는다).
+
+
+    **영향**
+
+    단위 테스트가 명세가 아니라 구현의 우회 경로를 검증한다. 우회 경로가 정상 흐름에 섞이면(예: pending 초기화 순서 변경) REQ-12
+    위반이 조용히 발생한다.
+
+
+    **제안**
+
+    _resolve_pending 의 재구성 분기를 제거하고 pending 이 없는 DISPENSE_DONE 은 무시하도록 하라. 단위 테스트는
+    T-010 을 실제로 통과시켜 AWAITING_DISPENSE 에 진입한 뒤 T-040 으로 코인을 넣고 DONE 시 거스름돈이 버튼 시점
+    값인지 단언하라.
+
+
+    **참조** REQ-12, REQ-14, T-010, T-013, T-020, app/vending_machine.py:446, tests/test_fsm.py::test_t_013,
+    tests/test_fsm.py::test_t_020
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - vacuous-test
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 4430ba22208c
+  dod_tests: []
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-191
+  type: bug
+  title: '[검토/low] REQ-05/REQ-06(음료 3종·가격 상이)이 어떤 검증에도 도달하지 않는다'
+  description: '**분류** untraced-req
+
+    **심각도** low
+
+
+    **근거**
+
+    UC-02/UC-08 이 REQ-05/06 을 참조하지만 acceptance 에 해당 항목이 없고, app/vending_machine.py:37
+    은 prices 를 검사 없이 그대로 받는다. tests/test_fsm.py:46 은 음료 2종(PRICES={"cola","water"})으로
+    전체 단위 테스트를 돌린다. 가격 중복이나 3종 아님을 거부하는 테스트가 없다.
+
+
+    **영향**
+
+    구성 실수(음료 2종 등록, 두 음료 같은 가격)가 출시 후에야 드러난다. 가격이 같아도 동작 자체는 하므로 실질 피해는 작다.
+
+
+    **제안**
+
+    생성 시 "등록 음료는 정확히 3종이며 가격은 서로 다르다"를 검증(위반 시 기동 거부)하고 그에 대한 테스트를 추가하라. 또는 REQ-05/06
+    을 설치 절차 제약으로 재분류하고 그렇게 문서화하라.
+
+
+    **참조** REQ-05, REQ-06, UC-02, UC-08, app/vending_machine.py:37, tests/test_fsm.py:46
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - untraced-req
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 285a891b7120
+  dod_tests: []
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-192
+  type: bug
+  title: '[검토/high] 실제 재기동(객체 재생성) 후에는 REQ-24 등식이 성립하지 않아 관리자의 정합성 조회가 항상 MISMATCH
+    를 낸다'
+  description: '**분류** untraced-req
+
+    **심각도** high
+
+
+    **근거**
+
+    app/vending_machine.py:55 `initial_amount = Σ(coins)` 는 생성 시점 동전통 전액이고, `expected_total()`(751행)은
+    여기에 `held` 를 다시 더한다. 정전 시 동전통에 남은 credit 이 재기동 후 held 로 옮겨지므로(T-124/T-125) held>0
+    인 재기동 직후 `holding_total() == expected_total() - held` 가 된다. 테스트가 이를 그대로 기대값으로
+    굳혔다: tests/test_fsm.py::test_t_122 `assert vm.holding_total() == vm.expected_total()
+    - 1000`, ::test_t_124 `- 1000`, ::test_t_125 `- 1200`, tests/e2e/test_scenarios.py::assert_req24_rebooted(carried=…).
+    e2e 에서 재기동 뒤 QUERY_COIN_INVENTORY 를 날리는 시나리오는 없고(test_uc12_* 모두), T-130 이 재기동
+    뒤 통과하는 시나리오(test_uc09_alt, test_uc13)는 전부 reboot() 없이 같은 객체로 POWER_LOST→POWER_RESTORED
+    를 이어 붙인 경우다. 또한 reboot() 가 sold/refilled/collected/initial_amount/delayed_dispense_log/unpaid_remainder
+    를 넘기지 않으며 생성자에도 그 인자가 없다.
+
+
+    **영향**
+
+    정전 후 관리자가 동전 정합성을 조회하면 실제로는 아무 문제가 없어도 MISMATCH 경고가 뜬다. 정전이 있었던 경우가 바로 감사(監査)가
+    필요한 순간인데 그 순간 장부 기능이 무효가 된다. 판매 누계·보충/회수 누계도 정전마다 0 으로 초기화되어 REQ-24 의 "어느 시점에나"
+    가 프로세스 수명 안에서만 참이다.
+
+
+    **제안**
+
+    요구사항에 추가: ''초기 보유액, 보충된 금액, 회수된 금액, 판매된 음료 가격의 합, 미반환 보관액, 지연 배출 기록은 정전과 무관하게
+    보존되며, 재기동 후에도 요구사항 10 의 등식은 정전 이전 값으로 이어져 성립한다.'' 구현은 initial_amount 를 생성 시 재계산하지
+    말고 영속 인자로 받고, 테스트의 `- carried` 보정을 제거해 재기동 후 T-130 을 직접 단언한다.
+
+
+    **참조** REQ-24, REQ-36, REQ-58, T-124, T-125, T-130, T-131, tests/test_fsm.py::test_t_122,
+    tests/test_fsm.py::test_t_124, tests/test_fsm.py::test_t_125, tests/e2e/test_scenarios.py::assert_req24_rebooted,
+    tests/e2e/test_scenarios.py::reboot
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: blocked
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - untraced-req
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: af2d7ab42449
+  dod_tests: []
+  attempts: 3
+  last_error: FAILED
+  artifacts: []
+- key: SWF-193
+  type: bug
+  title: '[검토/high] 배출 대기 중 관리 키 진입(T-075)은 배출을 ''없던 일''로 만들어 음료 가격까지 전액 환불하고 재고를
+    차감하지 않는다'
+  description: '**분류** guessed-spec
+
+    **심각도** high
+
+
+    **근거**
+
+    fsm T-075 notes ''[미규정 REQ-41] … 잔여 credit 전액 반환으로만 모델링''. app/vending_machine.py:648
+    `_a_enter_admin_from_dispense` 는 stopDispenseTimer 후 `payout(credit)` (버튼 시점 credit
+    전액, 즉 음료 가격 포함) 하고 stock·sold_amount 는 건드리지 않는다. 이후 도착하는 DISPENSE_DONE 은 T-053
+    으로 기록만 된다. tests/test_fsm.py::test_t_075 와 tests/e2e/test_scenarios.py::test_uc07_alt_zero_credit_invalid_key_awaiting_and_sold_out
+    는 `refunded == [1000]`, `stock == 배출 전` 을 그대로 기대한다. 같은 상황(배출 개시 후 완료 전)의 정전은 REQ-65~67
+    이 ''판매 성립''으로 규정하는데, 관리 키만 반대 결론을 취했다.
+
+
+    **영향**
+
+    배출 모터는 이미 돌기 시작했으므로 실물이 나올 가능성이 높다(REQ-24 의 근거 그대로). 고객은 음료와 투입 금액 전액을 함께 받고,
+    장부 재고는 실물보다 1 많아지며 판매액에서도 빠진다. 관리자 키를 가진 사람이 의도적으로 반복할 수 있다.
+
+
+    **제안**
+
+    요구사항 16/17 에 문장 추가: ''배출 완료를 기다리는 중에 관리 모드 진입이 요청되면, 자판기는 배출 완료 신호 또는 10초 타임아웃으로
+    진행 중인 배출을 먼저 종결한 뒤(요구사항 5·14 의 규칙대로 재고·거스름돈을 정산) 남은 누적 금액을 반환하고 관리 모드로 전환한다.''
+    또는 정전과 같이 ''판매 성립으로 보고 차액만 반환''으로 정하되, 어느 쪽이든 발주자 결정 후 T-075 와 두 테스트를 수정한다.
+
+
+    **참조** REQ-40, REQ-41, REQ-65, T-075, T-053, tests/test_fsm.py::test_t_075, tests/e2e/test_scenarios.py::test_uc07_alt_zero_credit_invalid_key_awaiting_and_sold_out
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: todo
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - guessed-spec
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 1d1d0459487c
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-194
+  type: bug
+  title: '[검토/medium] 배출 완료 신호가 어떤 배출 요청에 대한 것인지 대조하지 않아, 실패 처리된 이전 배출의 늦은 신호가 다음
+    구매를 ''완료''시킨'
+  description: '**분류** missing-rule
+
+    **심각도** medium
+
+
+    **근거**
+
+    app/vending_machine.py:446 `_resolve_pending` 는 payload 의 drink 를 무시하고 pending.drink
+    로 정산한다. tests/test_fsm.py::test_t_013 vm6 은 `DISPENSE_DONE(drink=''water'')` 가
+    cola 판매를 완료시키는 것을 명시적으로 기대한다. 시나리오: A 구매 → T-050 실패 처리·환불 → 고객이 곧바로 코인 투입 후 B
+    구매(T-010) → 그제야 A 의 완료 신호 도착 → T-013 이 B 판매 완료로 처리(재고 B −1, 거스름돈 지급) → 실제 B 완료
+    신호는 T-051 로 ''지연 배출 B'' 기록. 요구사항 14 는 ''배출 실패 처리 후 도착한 완료 신호는 지연 배출로 기록''이라 했지만
+    ''어느 배출의 신호인지'' 식별 규칙이 없다.
+
+
+    **영향**
+
+    고객은 A(무료)와 B 를 모두 받고, 장부는 A 재고를 차감하지 않으며 지연 배출 기록에는 엉뚱한 음료(B)가 남아 관리자가 재고를 맞출
+    수 없다.
+
+
+    **제안**
+
+    요구사항 14 에 추가: ''배출 완료 신호는 배출을 개시한 음료 종류를 포함하며, 자판기는 대기 중인 배출과 종류가 일치하는 신호만 완료로
+    처리한다. 종류가 일치하지 않는 신호는 상태·재고·금액을 바꾸지 않고 지연 배출로 기록한다.'' T-013/T-020 가드에 `drink ==
+    pending.drink` 를 넣고 불일치 분기를 추가한다.
+
+
+    **참조** REQ-30, REQ-34, REQ-35, T-013, T-020, T-051, tests/test_fsm.py::test_t_013
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: todo
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - missing-rule
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 7649ee03f529
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-195
+  type: bug
+  title: '[검토/medium] 재고를 줄이는 관리 조작이 없어 지연 배출로 생긴 유령 재고를 관리자가 바로잡을 수 없다'
+  description: '**분류** missing-rule
+
+    **심각도** medium
+
+
+    **근거**
+
+    요구사항 14 는 지연 배출 기록의 목적을 ''관리자가 … 재고를 맞출 수 있게'' 라고 하지만, 재고를 바꾸는 유일한 이벤트 REFILL_REQUEST(T-080)는
+    REQ-47 에 따라 수량 1 이상만 받는다(app/vending_machine.py:681 `_all_qty_positive_int`, T-082
+    가 0 이하를 거부). UC-10 3단계 ''재고를 보충/조정한다(UC-08)'' 의 ''조정''에 대응하는 요구사항·전이·테스트가 없다.
+    지연 배출 1건 = 실물 1개가 장부 차감 없이 나간 상태다.
+
+
+    **영향**
+
+    지연 배출 뒤 장부 재고가 실물보다 많아진 채로 남는다. 마지막 실물이 나간 뒤에도 버튼이 활성화되고 고객은 매번 10초 대기 후 환불을 겪으며,
+    판매 중지 전환(REQ-37)도 되지 않는다. 관리자가 할 수 있는 유일한 일은 실물을 장부에 맞춰 더 채우는 것이다.
+
+
+    **제안**
+
+    요구사항 18 에 추가: ''관리자는 관리 모드에서 지연 배출 기록을 확인한 뒤 해당 음료의 재고를 지정한 개수만큼 차감(재고 조정)할 수
+    있다. 차감 수량은 1 이상, 현재 재고 이하의 정수여야 하며, 그 밖의 지시는 전체를 거부하고 관리자에게 알린다.'' 대응 이벤트·전이·테스트를
+    추가한다.
+
+
+    **참조** REQ-35, REQ-36, REQ-43, REQ-47, T-080, T-082, T-100
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: todo
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - missing-rule
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 8e08f6e5374d
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-196
+  type: bug
+  title: '[검토/medium] [모호] REQ-64 가 추측으로 채워져 코드로 굳었다 — 미반환 보관액 회수가 기록을 0 으로 지우는 동작'
+  description: '**분류** guessed-spec
+
+    **심각도** medium
+
+
+    **근거**
+
+    fsm T-103 notes ''[미규정 REQ-64] … 감소 가정 채택(발주자 확인 대상)''. app/vending_machine.py:892
+    `_a_collect_unreturned` 는 `payout(held); held = 0`. tests/test_fsm.py::test_t_103,
+    tests/e2e/test_scenarios.py::test_uc10_delayed_log_and_unreturned_collection 이
+    `held == 0` 을 단언해 이 가정을 명세로 고정했다. 발주자 확인이 이뤄졌다는 흔적(요구사항 문서 갱신·티켓)은 저장소에 없다. 부수적으로
+    회수 금액이 `refunded`(고객 반환 목록)에 기록되고 `collected_amount` 에는 잡히지 않아, 관리자가 실제로 가져간 돈이
+    ''회수된 금액'' 항에 나타나지 않는다.
+
+
+    **영향**
+
+    발주자가 ''미반환 보관액은 고객 민원 대비로 남겨 두고 별도 정산한다'' 를 의도했다면 지금 구현은 그 돈을 관리자가 꺼내가며 기록까지 지워
+    추적이 끊긴다. 현재 테스트가 통과한다는 사실은 이 해석이 맞다는 근거가 되지 않는다.
+
+
+    **제안**
+
+    발주자에게 확인 후 요구사항 23 에 명문화: ''관리자가 미반환 보관액을 회수하면 그 금액을 회수된 금액에 더하고 미반환 보관액 기록을 0
+    으로 갱신한다'' (또는 ''기록은 유지하고 회수 이력만 남긴다''). 확정 전까지 REQ-64 는 미해결로 표시해 둔다.
+
+
+    **참조** REQ-61, REQ-62, REQ-63, REQ-64, T-103, tests/test_fsm.py::test_t_103, tests/e2e/test_scenarios.py::test_uc10_delayed_log_and_unreturned_collection
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: todo
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - guessed-spec
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: a2e19d0afe41
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-197
+  type: bug
+  title: '[검토/medium] 지연 배출 기록(REQ-35/36)이 정전을 넘기지 못한다'
+  description: '**분류** untraced-req
+
+    **심각도** medium
+
+
+    **근거**
+
+    VendingMachine 생성자(app/vending_machine.py:35)는 delayed_dispense_log 를 받을 수 없고
+    `_delayed_dispense_log = []` 로 시작한다. tests/test_fsm.py::reboot, tests/e2e/test_scenarios.py::reboot
+    는 stock·coins·credit·held·selected·dispense_pending 만 넘기고, 그 docstring 이 ''타이머·화면·내부
+    pending dict 등 프로세스 메모리에만 있던 것은 넘기지 않는다'' 고 하며 지연 배출 기록을 그 부류에 넣었다. 지연 배출 기록의
+    보존을 확인하는 테스트는 없다(test_uc12_* 어디에도 log 단언 없음).
+
+
+    **영향**
+
+    지연 배출(실물이 장부 차감 없이 나간 사건) 뒤 관리자가 오기 전에 정전이 한 번 있으면 기록이 사라지고, 관리자는 재고를 맞출 근거를 잃는다.
+    요구사항 14 의 후반부가 정전 한 번으로 무효화된다.
+
+
+    **제안**
+
+    요구사항 22 에 추가: ''지연 배출 기록과 미반환 보관액은 정전 후에도 보존된다.'' 생성자에 delayed_dispense_log 를
+    영속 인자로 추가하고 reboot() 헬퍼가 이를 넘기며, 정전 전 기록이 재기동 후 T-100 으로 조회되는 테스트를 추가한다.
+
+
+    **참조** REQ-35, REQ-36, REQ-56, T-100, T-124, tests/test_fsm.py::reboot, tests/e2e/test_scenarios.py::reboot
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: blocked
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - untraced-req
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 3156cc9603ed
+  dod_tests: []
+  attempts: 3
+  last_error: FAILED
+  artifacts: []
+- key: SWF-198
+  type: bug
+  title: '[검토/low] 동전 회수 제한(REQ-62/63)을 ''합계'' 로만 해석해, 회수 뒤 미반환 보관액을 실제로 지급할 수 없는
+    상태를 허용한다'
+  description: '**분류** guessed-spec
+
+    **심각도** low
+
+
+    **근거**
+
+    T-090 가드 `holdingAfter(items) >= unreturnedAmount` (app/vending_machine.py:774)
+    는 총액만 본다. tests/e2e/test_scenarios.py::test_uc10_alt_no_records_and_cannot_compose_unreturned
+    가 바로 그 경로를 보여준다: held=300, 100원 3개 회수(T-090 승인) → 남은 {1000:1} 로는 300 구성 불가 → T-105
+    거부, 잔돈 보충 후에야 회수. 테스트는 이를 정상 동작으로 고정했다.
+
+
+    **영향**
+
+    관리자가 잔돈을 회수한 뒤 미반환 보관액을 꺼내려 하면 거부되고, 회수한 동전을 다시 넣어야 한다. 돈이 새지는 않지만 REQ-62 의 ''남겨
+    두어야 한다'' 취지(지급 가능한 상태 유지)가 지켜지지 않는다.
+
+
+    **제안**
+
+    요구사항 23 의 문장을 ''미반환 보관액을 보유 동전으로 구성할 수 없게 만드는 회수 지시는 거부한다'' 로 구체화하고, T-090/T-093
+    가드를 `canMakeChange(unreturnedAmount) after collection` 으로 바꾼다.
+
+
+    **참조** REQ-62, REQ-63, T-090, T-093, T-105, tests/e2e/test_scenarios.py::test_uc10_alt_no_records_and_cannot_compose_unreturned
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: todo
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - guessed-spec
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 367c6ad695a2
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-199
+  type: bug
+  title: '[검토/low] 배출 대기 중 반환 레버를 ''무반응'' 으로 추측해 모델링했다'
+  description: '**분류** guessed-spec
+
+    **심각도** low
+
+
+    **근거**
+
+    fsm T-015 notes ''[미규정 REQ-27] 배출 대기 중 레버 조작은 명세 없음. 무반응으로 모델링''. 요구사항 12 는 ''판매
+    상태에서 언제든'' 이라 했고 문서의 상태 어휘(판매/판매 중지/관리 모드)에서 배출 대기는 판매 상태의 일부다. tests/test_fsm.py::test_t_015,
+    tests/e2e/test_scenarios.py::test_uc04_coin_during_dispense_keeps_change_and_leaves_credit
+    가 무반응을 단언한다.
+
+
+    **영향**
+
+    배출 중 투입한 코인(REQ-11 이 명시적으로 허용)을 고객이 곧바로 돌려받을 수 없다. 배출 완료 후 레버를 다시 당기면 되므로 금전 손실은
+    없다.
+
+
+    **제안**
+
+    요구사항 12 에 추가: ''배출 완료를 기다리는 중의 반환 레버 조작은 배출 완료 후 남은 누적 금액에 대해 처리한다'' 또는 ''무시한다''
+    중 하나를 명시한다.
+
+
+    **참조** REQ-27, REQ-11, T-015, tests/test_fsm.py::test_t_015
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: todo
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - guessed-spec
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 8f74bef23147
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-200
+  type: bug
+  title: '[검토/low] 마지막 재고 판매로 판매 중지에 들어갈 때 배출 중 투입분을 자동 반환하는 규칙은 문서에 없다'
+  description: '**분류** guessed-spec
+
+    **심각도** low
+
+
+    **근거**
+
+    REQ-13 은 배출 중 투입 금액이 ''배출 완료 후 누적 금액으로 남아 다음 구매에 쓰인다'' 고만 한다. UC-11 alt 3a ''판매
+    중지 전환 시 그 금액을 전액 반환'' 과 T-020 action `if credit > 0: payout(credit)` (app/vending_machine.py:524)
+    는 유스케이스 단계에서 만들어진 규칙이며 대응 REQ 가 없다. tests/test_fsm.py::test_t_020 vm3, tests/e2e/test_scenarios.py::test_uc11_alt_failure_keeps_selling_and_leftover_credit_refunded_at_sold_out
+    이 이를 단언한다.
+
+
+    **영향**
+
+    합리적인 보완이지만 문서화되지 않은 채 코드로 굳었다. 발주자가 다른 처리(예: 미반환 보관액으로 이관)를 원할 경우 명세와 구현의 출처가
+    어긋난다.
+
+
+    **제안**
+
+    요구사항 15 에 추가: ''판매 중지 상태로 전환하는 시점에 누적 투입 금액이 남아 있으면 전액을 반환한다.''
+
+
+    **참조** REQ-13, REQ-37, T-020, tests/test_fsm.py::test_t_020
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: todo
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - guessed-spec
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: 85dee5ab4e42
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-201
+  type: bug
+  title: '[검토/low] 비활성 버튼 누름·거부된 코인은 30초 무조작 타이머를 재시작하지 않는다'
+  description: '**분류** guessed-spec
+
+    **심각도** low
+
+
+    **근거**
+
+    REQ-28 은 ''코인 투입, 음료 선택, 반환 레버 조작'' 을 조작으로 열거한다. T-012(비활성 버튼), T-002/T-003(반환
+    코인)의 action 은 비어 있고 app/vending_machine.py 의 `_a_noop`, `_a_eject_coin` 은 idle_timer
+    를 건드리지 않는다. 어느 해석이 맞는지 문서가 말하지 않으며, tests/test_fsm.py::test_t_012 는 snapshot 비교로
+    idle_timer 변화 없음을 간접 고정한다.
+
+
+    **영향**
+
+    고객이 금액이 모자란 버튼을 눌러 보거나 잘못된 동전을 거듭 넣는 동안에도 30초가 흘러 투입 금액이 자동 반환될 수 있다.
+
+
+    **제안**
+
+    요구사항 13 에 ''조작'' 의 범위를 명시: ''거부된 코인 투입과 비활성 버튼 누름도 조작으로 본다'' 또는 ''보지 않는다''.
+
+
+    **참조** REQ-28, T-002, T-003, T-012, tests/test_fsm.py::test_t_012
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: todo
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - guessed-spec
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: f9a5c411bdf5
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-202
+  type: bug
+  title: '[검토/low] 외부 네트워크 금지·외부 재고 정보 미수신(REQ-69/70/71)을 확인하는 테스트가 없다'
+  description: '**분류** untraced-req
+
+    **심각도** low
+
+
+    **근거**
+
+    tests/ 전체에서 socket·urllib·http·외부 통신 관련 문자열이 검색되지 않는다. UC-12 acceptance ''재기동
+    과정에서 외부 통신·외부 재고 입력이 발생하지 않는다'' 에 대응하는 단언이 tests/e2e/test_scenarios.py::test_uc12_*
+    에 없고, UC-12 alt 5a(외부 재고 정보가 와도 무시)에 해당하는 이벤트·테스트도 없다. 과거 검토 항목(SWF-161)이 같은 내용을
+    지적했으나 저장소에는 여전히 검증이 없다.
+
+
+    **영향**
+
+    현재 app/ 은 표준 라이브러리만 쓰는 순수 모델이라 실질 위험은 낮지만, 이후 누군가 네트워크 의존을 추가해도 아무 테스트도 실패하지 않는다.
+
+
+    **제안**
+
+    정적 검사 테스트를 추가한다: app/ 아래 모든 모듈의 import 에 socket/http/urllib/requests 등 네트워크 모듈이
+    없음을 단언하고, POWER_RESTORED 가 stock 인자 외의 어떤 외부 입력도 받지 않음을 생성자·payload 시그니처로 고정한다.
+
+
+    **참조** REQ-69, REQ-70, REQ-71, T-124, T-125
+
+
+    _자동 검토 단계가 생성했습니다. 사람이 판단해 주세요._'
+  status: blocked
+  parent: null
+  labels:
+  - auto
+  - critic
+  - needs-human
+  - untraced-req
+  fsm_ref: ''
+  usecase_ref: ''
+  signature: a5010671d93e
+  dod_tests: []
+  attempts: 3
+  last_error: ''
+  artifacts: []

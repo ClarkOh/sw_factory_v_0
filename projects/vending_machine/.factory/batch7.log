@@ -1,0 +1,157 @@
+[00:42:17] -- MODEL --
+[00:42:17]   (이미 확정된 단계 -- 재생성하지 않고 건너뜀)
+[00:42:17] -- TICKETIZE --
+[00:42:20] 티켓: 신규 69 / 재작업 0 / 기존유지 0
+[00:42:20] -- SPEC_TESTS --
+[00:45:36] 테스트 생성 완료: 1개 수집 (현재 red — 정상)
+[00:45:36] -- WORK --
+[00:45:36] > SWF-14 [T-001] SELLING --INSERT_COIN--> SELLING
+[00:45:46]   SWF-14 → 서브태스크 2건
+[00:48:20]   [OK] DoD 통과 (시도 1)
+[00:48:20]   커밋 632c3dc: SWF-14 [T-001] SELLING --INSERT_COIN--> SELLING
+[00:48:20] > SWF-15 [T-002] SELLING --INSERT_COIN--> SELLING
+[00:48:38]   SWF-15 → 서브태스크 2건
+[00:49:06]   [OK] DoD 통과 (시도 1)
+[00:49:07]   SWF-15: 변경 없음 → 커밋 생략
+[00:49:07] > SWF-16 [T-003] SELLING --INSERT_COIN--> SELLING
+[00:49:27]   SWF-16 → 서브태스크 2건
+[00:50:06]   [OK] DoD 통과 (시도 1)
+[00:50:07]   SWF-16: 변경 없음 → 커밋 생략
+[00:50:07] > SWF-17 [T-004] SOLD_OUT --INSERT_COIN--> SOLD_OUT
+[00:50:28]   SWF-17 → 서브태스크 2건
+[00:50:57]   [OK] DoD 통과 (시도 1)
+[00:50:58]   SWF-17: 변경 없음 → 커밋 생략
+[00:50:58] > SWF-18 [T-005] ADMIN_MODE --INSERT_COIN--> ADMIN_MODE
+[00:51:06]   SWF-18 → 서브태스크 1건
+[00:51:51]   ⛔ SWF-18 BLOCKED → 백로그 SWF-79 등록 (명세 충돌 주장)
+[00:51:51] > SWF-19 [T-010] SELLING --PRESS_BUTTON--> AWAITING_DISPENSE
+[00:52:02]   SWF-19 → 서브태스크 2건
+[00:52:33]   ⛔ SWF-19 BLOCKED → 백로그 SWF-82 등록 (명세 충돌 주장)
+[00:52:33] > SWF-20 [T-011] SELLING --PRESS_BUTTON--> SELLING
+[00:52:50]   SWF-20 → 서브태스크 4건
+[00:53:43]   [OK] DoD 통과 (시도 1)
+[00:53:43]   SWF-20: 변경 없음 → 커밋 생략
+[00:53:44] > SWF-21 [T-012] SELLING --PRESS_BUTTON--> SELLING
+[00:54:01]   SWF-21 → 서브태스크 3건
+[00:54:33]   [OK] DoD 통과 (시도 1)
+[00:54:34]   SWF-21: 변경 없음 → 커밋 생략
+[00:54:34] > SWF-22 [T-013] AWAITING_DISPENSE --DISPENSE_DONE--> SELLING
+[00:54:45]   SWF-22 → 서브태스크 3건
+[00:55:18]   ⛔ SWF-22 BLOCKED → 백로그 SWF-93 등록 (명세 충돌 주장)
+[00:55:18] > SWF-23 [T-014] AWAITING_DISPENSE --PRESS_BUTTON--> AWAITING_DISPENSE
+[00:55:25]   SWF-23 → 서브태스크 1건
+[00:55:53]   ⛔ SWF-23 BLOCKED → 백로그 SWF-95 등록 (명세 충돌 주장)
+[00:55:53] > SWF-24 [T-015] AWAITING_DISPENSE --PULL_RETURN_LEVER--> AWAITING_DISPENSE
+[00:55:59]   SWF-24 → 서브태스크 1건
+[00:56:26]   ⛔ SWF-24 BLOCKED → 백로그 SWF-97 등록 (명세 충돌 주장)
+[00:56:26] > SWF-25 [T-016] AWAITING_DISPENSE --IDLE_TIMEOUT--> AWAITING_DISPENSE
+[00:56:33]   SWF-25 → 서브태스크 1건
+[00:57:07]   ⛔ SWF-25 BLOCKED → 백로그 SWF-99 등록 (명세 충돌 주장)
+[00:57:07] > SWF-26 [T-020] AWAITING_DISPENSE --DISPENSE_DONE--> SOLD_OUT
+[00:57:25]   SWF-26 → 서브태스크 3건
+[00:58:03]   ⛔ SWF-26 BLOCKED → 백로그 SWF-103 등록 (명세 충돌 주장)
+[00:58:03] > SWF-27 [T-030] SELLING --PULL_RETURN_LEVER--> SELLING
+[00:58:13]   SWF-27 → 서브태스크 2건
+[00:58:40]   ⛔ SWF-27 BLOCKED → 백로그 SWF-106 등록 (명세 충돌 주장)
+[00:58:40] > SWF-28 [T-031] SELLING --PULL_RETURN_LEVER--> SELLING
+[00:58:48]   SWF-28 → 서브태스크 1건
+[00:59:22]   ⛔ SWF-28 BLOCKED → 백로그 SWF-108 등록 (명세 충돌 주장)
+[00:59:22] > SWF-29 [T-032] SOLD_OUT --PULL_RETURN_LEVER--> SOLD_OUT
+[00:59:30]   SWF-29 → 서브태스크 1건
+[01:00:06]   ⛔ SWF-29 BLOCKED → 백로그 SWF-110 등록 (명세 충돌 주장)
+[01:00:06] > SWF-30 [T-033] ADMIN_MODE --PULL_RETURN_LEVER--> ADMIN_MODE
+[01:00:13]   SWF-30 → 서브태스크 1건
+[01:00:46]   ⛔ SWF-30 BLOCKED → 백로그 SWF-112 등록 (명세 충돌 주장)
+[01:00:46] > SWF-31 [T-040] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[01:00:55]   SWF-31 → 서브태스크 2건
+[01:01:19]   [OK] DoD 통과 (시도 1)
+[01:01:20]   SWF-31: 변경 없음 → 커밋 생략
+[01:01:20] > SWF-32 [T-041] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[01:01:28]   SWF-32 → 서브태스크 1건
+[01:01:55]   [OK] DoD 통과 (시도 1)
+[01:01:56]   SWF-32: 변경 없음 → 커밋 생략
+[01:01:57]   [EPIC] SWF-4 완료
+[01:01:57] > SWF-33 [T-050] AWAITING_DISPENSE --DISPENSE_TIMEOUT--> SELLING
+[01:02:07]   SWF-33 → 서브태스크 2건
+[01:02:36]   [OK] DoD 통과 (시도 1)
+[01:02:37]   SWF-33: 변경 없음 → 커밋 생략
+[01:02:37] > SWF-34 [T-051] SELLING --DISPENSE_DONE--> SELLING
+[01:03:08]   SWF-34 → 서브태스크 1건
+[01:03:34]   ⛔ SWF-34 BLOCKED → 백로그 SWF-119 등록 (명세 충돌 주장)
+[01:03:34] > SWF-35 [T-052] SOLD_OUT --DISPENSE_DONE--> SOLD_OUT
+[01:03:50]   SWF-35 → 서브태스크 2건
+[01:04:24]   [OK] DoD 통과 (시도 1)
+[01:04:24]   SWF-35: 변경 없음 → 커밋 생략
+[01:04:25] > SWF-36 [T-053] ADMIN_MODE --DISPENSE_DONE--> ADMIN_MODE
+[01:04:33]   SWF-36 → 서브태스크 2건
+[01:05:02]   ⛔ SWF-36 BLOCKED → 백로그 SWF-124 등록 (명세 충돌 주장)
+[01:05:02] > SWF-37 [T-060] SELLING --IDLE_TIMEOUT--> SELLING
+[01:05:13]   SWF-37 → 서브태스크 2건
+[01:05:40]   ⛔ SWF-37 BLOCKED → 백로그 SWF-127 등록 (명세 충돌 주장)
+[01:05:40] > SWF-38 [T-061] SELLING --IDLE_TIMEOUT--> SELLING
+[01:05:50]   SWF-38 → 서브태스크 1건
+[01:06:18]   ⛔ SWF-38 BLOCKED → 백로그 SWF-129 등록 (명세 충돌 주장)
+[01:06:18] > SWF-39 [T-070] SELLING --ADMIN_KEY--> ADMIN_MODE
+[01:06:26]   SWF-39 → 서브태스크 1건
+[01:06:59]   [OK] DoD 통과 (시도 1)
+[01:07:00]   SWF-39: 변경 없음 → 커밋 생략
+[01:07:00] > SWF-40 [T-071] SELLING --ADMIN_KEY--> ADMIN_MODE
+[01:07:13]   SWF-40 → 서브태스크 2건
+[01:07:48]   [OK] DoD 통과 (시도 1)
+[01:07:48]   SWF-40: 변경 없음 → 커밋 생략
+[01:07:49] > SWF-41 [T-072] SELLING --ADMIN_KEY--> SELLING
+[01:07:56]   SWF-41 → 서브태스크 1건
+[01:08:21]   [OK] DoD 통과 (시도 1)
+[01:08:22]   SWF-41: 변경 없음 → 커밋 생략
+[01:08:22] > SWF-42 [T-073] SOLD_OUT --ADMIN_KEY--> ADMIN_MODE
+[01:08:48]   SWF-42 → 서브태스크 3건
+[01:09:26]   ⛔ SWF-42 BLOCKED → 백로그 SWF-137 등록 (명세 충돌 주장)
+[01:09:26] > SWF-43 [T-074] SOLD_OUT --ADMIN_KEY--> SOLD_OUT
+[01:09:34]   SWF-43 → 서브태스크 1건
+[01:10:05]   [OK] DoD 통과 (시도 1)
+[01:10:06]   SWF-43: 변경 없음 → 커밋 생략
+[01:10:07] > SWF-44 [T-075] AWAITING_DISPENSE --ADMIN_KEY--> ADMIN_MODE
+[01:10:16]   SWF-44 → 서브태스크 2건
+[01:10:49]   [OK] DoD 통과 (시도 1)
+[01:10:50]   SWF-44: 변경 없음 → 커밋 생략
+[01:10:50] > SWF-45 [T-076] AWAITING_DISPENSE --ADMIN_KEY--> AWAITING_DISPENSE
+[01:11:05]   SWF-45 → 서브태스크 2건
+[01:11:45]   [OK] DoD 통과 (시도 1)
+[01:11:46]   SWF-45: 변경 없음 → 커밋 생략
+[01:11:46] > SWF-46 [T-077] ADMIN_MODE --ADMIN_KEY--> ADMIN_MODE
+[01:11:53]   SWF-46 → 서브태스크 1건
+[01:12:22]   [OK] DoD 통과 (시도 1)
+[01:12:23]   SWF-46: 변경 없음 → 커밋 생략
+[01:12:23] > SWF-47 [T-080] ADMIN_MODE --REFILL_REQUEST--> ADMIN_MODE
+[01:12:35]   SWF-47 → 서브태스크 2건
+[01:13:43]   [OK] DoD 통과 (시도 1)
+[01:13:44]   커밋 af44512: SWF-47 [T-080] ADMIN_MODE --REFILL_REQUEST--> ADMIN_MODE
+[01:13:45] > SWF-48 [T-081] ADMIN_MODE --REFILL_REQUEST--> ADMIN_MODE
+[01:14:03]   SWF-48 → 서브태스크 1건
+[01:14:34]   [OK] DoD 통과 (시도 1)
+[01:14:35]   SWF-48: 변경 없음 → 커밋 생략
+[01:14:35] > SWF-49 [T-082] ADMIN_MODE --REFILL_REQUEST--> ADMIN_MODE
+[01:14:44]   SWF-49 → 서브태스크 2건
+[01:15:27]   ⛔ SWF-49 BLOCKED → 백로그 SWF-149 등록 (명세 충돌 주장)
+[01:15:27] > SWF-50 [T-083] ADMIN_MODE --ADMIN_EXIT--> SELLING
+[01:16:07]   SWF-50 → 서브태스크 1건
+[01:16:34]   [OK] DoD 통과 (시도 1)
+[01:16:34]   SWF-50: 변경 없음 → 커밋 생략
+[01:16:35] > SWF-51 [T-084] ADMIN_MODE --ADMIN_EXIT--> SOLD_OUT
+[01:16:45]   SWF-51 → 서브태스크 2건
+[01:17:19]   ⛔ SWF-51 BLOCKED → 백로그 SWF-153 등록 (명세 충돌 주장)
+[01:17:19] > SWF-52 [T-090] ADMIN_MODE --COLLECT_COINS_REQUEST--> ADMIN_MODE
+[01:17:30]   SWF-52 → 서브태스크 2건
+[01:19:35]   ⛔ SWF-52 BLOCKED → 백로그 SWF-156 등록 (명세 충돌 주장)
+[01:19:35] > SWF-53 [T-091] ADMIN_MODE --COLLECT_COINS_REQUEST--> ADMIN_MODE
+[01:19:47]   SWF-53 → 서브태스크 3건
+[01:21:37]   [FAIL] DoD 미달 (시도 1/3)
+[01:22:04]   ⛔ SWF-53 BLOCKED → 백로그 SWF-160 등록 (명세 충돌 주장)
+[01:22:04] > SWF-54 [T-092] ADMIN_MODE --COLLECT_COINS_REQUEST--> ADMIN_MODE
+[01:22:15]   SWF-54 → 서브태스크 2건
+[01:24:10]   [FAIL] DoD 미달 (시도 1/3)
+[01:25:25]   ⛔ SWF-54 BLOCKED → 백로그 SWF-163 등록 (명세 충돌 주장)
+[01:25:25] > SWF-55 [T-093] ADMIN_MODE --COLLECT_COINS_REQUEST--> ADMIN_MODE
+[01:25:28] [STOP] 워커를 쓸 수 없습니다: decompose:SWF-55: exit 1: 
+   사용량 한도나 네트워크 문제일 가능성이 높습니다. 상태는 저장됐고, 다시 run 하면 이어집니다.
+[01:25:28] 정지 지점: WORK | 통계: {'done': 20, 'spec_conflict': 21}

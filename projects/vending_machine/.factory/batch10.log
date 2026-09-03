@@ -1,0 +1,219 @@
+[14:31:34] -- MODEL --
+[14:31:34]   (이미 확정된 단계 -- 재생성하지 않고 건너뜀)
+[14:31:34] -- TICKETIZE --
+[14:31:37] 티켓: 신규 75 / 재작업 0 / 기존유지 0
+[14:31:37] -- SPEC_TESTS --
+[14:35:39] 테스트 생성 완료: 1개 수집, FSM 전이 57개와 1:1 (현재 red — 정상)
+[14:35:39] -- WORK --
+[14:35:39] > SWF-19 [T-001] UNINITIALIZED --POWER_ON--> CREATE_FAILED
+[14:35:49]   SWF-19 → 서브태스크 3건
+[14:36:50]   [OK] DoD 통과 (시도 1)
+[14:36:50]   커밋 9bcf9bf: SWF-19 [T-001] UNINITIALIZED --POWER_ON--> CREATE_FAILED
+[14:36:51]   [EPIC] SWF-18 완료
+[14:36:51] > SWF-20 [T-002] UNINITIALIZED --POWER_ON--> SOLD_OUT
+[14:37:02]   SWF-20 → 서브태스크 3건
+[14:38:35]   ⛔ SWF-20 BLOCKED → 백로그 SWF-82 등록 (명세 충돌 주장)
+[14:38:35] > SWF-21 [T-003] UNINITIALIZED --POWER_ON--> SELLING
+[14:38:44]   SWF-21 → 서브태스크 3건
+[14:40:21]   [FAIL] DoD 미달 (시도 1/3)
+[14:44:30]   [OK] DoD 통과 (시도 2)
+[14:44:32]   커밋 2b2c9df: SWF-21 [T-003] UNINITIALIZED --POWER_ON--> SELLING
+[14:44:32] > SWF-22 [T-004] UNINITIALIZED --POWER_ON--> SOLD_OUT
+[14:44:43]   SWF-22 → 서브태스크 2건
+[14:45:06]   [OK] DoD 통과 (시도 1)
+[14:45:07]   SWF-22: 변경 없음 → 커밋 생략
+[14:45:07] > SWF-23 [T-005] UNINITIALIZED --POWER_ON--> SELLING
+[14:45:18]   SWF-23 → 서브태스크 2건
+[14:45:46]   [OK] DoD 통과 (시도 1)
+[14:45:47]   SWF-23: 변경 없음 → 커밋 생략
+[14:45:47] > SWF-24 [T-006] UNINITIALIZED --POWER_ON--> SOLD_OUT
+[14:45:57]   SWF-24 → 서브태스크 2건
+[14:46:26]   [OK] DoD 통과 (시도 1)
+[14:46:26]   SWF-24: 변경 없음 → 커밋 생략
+[14:46:27] > SWF-25 [T-007] SELLING --POWER_LOST--> UNINITIALIZED
+[14:46:33]   SWF-25 → 서브태스크 1건
+[14:47:00]   [OK] DoD 통과 (시도 1)
+[14:47:01]   SWF-25: 변경 없음 → 커밋 생략
+[14:47:01] > SWF-26 [T-008] DISPENSING --POWER_LOST--> UNINITIALIZED
+[14:47:09]   SWF-26 → 서브태스크 1건
+[14:47:30]   [OK] DoD 통과 (시도 1)
+[14:47:31]   SWF-26: 변경 없음 → 커밋 생략
+[14:47:31] > SWF-27 [T-009] SOLD_OUT --POWER_LOST--> UNINITIALIZED
+[14:47:39]   SWF-27 → 서브태스크 1건
+[14:48:05]   [OK] DoD 통과 (시도 1)
+[14:48:06]   SWF-27: 변경 없음 → 커밋 생략
+[14:48:06] > SWF-28 [T-010] ADMIN --POWER_LOST--> UNINITIALIZED
+[14:48:14]   SWF-28 → 서브태스크 1건
+[14:48:39]   [OK] DoD 통과 (시도 1)
+[14:48:40]   SWF-28: 변경 없음 → 커밋 생략
+[14:48:40]   [EPIC] SWF-17 완료
+[14:48:40] > SWF-29 [T-011] SELLING --INSERT_COIN--> SELLING
+[14:48:49]   SWF-29 → 서브태스크 2건
+[14:49:19]   [OK] DoD 통과 (시도 1)
+[14:49:19]   SWF-29: 변경 없음 → 커밋 생략
+[14:49:20] > SWF-30 [T-012] SELLING --INSERT_COIN--> SELLING
+[14:49:27]   SWF-30 → 서브태스크 1건
+[14:49:58]   [OK] DoD 통과 (시도 1)
+[14:49:58]   SWF-30: 변경 없음 → 커밋 생략
+[14:49:59]   [EPIC] SWF-1 완료
+[14:49:59] > SWF-31 [T-013] SELLING --PRESS_BUTTON--> DISPENSING
+[14:50:12]   SWF-31 → 서브태스크 3건
+[14:50:44]   [OK] DoD 통과 (시도 1)
+[14:50:44]   SWF-31: 변경 없음 → 커밋 생략
+[14:50:45] > SWF-32 [T-014] SELLING --PRESS_BUTTON--> SELLING
+[14:50:55]   SWF-32 → 서브태스크 2건
+[14:51:26]   [OK] DoD 통과 (시도 1)
+[14:51:27]   SWF-32: 변경 없음 → 커밋 생략
+[14:51:27] > SWF-33 [T-015] SELLING --PRESS_BUTTON--> SELLING
+[14:51:34]   SWF-33 → 서브태스크 1건
+[14:52:03]   [OK] DoD 통과 (시도 1)
+[14:52:04]   SWF-33: 변경 없음 → 커밋 생략
+[14:52:04] > SWF-34 [T-016] SELLING --PULL_LEVER--> SELLING
+[14:52:16]   SWF-34 → 서브태스크 2건
+[14:52:45]   [OK] DoD 통과 (시도 1)
+[14:52:46]   SWF-34: 변경 없음 → 커밋 생략
+[14:52:47] > SWF-35 [T-017] SELLING --PULL_LEVER--> SELLING
+[14:52:54]   SWF-35 → 서브태스크 1건
+[14:53:15]   [OK] DoD 통과 (시도 1)
+[14:53:16]   SWF-35: 변경 없음 → 커밋 생략
+[14:53:16] > SWF-36 [T-018] SELLING --IDLE_TIMEOUT--> SELLING
+[14:53:28]   SWF-36 → 서브태스크 2건
+[14:53:55]   [OK] DoD 통과 (시도 1)
+[14:53:56]   SWF-36: 변경 없음 → 커밋 생략
+[14:53:56] > SWF-37 [T-019] SELLING --INSERT_KEY--> ADMIN
+[14:54:05]   SWF-37 → 서브태스크 2건
+[14:54:33]   [OK] DoD 통과 (시도 1)
+[14:54:34]   SWF-37: 변경 없음 → 커밋 생략
+[14:54:35] > SWF-38 [T-020] SELLING --INSERT_KEY--> ADMIN
+[14:54:45]   SWF-38 → 서브태스크 2건
+[14:55:12]   [OK] DoD 통과 (시도 1)
+[14:55:13]   SWF-38: 변경 없음 → 커밋 생략
+[14:55:13] > SWF-39 [T-021] SELLING --INSERT_KEY--> SELLING
+[14:55:21]   SWF-39 → 서브태스크 1건
+[14:55:46]   [OK] DoD 통과 (시도 1)
+[14:55:47]   SWF-39: 변경 없음 → 커밋 생략
+[14:55:47] > SWF-40 [T-022] SELLING --DISPENSE_DONE--> SELLING
+[14:55:55]   SWF-40 → 서브태스크 1건
+[14:56:23]   [OK] DoD 통과 (시도 1)
+[14:56:24]   SWF-40: 변경 없음 → 커밋 생략
+[14:56:24] > SWF-41 [T-023] DISPENSING --DISPENSE_DONE--> SELLING
+[14:56:40]   SWF-41 → 서브태스크 3건
+[14:57:11]   [OK] DoD 통과 (시도 1)
+[14:57:12]   SWF-41: 변경 없음 → 커밋 생략
+[14:57:13] > SWF-42 [T-024] DISPENSING --DISPENSE_DONE--> SOLD_OUT
+[14:57:22]   SWF-42 → 서브태스크 2건
+[14:57:53]   [OK] DoD 통과 (시도 1)
+[14:57:54]   SWF-42: 변경 없음 → 커밋 생략
+[14:57:54] > SWF-43 [T-025] DISPENSING --DISPENSE_DONE--> ADMIN
+[14:58:04]   SWF-43 → 서브태스크 2건
+[14:58:36]   [OK] DoD 통과 (시도 1)
+[14:58:37]   SWF-43: 변경 없음 → 커밋 생략
+[14:58:37] > SWF-44 [T-026] DISPENSING --DISPENSE_DONE--> DISPENSING
+[14:58:45]   SWF-44 → 서브태스크 1건
+[14:59:19]   [OK] DoD 통과 (시도 1)
+[14:59:20]   SWF-44: 변경 없음 → 커밋 생략
+[14:59:20] > SWF-45 [T-027] DISPENSING --DISPENSE_TIMEOUT--> SELLING
+[14:59:31]   SWF-45 → 서브태스크 2건
+[14:59:53]   [OK] DoD 통과 (시도 1)
+[14:59:54]   SWF-45: 변경 없음 → 커밋 생략
+[14:59:54]   [EPIC] SWF-4 완료
+[14:59:54] > SWF-46 [T-028] DISPENSING --DISPENSE_TIMEOUT--> ADMIN
+[15:00:05]   SWF-46 → 서브태스크 2건
+[15:00:36]   [OK] DoD 통과 (시도 1)
+[15:00:37]   SWF-46: 변경 없음 → 커밋 생략
+[15:00:37] > SWF-47 [T-029] DISPENSING --INSERT_COIN--> DISPENSING
+[15:00:44]   SWF-47 → 서브태스크 1건
+[15:01:12]   [OK] DoD 통과 (시도 1)
+[15:01:13]   SWF-47: 변경 없음 → 커밋 생략
+[15:01:13] > SWF-48 [T-030] DISPENSING --INSERT_COIN--> DISPENSING
+[15:01:20]   SWF-48 → 서브태스크 1건
+[15:01:48]   [OK] DoD 통과 (시도 1)
+[15:01:49]   SWF-48: 변경 없음 → 커밋 생략
+[15:01:50]   [EPIC] SWF-5 완료
+[15:01:50] > SWF-49 [T-031] DISPENSING --INSERT_KEY--> DISPENSING
+[15:01:58]   SWF-49 → 서브태스크 2건
+[15:02:29]   [OK] DoD 통과 (시도 1)
+[15:02:30]   SWF-49: 변경 없음 → 커밋 생략
+[15:02:31]   [EPIC] SWF-10 완료
+[15:02:31] > SWF-50 [T-032] DISPENSING --INSERT_KEY--> DISPENSING
+[15:02:39]   SWF-50 → 서브태스크 1건
+[15:03:08]   [OK] DoD 통과 (시도 1)
+[15:03:09]   SWF-50: 변경 없음 → 커밋 생략
+[15:03:09] > SWF-51 [T-033] DISPENSING --PULL_LEVER--> DISPENSING
+[15:03:16]   SWF-51 → 서브태스크 1건
+[15:03:45]   [OK] DoD 통과 (시도 1)
+[15:03:46]   SWF-51: 변경 없음 → 커밋 생략
+[15:03:46] > SWF-52 [T-034] DISPENSING --PRESS_BUTTON--> DISPENSING
+[15:03:53]   SWF-52 → 서브태스크 1건
+[15:04:24]   [OK] DoD 통과 (시도 1)
+[15:04:25]   SWF-52: 변경 없음 → 커밋 생략
+[15:04:26]   [EPIC] SWF-3 완료
+[15:04:26] > SWF-53 [T-035] SOLD_OUT --INSERT_COIN--> SOLD_OUT
+[15:04:34]   SWF-53 → 서브태스크 2건
+[15:05:04]   [OK] DoD 통과 (시도 1)
+[15:05:05]   SWF-53: 변경 없음 → 커밋 생략
+[15:05:06]   [EPIC] SWF-8 완료
+[15:05:06] > SWF-54 [T-036] SOLD_OUT --INSERT_KEY--> ADMIN
+[15:05:15]   SWF-54 → 서브태스크 1건
+[15:05:36]   [OK] DoD 통과 (시도 1)
+[15:05:37]   SWF-54: 변경 없음 → 커밋 생략
+[15:05:37] > SWF-55 [T-037] SOLD_OUT --INSERT_KEY--> ADMIN
+[15:05:47]   decompose:SWF-55: YAML 파싱 실패 -> 재질의 (원문은 .factory/raw/ 에 보존)
+[15:05:58]   SWF-55 → 서브태스크 2건
+[15:06:28]   [OK] DoD 통과 (시도 1)
+[15:06:29]   SWF-55: 변경 없음 → 커밋 생략
+[15:06:30] > SWF-56 [T-038] SOLD_OUT --INSERT_KEY--> SOLD_OUT
+[15:06:38]   SWF-56 → 서브태스크 1건
+[15:07:02]   [OK] DoD 통과 (시도 1)
+[15:07:03]   SWF-56: 변경 없음 → 커밋 생략
+[15:07:03] > SWF-57 [T-039] SOLD_OUT --DISPENSE_DONE--> SOLD_OUT
+[15:07:10]   SWF-57 → 서브태스크 1건
+[15:07:42]   [OK] DoD 통과 (시도 1)
+[15:07:43]   [FAIL] 회귀 발생: ['FAILED']
+[15:07:43]   ⛔ SWF-57 BLOCKED → 백로그 SWF-142 등록 (회귀 유발)
+[15:07:43] > SWF-58 [T-040] SOLD_OUT --PRESS_BUTTON--> SOLD_OUT
+[15:07:50]   SWF-58 → 서브태스크 1건
+[15:08:18]   [OK] DoD 통과 (시도 1)
+[15:08:19]   SWF-58: 변경 없음 → 커밋 생략
+[15:08:19]   [EPIC] SWF-2 완료
+[15:08:19] > SWF-59 [T-041] SOLD_OUT --PULL_LEVER--> SOLD_OUT
+[15:08:25]   SWF-59 → 서브태스크 1건
+[15:08:50]   [OK] DoD 통과 (시도 1)
+[15:08:51]   SWF-59: 변경 없음 → 커밋 생략
+[15:08:52]   [EPIC] SWF-7 완료
+[15:08:52] > SWF-60 [T-042] ADMIN --INSERT_COIN--> ADMIN
+[15:09:00]   SWF-60 → 서브태스크 1건
+[15:09:24]   [OK] DoD 통과 (시도 1)
+[15:09:25]   SWF-60: 변경 없음 → 커밋 생략
+[15:09:25] > SWF-61 [T-043] ADMIN --RESTOCK_DRINKS--> ADMIN
+[15:09:35]   SWF-61 → 서브태스크 2건
+[15:10:19]   [OK] DoD 통과 (시도 1)
+[15:10:20]   커밋 0f8e531: SWF-61 [T-043] ADMIN --RESTOCK_DRINKS--> ADMIN
+[15:10:21] > SWF-62 [T-044] ADMIN --RESTOCK_DRINKS--> ADMIN
+[15:10:29]   SWF-62 → 서브태스크 1건
+[15:10:59]   [OK] DoD 통과 (시도 1)
+[15:11:00]   SWF-62: 변경 없음 → 커밋 생략
+[15:11:00]   [EPIC] SWF-11 완료
+[15:11:00] > SWF-63 [T-045] ADMIN --REFILL_COINS--> ADMIN
+[15:11:09]   SWF-63 → 서브태스크 2건
+[15:11:37]   [OK] DoD 통과 (시도 1)
+[15:11:38]   SWF-63: 변경 없음 → 커밋 생략
+[15:11:38] > SWF-64 [T-046] ADMIN --REFILL_COINS--> ADMIN
+[15:11:49]   SWF-64 → 서브태스크 2건
+[15:12:23]   [OK] DoD 통과 (시도 1)
+[15:12:25]   SWF-64: 변경 없음 → 커밋 생략
+[15:12:25]   [EPIC] SWF-12 완료
+[15:12:25] > SWF-65 [T-047] ADMIN --VIEW_DELAYED_LOG--> ADMIN
+[15:12:34]   SWF-65 → 서브태스크 2건
+[15:13:04]   [OK] DoD 통과 (시도 1)
+[15:13:05]   [FAIL] 회귀 발생: ['FAILED']
+[15:13:05]   ⛔ SWF-65 BLOCKED → 백로그 SWF-155 등록 (회귀 유발)
+[15:13:05] > SWF-66 [T-048] ADMIN --ADJUST_STOCK--> ADMIN
+[15:13:14]   SWF-66 → 서브태스크 2건
+[15:13:43]   [OK] DoD 통과 (시도 1)
+[15:13:45]   SWF-66: 변경 없음 → 커밋 생략
+[15:13:45] > SWF-67 [T-049] ADMIN --ADJUST_STOCK--> ADMIN
+[15:13:54]   SWF-67 → 서브태스크 2건
+[15:14:15] [STOP] 워커를 쓸 수 없습니다: exit 1: 
+   사용량 한도나 네트워크 문제일 가능성이 높습니다. 상태는 저장됐고, 다시 run 하면 이어집니다.
+[15:14:15] 정지 지점: WORK | 통계: {'done': 45, 'spec_conflict': 1, 'regression': 2}

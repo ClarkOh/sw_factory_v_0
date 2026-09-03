@@ -1,0 +1,988 @@
+[SWF-1] created: [epic] [UC-01] 코인을 투입하여 금액을 누적한다
+[SWF-2] created: [epic] [UC-02] 음료를 선택하여 구매한다
+[SWF-3] created: [epic] [UC-03] 배출 진행 중에 다음 구매를 위한 코인을 투입한다
+[SWF-4] created: [epic] [UC-04] 반환 레버로 투입 금액을 돌려받는다
+[SWF-5] created: [epic] [UC-05] 무조작 30초 경과로 투입 금액을 자동 반환한다
+[SWF-6] created: [epic] [UC-06] 배출 실패를 처리하고 고장 상태로 전환한다
+[SWF-7] created: [epic] [UC-07] 무효한 배출 완료 신호를 지연 배출로 기록한다
+[SWF-8] created: [epic] [UC-08] 고장 상태에서 고객 조작을 차단하고 안내한다
+[SWF-9] created: [epic] [UC-09] 관리자가 전용 키로 관리 모드에 진입한다
+[SWF-10] created: [epic] [UC-10] 배출 완료 대기 중 관리 모드 진입을 예약한다
+[SWF-11] created: [epic] [UC-11] 관리자가 재고와 동전을 보충한다
+[SWF-12] created: [epic] [UC-12] 관리자가 재고를 실제 개수에 맞춰 조정한다
+[SWF-13] created: [epic] [UC-13] 관리자가 동전과 미반환 보관액을 회수한다
+[SWF-14] created: [epic] [UC-14] 관리자가 배출 실패를 확인해 고장 상태를 해제한다
+[SWF-15] created: [epic] [UC-15] 관리 모드를 종료하고 판매 가능 여부에 따라 상태를 정한다
+[SWF-16] created: [epic] [UC-16] 전원 차단 시점의 잔액을 미반환 보관액으로 기록한다
+[SWF-17] created: [epic] [UC-17] 재기동하여 장부를 복원하고 상태를 판정한다
+[SWF-18] created: [story] [T-001] POWERED_OFF --POWER_ON--> SALE_STOPPED
+[SWF-19] created: [story] [T-002] POWERED_OFF --POWER_ON--> FAULT
+[SWF-20] created: [story] [T-003] POWERED_OFF --POWER_ON--> SALE_IDLE
+[SWF-21] created: [story] [T-004] POWERED_OFF --POWER_ON--> SALE_STOPPED
+[SWF-22] created: [story] [T-005] SALE_IDLE --POWER_OFF--> POWERED_OFF
+[SWF-23] created: [story] [T-006] SALE_HAS_CREDIT --POWER_OFF--> POWERED_OFF
+[SWF-24] created: [story] [T-007] AWAITING_DISPENSE --POWER_OFF--> POWERED_OFF
+[SWF-25] created: [story] [T-008] AWAITING_DISPENSE_ADMIN_PENDING --POWER_OFF--> POWERED_OFF
+[SWF-26] created: [story] [T-009] SALE_STOPPED --POWER_OFF--> POWERED_OFF
+[SWF-27] created: [story] [T-010] FAULT --POWER_OFF--> POWERED_OFF
+[SWF-28] created: [story] [T-011] ADMIN_MODE --POWER_OFF--> POWERED_OFF
+[SWF-29] created: [story] [T-012] SALE_IDLE --INSERT_COIN--> SALE_HAS_CREDIT
+[SWF-30] created: [story] [T-013] SALE_IDLE --INSERT_COIN--> SALE_IDLE
+[SWF-31] created: [story] [T-014] SALE_IDLE --INSERT_COIN--> SALE_IDLE
+[SWF-32] created: [story] [T-015] SALE_HAS_CREDIT --INSERT_COIN--> SALE_HAS_CREDIT
+[SWF-33] created: [story] [T-016] SALE_HAS_CREDIT --INSERT_COIN--> SALE_HAS_CREDIT
+[SWF-34] created: [story] [T-017] SALE_HAS_CREDIT --INSERT_COIN--> SALE_HAS_CREDIT
+[SWF-35] created: [story] [T-018] SALE_STOPPED --INSERT_COIN--> SALE_STOPPED
+[SWF-36] created: [story] [T-019] FAULT --INSERT_COIN--> FAULT
+[SWF-37] created: [story] [T-020] ADMIN_MODE --INSERT_COIN--> ADMIN_MODE
+[SWF-38] created: [story] [T-021] SALE_HAS_CREDIT --PRESS_SELECT_BUTTON--> AWAITING_DISPENSE
+[SWF-39] created: [story] [T-022] SALE_HAS_CREDIT --PRESS_SELECT_BUTTON--> SALE_IDLE
+[SWF-40] created: [story] [T-023] SALE_HAS_CREDIT --PRESS_SELECT_BUTTON--> SALE_HAS_CREDIT
+[SWF-41] created: [story] [T-024] SALE_IDLE --PRESS_SELECT_BUTTON--> SALE_IDLE
+[SWF-42] created: [story] [T-025] SALE_STOPPED --PRESS_SELECT_BUTTON--> SALE_STOPPED
+[SWF-43] created: [story] [T-026] FAULT --PRESS_SELECT_BUTTON--> FAULT
+[SWF-44] created: [story] [T-027] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[SWF-45] created: [story] [T-028] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_IDLE
+[SWF-46] created: [story] [T-029] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[SWF-47] created: [story] [T-077] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_IDLE
+[SWF-48] created: [story] [T-030] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_STOPPED
+[SWF-49] created: [story] [T-031] AWAITING_DISPENSE --DISPENSE_COMPLETE--> AWAITING_DISPENSE
+[SWF-50] created: [story] [T-032] SALE_IDLE --DISPENSE_COMPLETE--> SALE_IDLE
+[SWF-51] created: [story] [T-033] SALE_HAS_CREDIT --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[SWF-52] created: [story] [T-034] SALE_STOPPED --DISPENSE_COMPLETE--> SALE_STOPPED
+[SWF-53] created: [story] [T-035] FAULT --DISPENSE_COMPLETE--> FAULT
+[SWF-54] created: [story] [T-036] ADMIN_MODE --DISPENSE_COMPLETE--> ADMIN_MODE
+[SWF-55] created: [story] [T-037] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[SWF-56] created: [story] [T-038] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[SWF-57] created: [story] [T-039] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[SWF-58] created: [story] [T-040] AWAITING_DISPENSE --DISPENSE_TIMEOUT--> FAULT
+[SWF-59] created: [story] [T-041] AWAITING_DISPENSE_ADMIN_PENDING --DISPENSE_TIMEOUT--> FAULT
+[SWF-60] created: [story] [T-042] FAULT --ADMIN_ENTRY_DUE--> ADMIN_MODE
+[SWF-61] created: [story] [T-043] SALE_HAS_CREDIT --PULL_RETURN_LEVER--> SALE_IDLE
+[SWF-62] created: [story] [T-044] SALE_IDLE --PULL_RETURN_LEVER--> SALE_IDLE
+[SWF-63] created: [story] [T-045] SALE_STOPPED --PULL_RETURN_LEVER--> SALE_STOPPED
+[SWF-64] created: [story] [T-046] FAULT --PULL_RETURN_LEVER--> FAULT
+[SWF-65] created: [story] [T-047] ADMIN_MODE --PULL_RETURN_LEVER--> ADMIN_MODE
+[SWF-66] created: [story] [T-048] AWAITING_DISPENSE --PULL_RETURN_LEVER--> AWAITING_DISPENSE
+[SWF-67] created: [story] [T-049] AWAITING_DISPENSE_ADMIN_PENDING --PULL_RETURN_LEVER--> AWAITING_DISPENSE_ADMIN_PENDING
+[SWF-68] created: [story] [T-050] SALE_HAS_CREDIT --IDLE_TIMEOUT--> SALE_IDLE
+[SWF-69] created: [story] [T-051] SALE_IDLE --IDLE_TIMEOUT--> SALE_IDLE
+[SWF-70] created: [story] [T-052] SALE_STOPPED --IDLE_TIMEOUT--> SALE_STOPPED
+[SWF-71] created: [story] [T-053] SALE_HAS_CREDIT --INSERT_ADMIN_KEY--> ADMIN_MODE
+[SWF-72] created: [story] [T-054] SALE_IDLE --INSERT_ADMIN_KEY--> ADMIN_MODE
+[SWF-73] created: [story] [T-055] SALE_STOPPED --INSERT_ADMIN_KEY--> ADMIN_MODE
+[SWF-74] created: [story] [T-056] FAULT --INSERT_ADMIN_KEY--> ADMIN_MODE
+[SWF-75] created: [story] [T-057] AWAITING_DISPENSE --INSERT_ADMIN_KEY--> AWAITING_DISPENSE_ADMIN_PENDING
+[SWF-76] created: [story] [T-058] AWAITING_DISPENSE_ADMIN_PENDING --INSERT_COIN--> AWAITING_DISPENSE_ADMIN_PENDING
+[SWF-77] created: [story] [T-059] AWAITING_DISPENSE_ADMIN_PENDING --INSERT_COIN--> AWAITING_DISPENSE_ADMIN_PENDING
+[SWF-78] created: [story] [T-060] AWAITING_DISPENSE_ADMIN_PENDING --INSERT_COIN--> AWAITING_DISPENSE_ADMIN_PENDING
+[SWF-79] created: [story] [T-061] AWAITING_DISPENSE_ADMIN_PENDING --DISPENSE_COMPLETE--> ADMIN_MODE
+[SWF-80] created: [story] [T-062] AWAITING_DISPENSE_ADMIN_PENDING --DISPENSE_COMPLETE--> AWAITING_DISPENSE_ADMIN_PENDING
+[SWF-81] created: [story] [T-063] ADMIN_MODE --REPLENISH_STOCK--> ADMIN_MODE
+[SWF-82] created: [story] [T-064] ADMIN_MODE --REPLENISH_STOCK--> ADMIN_MODE
+[SWF-83] created: [story] [T-065] ADMIN_MODE --REPLENISH_COIN--> ADMIN_MODE
+[SWF-84] created: [story] [T-066] ADMIN_MODE --REPLENISH_COIN--> ADMIN_MODE
+[SWF-85] created: [story] [T-067] ADMIN_MODE --ADJUST_STOCK--> ADMIN_MODE
+[SWF-86] created: [story] [T-068] ADMIN_MODE --ADJUST_STOCK--> ADMIN_MODE
+[SWF-87] created: [story] [T-069] ADMIN_MODE --VIEW_LEDGER--> ADMIN_MODE
+[SWF-88] created: [story] [T-070] ADMIN_MODE --COLLECT_COIN--> ADMIN_MODE
+[SWF-89] created: [story] [T-071] ADMIN_MODE --COLLECT_COIN--> ADMIN_MODE
+[SWF-90] created: [story] [T-072] ADMIN_MODE --ACK_DISPENSE_FAILURE--> ADMIN_MODE
+[SWF-91] created: [story] [T-073] ADMIN_MODE --ACK_DISPENSE_FAILURE--> ADMIN_MODE
+[SWF-92] created: [story] [T-074] ADMIN_MODE --REMOVE_ADMIN_KEY--> FAULT
+[SWF-93] created: [story] [T-075] ADMIN_MODE --REMOVE_ADMIN_KEY--> SALE_IDLE
+[SWF-94] created: [story] [T-076] ADMIN_MODE --REMOVE_ADMIN_KEY--> SALE_STOPPED
+[SWF-18] status: todo → in_progress
+[SWF-95] created: [subtask] T-001.1 VendingMachine 골격과 장부 상태 필드를 만든다
+[SWF-96] created: [subtask] T-001.2 장부 로드·검증·저장 헬퍼를 구현한다
+[SWF-97] created: [subtask] T-001.3 T-001 전이를 handle('POWER_ON') 에 연결한다
+[SWF-18] commit 78f4d73: SWF-18 [T-001] POWERED_OFF --POWER_ON--> SALE_STOPPED
+[SWF-95] status: todo → done
+[SWF-96] status: todo → done
+[SWF-97] status: todo → done
+[SWF-18] status: in_progress → done
+DoD 통과
+[SWF-19] status: todo → in_progress
+[SWF-98] created: [subtask] T-002.1 관측 속성 sales · refunded · fault_shown 을 VendingMachine 에 추가한다
+[SWF-99] created: [subtask] T-002.2 고장 기동 action 을 이루는 장부 헬퍼를 구현한다
+[SWF-100] created: [subtask] T-002.3 T-002 의 guard 와 action 을 만들고 TRANSITIONS 에 등록한다
+[SWF-101] created: [subtask] T-002.4 INTERFACE.md 에 T-002 로 늘어난 공개 인터페이스를 반영한다
+[SWF-19] commit 116d240: SWF-19 [T-002] POWERED_OFF --POWER_ON--> FAULT
+[SWF-98] status: todo → done
+[SWF-99] status: todo → done
+[SWF-100] status: todo → done
+[SWF-101] status: todo → done
+[SWF-19] status: in_progress → done
+DoD 통과
+[SWF-20] status: todo → in_progress
+[SWF-102] created: [subtask] T-003.1 anyStock 판정 헬퍼를 장부 헬퍼에 추가한다
+[SWF-103] created: [subtask] T-003.2 T-003 guard 함수를 구현한다
+[SWF-104] created: [subtask] T-003.3 T-003 action 함수를 구현하고 전이 표에 등록한다
+[SWF-20] commit ec1c1e6: SWF-20 [T-003] POWERED_OFF --POWER_ON--> SALE_IDLE
+[SWF-102] status: todo → done
+[SWF-103] status: todo → done
+[SWF-104] status: todo → done
+[SWF-20] status: in_progress → done
+DoD 통과
+[SWF-21] status: todo → in_progress
+[SWF-105] created: [subtask] T-004.1 T-004의 guard와 action 함수를 추가한다
+[SWF-106] created: [subtask] T-004.2 전이 표에 T-004를 등록한다
+[SWF-21] commit 0e08ffb: SWF-21 [T-004] POWERED_OFF --POWER_ON--> SALE_STOPPED
+[SWF-105] status: todo → done
+[SWF-106] status: todo → done
+[SWF-21] status: in_progress → done
+DoD 통과
+[SWF-17] status: todo → done
+하위 스토리 전부 완료
+[SWF-22] status: todo → in_progress
+[SWF-107] created: [subtask] T-005.1 persist() 가 저장할 상태 이름을 인자로 받게 확장한다
+[SWF-108] created: [subtask] T-005.2 T-005 의 action 함수를 추가한다
+[SWF-109] created: [subtask] T-005.3 TRANSITIONS 표에 T-005 를 등록하고 모듈 docstring 을 갱신한다
+[SWF-22] commit 5198d0c: SWF-22 [T-005] SALE_IDLE --POWER_OFF--> POWERED_OFF
+[SWF-107] status: todo → done
+[SWF-108] status: todo → done
+[SWF-109] status: todo → done
+[SWF-22] status: in_progress → done
+DoD 통과
+[SWF-23] status: todo → in_progress
+[SWF-110] created: [subtask] T-006.1 SALE_HAS_CREDIT의 POWER_OFF 전이(T-006)를 전이 표에 등록한다
+[SWF-23] commit 63bda7f: SWF-23 [T-006] SALE_HAS_CREDIT --POWER_OFF--> POWERED_OFF
+[SWF-110] status: todo → done
+[SWF-23] status: in_progress → done
+DoD 통과
+[SWF-24] status: todo → in_progress
+[SWF-111] created: [subtask] T-007.1 AWAITING_DISPENSE 전원 차단용 action 함수를 추가하라
+[SWF-112] created: [subtask] T-007.2 TRANSITIONS 표에 T-007 을 등록하라
+[SWF-113] created: [subtask] T-007.3 모듈 docstring 의 등록 전이 목록을 갱신하라
+[SWF-24] commit bc24158: SWF-24 [T-007] AWAITING_DISPENSE --POWER_OFF--> POWERED_OFF
+[SWF-111] status: todo → done
+[SWF-112] status: todo → done
+[SWF-113] status: todo → done
+[SWF-24] status: in_progress → done
+DoD 통과
+[SWF-25] status: todo → in_progress
+[SWF-114] created: [subtask] T-008.1 AWAITING_DISPENSE_ADMIN_PENDING 전원 차단 action 을 추가하라
+[SWF-115] created: [subtask] T-008.2 T-008 을 전이 표에 등록하라
+[SWF-116] created: [subtask] T-008.3 모듈 docstring 의 등록 전이 목록을 갱신하라
+[SWF-25] commit d76358c: SWF-25 [T-008] AWAITING_DISPENSE_ADMIN_PENDING --POWER_OFF--> POWERED_OF
+[SWF-114] status: todo → done
+[SWF-115] status: todo → done
+[SWF-116] status: todo → done
+[SWF-25] status: in_progress → done
+DoD 통과
+[SWF-26] status: todo → in_progress
+[SWF-117] created: [subtask] T-009.1 T-009 action 함수를 추가한다
+[SWF-118] created: [subtask] T-009.2 TRANSITIONS 표에 T-009 를 등록한다
+[SWF-119] created: [subtask] T-009.3 INTERFACE.md 에 T-009 를 문서화한다
+[SWF-26] commit e72d61c: SWF-26 [T-009] SALE_STOPPED --POWER_OFF--> POWERED_OFF
+[SWF-117] status: todo → done
+[SWF-118] status: todo → done
+[SWF-119] status: todo → done
+[SWF-26] status: in_progress → done
+DoD 통과
+[SWF-27] status: todo → in_progress
+[SWF-120] created: [subtask] T-010.1 FAULT --POWER_OFF--> POWERED_OFF 의 action 함수를 구현하라
+[SWF-121] created: [subtask] T-010.2 T-010 을 TRANSITIONS 표에 등록하라
+[SWF-122] created: [subtask] T-010.3 INTERFACE.md 에 T-010 항목을 추가하라
+[SWF-27] commit d26bb87: SWF-27 [T-010] FAULT --POWER_OFF--> POWERED_OFF
+[SWF-120] status: todo → done
+[SWF-121] status: todo → done
+[SWF-122] status: todo → done
+[SWF-27] status: in_progress → done
+DoD 통과
+[SWF-28] status: todo → in_progress
+[SWF-123] created: [subtask] T-011.1 T-011 action 함수 `_action_t011` 을 추가하라
+[SWF-124] created: [subtask] T-011.2 T-011 을 TRANSITIONS 표에 등록하라
+[SWF-125] created: [subtask] T-011.3 INTERFACE.md 에 T-011 을 문서화하라
+[SWF-28] commit 29aed5b: SWF-28 [T-011] ADMIN_MODE --POWER_OFF--> POWERED_OFF
+[SWF-123] status: todo → done
+[SWF-124] status: todo → done
+[SWF-125] status: todo → done
+[SWF-28] status: in_progress → done
+DoD 통과
+[SWF-16] status: todo → done
+하위 스토리 전부 완료
+[SWF-29] status: todo → in_progress
+[SWF-126] created: [subtask] T-012.1 관측 필드와 유휴 타이머 헬퍼를 VendingMachine 에 추가하라
+[SWF-127] created: [subtask] T-012.2 코인 수납 판정과 장부 반영을 순수 헬퍼/메서드로 만들라
+[SWF-128] created: [subtask] T-012.3 T-012 의 guard 와 action 을 정의하고 전이 표에 등록하라
+[SWF-29] commit 6f21ec0: SWF-29 [T-012] SALE_IDLE --INSERT_COIN--> SALE_HAS_CREDIT
+[SWF-126] status: todo → done
+[SWF-127] status: todo → done
+[SWF-128] status: todo → done
+[SWF-29] status: in_progress → done
+DoD 통과
+[SWF-30] status: todo → in_progress
+[SWF-129] created: [subtask] T-013.1 SALE_IDLE 비액면가 코인 guard `_guard_t013` 를 추가하라
+[SWF-130] created: [subtask] T-013.2 코인 즉시 반환 action `_action_t013` 를 추가하라
+[SWF-131] created: [subtask] T-013.3 TRANSITIONS 표에 T-013 자기 전이를 등록하라
+[SWF-132] created: [subtask] T-013.4 모듈 docstring 의 구현 완료 전이 목록을 갱신하라
+[SWF-30] commit deff275: SWF-30 [T-013] SALE_IDLE --INSERT_COIN--> SALE_IDLE
+[SWF-129] status: todo → done
+[SWF-130] status: todo → done
+[SWF-131] status: todo → done
+[SWF-132] status: todo → done
+[SWF-30] status: in_progress → done
+DoD 통과
+[SWF-31] status: todo → in_progress
+[SWF-133] created: [subtask] T-014.1 T-014 guard 함수 `_guard_t014` 를 추가하라
+[SWF-134] created: [subtask] T-014.2 T-014 action 함수 `_action_t014` 를 추가하라
+[SWF-135] created: [subtask] T-014.3 T-014 를 TRANSITIONS 표에 등록하라
+[SWF-136] created: [subtask] T-014.4 INTERFACE.md 에 T-014 를 문서화하라
+[SWF-31] commit c16dd26: SWF-31 [T-014] SALE_IDLE --INSERT_COIN--> SALE_IDLE
+[SWF-133] status: todo → done
+[SWF-134] status: todo → done
+[SWF-135] status: todo → done
+[SWF-136] status: todo → done
+[SWF-31] status: in_progress → done
+DoD 통과
+[SWF-32] status: todo → in_progress
+[SWF-137] created: [subtask] T-015.1 T-015 의 guard 함수를 정의한다
+[SWF-138] created: [subtask] T-015.2 T-015 의 action 함수를 정의한다
+[SWF-139] created: [subtask] T-015.3 T-015 를 TRANSITIONS 표와 모듈 docstring 에 등록한다
+[SWF-32] commit 77f1d27: SWF-32 [T-015] SALE_HAS_CREDIT --INSERT_COIN--> SALE_HAS_CREDIT
+[SWF-137] status: todo → done
+[SWF-138] status: todo → done
+[SWF-139] status: todo → done
+[SWF-32] status: in_progress → done
+DoD 통과
+[SWF-33] status: todo → in_progress
+[SWF-140] created: [subtask] T-016.1 T-016 의 guard 와 action 함수를 추가하라
+[SWF-141] created: [subtask] T-016.2 T-016 을 TRANSITIONS 표에 등록하라
+[SWF-33] commit 5341311: SWF-33 [T-016] SALE_HAS_CREDIT --INSERT_COIN--> SALE_HAS_CREDIT
+[SWF-140] status: todo → done
+[SWF-141] status: todo → done
+[SWF-33] status: in_progress → done
+DoD 통과
+[SWF-34] status: todo → in_progress
+[SWF-142] created: [subtask] T-017.1 SALE_HAS_CREDIT 자리의 인식 실패 코인을 받는 _guard_t017 을 추가하라
+[SWF-143] created: [subtask] T-017.2 코인을 반환하고 장부를 그대로 두는 _action_t017 을 추가하라
+[SWF-144] created: [subtask] T-017.3 T-017 을 전이 테이블에 등록하고 모듈 docstring 목록을 갱신하라
+[SWF-34] commit 9eb4c00: SWF-34 [T-017] SALE_HAS_CREDIT --INSERT_COIN--> SALE_HAS_CREDIT
+[SWF-142] status: todo → done
+[SWF-143] status: todo → done
+[SWF-144] status: todo → done
+[SWF-34] status: in_progress → done
+DoD 통과
+[SWF-35] status: todo → in_progress
+[SWF-145] created: [subtask] T-018.1 T-018 의 action 함수를 구현하라
+[SWF-146] created: [subtask] T-018.2 T-018 을 전이 표에 등록하라
+[SWF-147] created: [subtask] T-018.3 INTERFACE.md 전이 표를 T-018 까지 갱신하라
+[SWF-35] commit 5ca6ef7: SWF-35 [T-018] SALE_STOPPED --INSERT_COIN--> SALE_STOPPED
+[SWF-145] status: todo → done
+[SWF-146] status: todo → done
+[SWF-147] status: todo → done
+[SWF-35] status: in_progress → done
+DoD 통과
+[SWF-1] status: todo → done
+하위 스토리 전부 완료
+[SWF-36] status: todo → in_progress
+[SWF-148] created: [subtask] T-019.1 FAULT 자기 전이용 코인 반환 action 함수를 추가하라
+[SWF-149] created: [subtask] T-019.2 T-019 전이를 TRANSITIONS 표에 등록하라
+[SWF-36] commit 49da286: SWF-36 [T-019] FAULT --INSERT_COIN--> FAULT
+[SWF-148] status: todo → done
+[SWF-149] status: todo → done
+[SWF-36] status: in_progress → done
+DoD 통과
+[SWF-37] status: todo → in_progress
+[SWF-150] created: [subtask] T-020.1 ADMIN_MODE의 INSERT_COIN action `_action_t020` 을 추가하라
+[SWF-151] created: [subtask] T-020.2 전이 표와 모듈 docstring에 T-020을 등록하라
+[SWF-37] commit e7f135b: SWF-37 [T-020] ADMIN_MODE --INSERT_COIN--> ADMIN_MODE
+[SWF-150] status: todo → done
+[SWF-151] status: todo → done
+[SWF-37] status: in_progress → done
+DoD 통과
+[SWF-38] status: todo → in_progress
+[SWF-152] created: [subtask] T-021.1 보유 동전으로 거스름돈 구성 가능 여부를 판정하는 헬퍼를 추가하라
+[SWF-153] created: [subtask] T-021.2 배출 개시를 기록하는 dispensed 목록과 start_dispense 를 VendingMachine 에 추가하라
+[SWF-154] created: [subtask] T-021.3 일련번호를 발급하는 next_serial 을 VendingMachine 에 추가하라
+[SWF-155] created: [subtask] T-021.4 T-021 의 guard 와 action 을 구현하고 TRANSITIONS 에 등록하라
+[SWF-38] commit ab67318: SWF-38 [T-021] SALE_HAS_CREDIT --PRESS_SELECT_BUTTON--> AWAITING_DISPENS
+[SWF-152] status: todo → done
+[SWF-153] status: todo → done
+[SWF-154] status: todo → done
+[SWF-155] status: todo → done
+[SWF-38] status: in_progress → done
+DoD 통과
+[SWF-39] status: todo → in_progress
+[SWF-156] created: [subtask] T-022.1 장부에 payoutIntent 항목을 추가한다
+[SWF-157] created: [subtask] T-022.2 보유 동전으로 금액을 구성해 내주는 payout 헬퍼를 만든다
+[SWF-158] created: [subtask] T-022.3 T-022 의 guard 를 구현한다
+[SWF-159] created: [subtask] T-022.4 T-022 의 action 을 구현한다
+[SWF-160] created: [subtask] T-022.5 T-022 를 전이 표에 등록한다
+[SWF-39] commit 24c347d: SWF-39 [T-022] SALE_HAS_CREDIT --PRESS_SELECT_BUTTON--> SALE_IDLE
+[SWF-156] status: todo → done
+[SWF-157] status: todo → done
+[SWF-158] status: todo → done
+[SWF-159] status: todo → done
+[SWF-160] status: todo → done
+[SWF-39] status: in_progress → done
+DoD 통과
+[SWF-40] status: todo → in_progress
+[SWF-161] created: [subtask] T-023.1 app/vending_machine.py 에 _guard_t023 을 추가하라
+[SWF-162] created: [subtask] T-023.2 app/vending_machine.py 에 _action_t023 을 추가하라
+[SWF-163] created: [subtask] T-023.3 TRANSITIONS 표에 T-023 을 등록하고 모듈 docstring 을 갱신하라
+[SWF-40] commit 5cbe393: SWF-40 [T-023] SALE_HAS_CREDIT --PRESS_SELECT_BUTTON--> SALE_HAS_CREDIT
+[SWF-161] status: todo → done
+[SWF-162] status: todo → done
+[SWF-163] status: todo → done
+[SWF-40] status: in_progress → done
+DoD 통과
+[SWF-41] status: todo → in_progress
+[SWF-164] created: [subtask] T-024.1 TRANSITIONS 표에 T-024 항목을 등록한다
+[SWF-165] created: [subtask] T-024.2 모듈 docstring 의 등록 전이 목록에 T-024 를 추가한다
+[SWF-41] commit 33c2664: SWF-41 [T-024] SALE_IDLE --PRESS_SELECT_BUTTON--> SALE_IDLE
+[SWF-164] status: todo → done
+[SWF-165] status: todo → done
+[SWF-41] status: in_progress → done
+DoD 통과
+[SWF-42] status: todo → in_progress
+[SWF-166] created: [subtask] T-025.1 T-025 전이를 TRANSITIONS 표에 등록한다
+[SWF-42] commit 29598a8: SWF-42 [T-025] SALE_STOPPED --PRESS_SELECT_BUTTON--> SALE_STOPPED
+[SWF-166] status: todo → done
+[SWF-42] status: in_progress → done
+DoD 통과
+[SWF-43] status: todo → in_progress
+[SWF-167] created: [subtask] T-026.1 TRANSITIONS 표에 T-026 항목을 등록한다
+[SWF-168] created: [subtask] T-026.2 모듈 docstring 의 등록 전이 목록을 갱신한다
+[SWF-43] commit 45c3d31: SWF-43 [T-026] FAULT --PRESS_SELECT_BUTTON--> FAULT
+[SWF-167] status: todo → done
+[SWF-168] status: todo → done
+[SWF-43] status: in_progress → done
+DoD 통과
+[SWF-8] status: todo → done
+하위 스토리 전부 완료
+[SWF-44] status: todo → in_progress
+[SWF-169] created: [subtask] T-027.1 AWAITING_DISPENSE/DISPENSE_COMPLETE 의 guard 함수를 추가하라
+[SWF-170] created: [subtask] T-027.2 배출 완료 정산 action 함수를 추가하라
+[SWF-171] created: [subtask] T-027.3 T-027 을 전이 표와 모듈 도크스트링에 등록하라
+[SWF-44] status: in_progress → todo
+워커 인프라 실패: exit 1: 
+[SWF-44] status: todo → in_progress
+[SWF-44] commit 42d6353: SWF-44 [T-027] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[SWF-169] status: todo → done
+[SWF-170] status: todo → done
+[SWF-171] status: todo → done
+[SWF-44] status: in_progress → done
+DoD 통과
+[SWF-45] status: todo → in_progress
+[SWF-172] created: [subtask] T-028.1 T-028 의 guard 함수 `_guard_t028` 을 추가하라
+[SWF-173] created: [subtask] T-028.2 T-028 의 action 함수 `_action_t028` 을 추가하라
+[SWF-174] created: [subtask] T-028.3 T-028 을 TRANSITIONS 에 등록하고 모듈 헤더 목록을 갱신하라
+[SWF-45] commit 545a12a: SWF-45 [T-028] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_IDLE
+[SWF-172] status: todo → done
+[SWF-173] status: todo → done
+[SWF-174] status: todo → done
+[SWF-45] status: in_progress → done
+DoD 통과
+[SWF-46] status: todo → in_progress
+[SWF-175] created: [subtask] T-029.1 T-029 guard 함수 `_guard_t029` 를 추가한다
+[SWF-176] created: [subtask] T-029.2 T-029 action 함수 `_action_t029` 를 추가한다
+[SWF-177] created: [subtask] T-029.3 TRANSITIONS 표에 T-029 항목을 등록한다
+[SWF-46] commit b2e8f2c: SWF-46 [T-029] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[SWF-175] status: todo → done
+[SWF-176] status: todo → done
+[SWF-177] status: todo → done
+[SWF-46] status: in_progress → done
+DoD 통과
+[SWF-47] status: todo → in_progress
+[SWF-178] created: [subtask] T-077.1 T-077 guard 함수 `_guard_t029`를 app/vending_machine.py에 추가한다
+[SWF-179] created: [subtask] T-077.2 T-077 action 함수 `_action_t077`을 app/vending_machine.py에 추가한다
+[SWF-180] created: [subtask] T-077.3 T-077 항목을 TRANSITIONS 표에 등록한다
+[SWF-181] created: [subtask] T-077.4 모듈 docstring의 등록 전이 목록에 T-077을 더한다
+[SWF-47] commit b955c91: SWF-47 [T-077] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_IDLE
+[SWF-178] status: todo → done
+[SWF-179] status: todo → done
+[SWF-180] status: todo → done
+[SWF-181] status: todo → done
+[SWF-47] status: in_progress → done
+DoD 통과
+[SWF-2] status: todo → done
+하위 스토리 전부 완료
+[SWF-48] status: todo → in_progress
+[SWF-182] created: [subtask] T-030.1 T-030 guard 함수 `_guard_t030` 을 추가한다
+[SWF-183] created: [subtask] T-030.2 T-030 action 함수 `_action_t030` 을 추가한다
+[SWF-184] created: [subtask] T-030.3 T-030 을 전이 표와 모듈 docstring 에 등록한다
+[SWF-48] commit 8050a6c: SWF-48 [T-030] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_STOPPED
+[SWF-182] status: todo → done
+[SWF-183] status: todo → done
+[SWF-184] status: todo → done
+[SWF-48] status: in_progress → done
+DoD 통과
+[SWF-49] status: todo → in_progress
+[SWF-185] created: [subtask] T-031.1 VendingMachine에 지연 배출 기록 헬퍼를 추가하라
+[SWF-186] created: [subtask] T-031.2 T-031 의 guard 와 action 함수를 구현하라
+[SWF-187] created: [subtask] T-031.3 T-031 을 전이 표에 등록하고 헤더 목록을 갱신하라
+[SWF-49] commit a4e5255: SWF-49 [T-031] AWAITING_DISPENSE --DISPENSE_COMPLETE--> AWAITING_DISPENS
+[SWF-185] status: todo → done
+[SWF-186] status: todo → done
+[SWF-187] status: todo → done
+[SWF-49] status: in_progress → done
+DoD 통과
+[SWF-50] status: todo → in_progress
+[SWF-188] created: [subtask] T-032.1 T-032 액션 함수 `_action_t032` 를 추가하라
+[SWF-189] created: [subtask] T-032.2 TRANSITIONS 표에 T-032 항목을 등록하라
+[SWF-50] commit 99d6586: SWF-50 [T-032] SALE_IDLE --DISPENSE_COMPLETE--> SALE_IDLE
+[SWF-188] status: todo → done
+[SWF-189] status: todo → done
+[SWF-50] status: in_progress → done
+DoD 통과
+[SWF-51] status: todo → in_progress
+[SWF-190] created: [subtask] T-033.1 SALE_HAS_CREDIT 지연 배출 기록 action `_action_t033` 를 추가하라
+[SWF-191] created: [subtask] T-033.2 전이 표에 T-033 항목을 등록하라
+[SWF-192] created: [subtask] T-033.3 INTERFACE.md 에 T-033 을 문서화하라
+[SWF-51] commit 958e2b9: SWF-51 [T-033] SALE_HAS_CREDIT --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[SWF-190] status: todo → done
+[SWF-191] status: todo → done
+[SWF-192] status: todo → done
+[SWF-51] status: in_progress → done
+DoD 통과
+[SWF-52] status: todo → in_progress
+[SWF-193] created: [subtask] T-034.1 app/vending_machine.py 에 _action_t034 액션 함수를 추가하라
+[SWF-194] created: [subtask] T-034.2 TRANSITIONS 표에 T-034 항목을 등록하라
+[SWF-195] created: [subtask] T-034.3 INTERFACE.md 전이 표에 T-034 행을 추가하라
+[SWF-52] commit 91cfb5a: SWF-52 [T-034] SALE_STOPPED --DISPENSE_COMPLETE--> SALE_STOPPED
+[SWF-193] status: todo → done
+[SWF-194] status: todo → done
+[SWF-195] status: todo → done
+[SWF-52] status: in_progress → done
+DoD 통과
+[SWF-53] status: todo → in_progress
+[SWF-196] created: [subtask] T-035.1 FAULT 상태의 지연 배출 기록 액션 `_action_t035` 를 추가하라
+[SWF-197] created: [subtask] T-035.2 TRANSITIONS 표에 T-035 항목을 등록하라
+[SWF-53] commit d714c1b: SWF-53 [T-035] FAULT --DISPENSE_COMPLETE--> FAULT
+[SWF-196] status: todo → done
+[SWF-197] status: todo → done
+[SWF-53] status: in_progress → done
+DoD 통과
+[SWF-54] status: todo → in_progress
+[SWF-198] created: [subtask] T-036.1 ADMIN_MODE 지연 배출 기록 액션 _action_t036 을 추가하라
+[SWF-199] created: [subtask] T-036.2 TRANSITIONS 에 T-036 항목을 등록하라
+[SWF-54] commit 12a5e53: SWF-54 [T-036] ADMIN_MODE --DISPENSE_COMPLETE--> ADMIN_MODE
+[SWF-198] status: todo → done
+[SWF-199] status: todo → done
+[SWF-54] status: in_progress → done
+DoD 통과
+[SWF-55] status: todo → in_progress
+[SWF-200] created: [subtask] T-037.1 AWAITING_DISPENSE INSERT_COIN 액면가 guard 함수를 추가하라
+[SWF-201] created: [subtask] T-037.2 배출 대기 중 코인 수납 action 함수를 추가하라
+[SWF-202] created: [subtask] T-037.3 T-037 을 TRANSITIONS 표와 모듈 docstring에 등록하라
+[SWF-55] commit 0237259: SWF-55 [T-037] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[SWF-200] status: todo → done
+[SWF-201] status: todo → done
+[SWF-202] status: todo → done
+[SWF-55] status: in_progress → done
+DoD 통과
+[SWF-56] status: todo → in_progress
+[SWF-203] created: [subtask] T-038.1 T-038 의 guard 와 action 함수를 구현한다
+[SWF-204] created: [subtask] T-038.2 TRANSITIONS 표에 T-038 을 등록한다
+[SWF-205] created: [subtask] T-038.3 모듈 docstring 의 등록 전이 목록에 T-038 을 덧붙인다
+[SWF-206] created: [subtask] T-038.4 INTERFACE.md 전이 표에 T-038 행을 추가한다
+[SWF-56] commit cd66fc1: SWF-56 [T-038] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[SWF-203] status: todo → done
+[SWF-204] status: todo → done
+[SWF-205] status: todo → done
+[SWF-206] status: todo → done
+[SWF-56] status: in_progress → done
+DoD 통과
+[SWF-57] status: todo → in_progress
+[SWF-207] created: [subtask] T-039.1 _guard_t039 를 추가한다
+[SWF-208] created: [subtask] T-039.2 _action_t039 를 추가한다
+[SWF-209] created: [subtask] T-039.3 TRANSITIONS 에 T-039 항목을 등록한다
+[SWF-210] created: [subtask] T-039.4 모듈 docstring 의 구현 전이 목록을 갱신한다
+[SWF-57] commit c455249: SWF-57 [T-039] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[SWF-207] status: todo → done
+[SWF-208] status: todo → done
+[SWF-209] status: todo → done
+[SWF-210] status: todo → done
+[SWF-57] status: in_progress → done
+DoD 통과
+[SWF-3] status: todo → done
+하위 스토리 전부 완료
+[SWF-58] status: todo → in_progress
+[SWF-211] created: [subtask] T-040.1 배출 실패 기록 헬퍼 mark_dispense_failed() 를 VendingMachine 에 추가한다
+[SWF-212] created: [subtask] T-040.2 guard _guard_t040 을 구현한다
+[SWF-213] created: [subtask] T-040.3 action _action_t040 을 구현한다
+[SWF-214] created: [subtask] T-040.4 TRANSITIONS 표에 T-040 을 등록하고 모듈 docstring 목록을 갱신한다
+[SWF-58] commit e97c942: SWF-58 [T-040] AWAITING_DISPENSE --DISPENSE_TIMEOUT--> FAULT
+[SWF-211] status: todo → done
+[SWF-212] status: todo → done
+[SWF-213] status: todo → done
+[SWF-214] status: todo → done
+[SWF-58] status: in_progress → done
+DoD 통과
+[SWF-6] status: todo → done
+하위 스토리 전부 완료
+[SWF-59] status: todo → in_progress
+[SWF-215] created: [subtask] T-041.1 T-041 가드 판정 함수를 추가한다
+[SWF-216] created: [subtask] T-041.2 T-041 action 함수를 추가한다
+[SWF-217] created: [subtask] T-041.3 TRANSITIONS 표에 T-041 을 등록한다
+[SWF-218] created: [subtask] T-041.4 모듈 docstring 의 등록 전이 목록을 갱신한다
+[SWF-59] commit 33e61bc: SWF-59 [T-041] AWAITING_DISPENSE_ADMIN_PENDING --DISPENSE_TIMEOUT--> FAU
+[SWF-215] status: todo → done
+[SWF-216] status: todo → done
+[SWF-217] status: todo → done
+[SWF-218] status: todo → done
+[SWF-59] status: in_progress → done
+DoD 통과
+[SWF-60] status: todo → in_progress
+[SWF-219] created: [subtask] T-042.1 T-042 가드 함수 _guard_t042 를 추가하라
+[SWF-220] created: [subtask] T-042.2 T-042 액션 함수 _action_t042 를 추가하라
+[SWF-221] created: [subtask] T-042.3 T-042 를 TRANSITIONS 표와 모듈 docstring 에 등록하라
+[SWF-60] commit 7418b29: SWF-60 [T-042] FAULT --ADMIN_ENTRY_DUE--> ADMIN_MODE
+[SWF-219] status: todo → done
+[SWF-220] status: todo → done
+[SWF-221] status: todo → done
+[SWF-60] status: in_progress → done
+DoD 통과
+[SWF-61] status: todo → in_progress
+[SWF-222] created: [subtask] T-043.1 T-043 가드 `_guard_t043` 를 추가한다
+[SWF-223] created: [subtask] T-043.2 T-043 액션 `_action_t043` 를 추가한다
+[SWF-224] created: [subtask] T-043.3 TRANSITIONS 표와 모듈 독스트링에 T-043 을 등록한다
+[SWF-61] commit 6831cfe: SWF-61 [T-043] SALE_HAS_CREDIT --PULL_RETURN_LEVER--> SALE_IDLE
+[SWF-222] status: todo → done
+[SWF-223] status: todo → done
+[SWF-224] status: todo → done
+[SWF-61] status: in_progress → done
+DoD 통과
+[SWF-62] status: todo → in_progress
+[SWF-225] created: [subtask] T-044.1 TRANSITIONS 표에 T-044 항목을 T-043 뒤에 등록한다
+[SWF-226] created: [subtask] T-044.2 모듈 docstring 의 등록 전이 목록에 T-044 를 추가한다
+[SWF-62] commit bc98ff5: SWF-62 [T-044] SALE_IDLE --PULL_RETURN_LEVER--> SALE_IDLE
+[SWF-225] status: todo → done
+[SWF-226] status: todo → done
+[SWF-62] status: in_progress → done
+DoD 통과
+[SWF-63] status: todo → in_progress
+[SWF-227] created: [subtask] T-045.1 TRANSITIONS 표에 T-045 자기 전이 항목을 추가한다
+[SWF-228] created: [subtask] T-045.2 모듈 상단 docstring 의 구현 완료 전이 목록에 T-045 를 덧붙인다
+[SWF-63] commit ec75b31: SWF-63 [T-045] SALE_STOPPED --PULL_RETURN_LEVER--> SALE_STOPPED
+[SWF-227] status: todo → done
+[SWF-228] status: todo → done
+[SWF-63] status: in_progress → done
+DoD 통과
+[SWF-64] status: todo → in_progress
+[SWF-229] created: [subtask] T-046.1 T-046 전이를 TRANSITIONS 표에 등록하고 모듈 docstring 목록을 갱신하라
+[SWF-64] commit 4ea1862: SWF-64 [T-046] FAULT --PULL_RETURN_LEVER--> FAULT
+[SWF-229] status: todo → done
+[SWF-64] status: in_progress → done
+DoD 통과
+[SWF-65] status: todo → in_progress
+[SWF-230] created: [subtask] T-047.1 TRANSITIONS 표에 T-047 행을 등록하라
+[SWF-231] created: [subtask] T-047.2 모듈 docstring의 등록 전이 목록에 T-047을 덧붙여라
+[SWF-65] commit 2ce70b3: SWF-65 [T-047] ADMIN_MODE --PULL_RETURN_LEVER--> ADMIN_MODE
+[SWF-230] status: todo → done
+[SWF-231] status: todo → done
+[SWF-65] status: in_progress → done
+DoD 통과
+[SWF-66] status: todo → in_progress
+[SWF-232] created: [subtask] T-048.1 TRANSITIONS 표에 T-048 행을 등록한다
+[SWF-233] created: [subtask] T-048.2 모듈 docstring 의 등록 전이 목록에 T-048 을 추가한다
+[SWF-66] commit 864bb5e: SWF-66 [T-048] AWAITING_DISPENSE --PULL_RETURN_LEVER--> AWAITING_DISPENS
+[SWF-232] status: todo → done
+[SWF-233] status: todo → done
+[SWF-66] status: in_progress → done
+DoD 통과
+[SWF-67] status: todo → in_progress
+[SWF-234] created: [subtask] T-049.1 TRANSITIONS 표에 T-049 항목을 추가한다
+[SWF-235] created: [subtask] T-049.2 모듈 상단 전이 목록 주석에 T-049를 반영한다
+[SWF-67] commit 62a0cb3: SWF-67 [T-049] AWAITING_DISPENSE_ADMIN_PENDING --PULL_RETURN_LEVER--> AW
+[SWF-234] status: todo → done
+[SWF-235] status: todo → done
+[SWF-67] status: in_progress → done
+DoD 통과
+[SWF-4] status: todo → done
+하위 스토리 전부 완료
+[SWF-68] status: todo → in_progress
+[SWF-236] created: [subtask] T-050.1 T-050 guard 함수 `_guard_t050` 을 추가하라
+[SWF-237] created: [subtask] T-050.2 T-050 action 함수 `_action_t050` 을 추가하라
+[SWF-238] created: [subtask] T-050.3 TRANSITIONS 표에 T-050 항목을 등록하고 모듈 docstring 목록을 갱신하라
+[SWF-68] commit 5957430: SWF-68 [T-050] SALE_HAS_CREDIT --IDLE_TIMEOUT--> SALE_IDLE
+[SWF-236] status: todo → done
+[SWF-237] status: todo → done
+[SWF-238] status: todo → done
+[SWF-68] status: in_progress → done
+DoD 통과
+[SWF-69] status: todo → in_progress
+[SWF-239] created: [subtask] T-051.1 TRANSITIONS 표에 T-051 항목을 등록한다
+[SWF-240] created: [subtask] T-051.2 모듈 docstring 의 등록 전이 목록에 T-051 을 덧붙인다
+[SWF-69] commit 4bae08e: SWF-69 [T-051] SALE_IDLE --IDLE_TIMEOUT--> SALE_IDLE
+[SWF-239] status: todo → done
+[SWF-240] status: todo → done
+[SWF-69] status: in_progress → done
+DoD 통과
+[SWF-70] status: todo → in_progress
+[SWF-241] created: [subtask] T-052.1 TRANSITIONS 표에 T-052 자기 전이 항목을 추가한다
+[SWF-70] commit 4fda78e: SWF-70 [T-052] SALE_STOPPED --IDLE_TIMEOUT--> SALE_STOPPED
+[SWF-241] status: todo → done
+[SWF-70] status: in_progress → done
+DoD 통과
+[SWF-5] status: todo → done
+하위 스토리 전부 완료
+[SWF-71] status: todo → in_progress
+[SWF-242] created: [subtask] T-053.1 T-053 guard 함수 `_guard_t053` 를 추가한다
+[SWF-243] created: [subtask] T-053.2 T-053 action 함수 `_action_t053` 을 추가한다
+[SWF-244] created: [subtask] T-053.3 T-053 을 TRANSITIONS 표에 등록하고 모듈 docstring 을 갱신한다
+[SWF-71] commit 84e480d: SWF-71 [T-053] SALE_HAS_CREDIT --INSERT_ADMIN_KEY--> ADMIN_MODE
+[SWF-242] status: todo → done
+[SWF-243] status: todo → done
+[SWF-244] status: todo → done
+[SWF-71] status: in_progress → done
+DoD 통과
+[SWF-72] status: todo → in_progress
+[SWF-245] created: [subtask] T-054.1 TRANSITIONS 표에 T-054 행을 추가한다
+[SWF-246] created: [subtask] T-054.2 모듈 docstring 의 등록 전이 목록에 T-054 를 더한다
+[SWF-72] commit d00929d: SWF-72 [T-054] SALE_IDLE --INSERT_ADMIN_KEY--> ADMIN_MODE
+[SWF-245] status: todo → done
+[SWF-246] status: todo → done
+[SWF-72] status: in_progress → done
+DoD 통과
+[SWF-73] status: todo → in_progress
+[SWF-247] created: [subtask] T-055.1 전이표에 T-055 행을 추가한다
+[SWF-248] created: [subtask] T-055.2 모듈 docstring 의 등록 전이 목록을 갱신한다
+[SWF-73] commit 1fd5ccc: SWF-73 [T-055] SALE_STOPPED --INSERT_ADMIN_KEY--> ADMIN_MODE
+[SWF-247] status: todo → done
+[SWF-248] status: todo → done
+[SWF-73] status: in_progress → done
+DoD 통과
+[SWF-74] status: todo → in_progress
+[SWF-249] created: [subtask] T-056.1 TRANSITIONS 표에 T-056 행을 추가한다
+[SWF-250] created: [subtask] T-056.2 모듈 docstring 의 등록 전이 목록에 T-056 을 추가한다
+[SWF-74] commit 4449398: SWF-74 [T-056] FAULT --INSERT_ADMIN_KEY--> ADMIN_MODE
+[SWF-249] status: todo → done
+[SWF-250] status: todo → done
+[SWF-74] status: in_progress → done
+DoD 통과
+[SWF-9] status: todo → done
+하위 스토리 전부 완료
+[SWF-75] status: todo → in_progress
+[SWF-251] created: [subtask] T-057.1 T-057 action 함수 _action_t057 을 추가하라
+[SWF-252] created: [subtask] T-057.2 TRANSITIONS 표에 T-057 행을 등록하고 모듈 독스트링 목록을 갱신하라
+[SWF-75] commit 4194594: SWF-75 [T-057] AWAITING_DISPENSE --INSERT_ADMIN_KEY--> AWAITING_DISPENSE
+[SWF-251] status: todo → done
+[SWF-252] status: todo → done
+[SWF-75] status: in_progress → done
+DoD 통과
+[SWF-76] status: todo → in_progress
+[SWF-253] created: [subtask] T-058.1 app/vending_machine.py에 _guard_t058 추가
+[SWF-254] created: [subtask] T-058.2 app/vending_machine.py에 _action_t058 추가
+[SWF-255] created: [subtask] T-058.3 TRANSITIONS 표에 T-058 항목 등록
+[SWF-76] commit c557587: SWF-76 [T-058] AWAITING_DISPENSE_ADMIN_PENDING --INSERT_COIN--> AWAITING
+[SWF-253] status: todo → done
+[SWF-254] status: todo → done
+[SWF-255] status: todo → done
+[SWF-76] status: in_progress → done
+DoD 통과
+[SWF-77] status: todo → in_progress
+[SWF-256] created: [subtask] T-059.1 T-059 가드 함수 `_guard_t059` 를 추가하라
+[SWF-257] created: [subtask] T-059.2 T-059 액션 함수 `_action_t059` 를 추가하라
+[SWF-258] created: [subtask] T-059.3 T-059 를 TRANSITIONS 표와 모듈 docstring 에 등록하라
+[SWF-77] commit e33e036: SWF-77 [T-059] AWAITING_DISPENSE_ADMIN_PENDING --INSERT_COIN--> AWAITING
+[SWF-256] status: todo → done
+[SWF-257] status: todo → done
+[SWF-258] status: todo → done
+[SWF-77] status: in_progress → done
+DoD 통과
+[SWF-78] status: todo → in_progress
+[SWF-259] created: [subtask] T-060.1 T-060 가드 `_guard_t060` 을 추가하라
+[SWF-260] created: [subtask] T-060.2 T-060 액션 `_action_t060` 을 추가하라
+[SWF-261] created: [subtask] T-060.3 TRANSITIONS 표에 T-060 항목을 등록하라
+[SWF-262] created: [subtask] T-060.4 모듈 docstring 의 등록 전이 목록을 갱신하라
+[SWF-78] commit 3194d20: SWF-78 [T-060] AWAITING_DISPENSE_ADMIN_PENDING --INSERT_COIN--> AWAITING
+[SWF-259] status: todo → done
+[SWF-260] status: todo → done
+[SWF-261] status: todo → done
+[SWF-262] status: todo → done
+[SWF-78] status: in_progress → done
+DoD 통과
+[SWF-79] status: todo → in_progress
+[SWF-263] created: [subtask] T-061.1 T-061 전용 guard `_guard_t061` 을 추가한다
+[SWF-264] created: [subtask] T-061.2 T-061 의 action `_action_t061` 을 추가한다
+[SWF-265] created: [subtask] T-061.3 전이 표에 T-061 항목을 등록한다
+[SWF-266] created: [subtask] T-061.4 모듈 docstring 의 구현 전이 목록에 T-061 을 반영한다
+[SWF-79] commit 6c88fa3: SWF-79 [T-061] AWAITING_DISPENSE_ADMIN_PENDING --DISPENSE_COMPLETE--> AD
+[SWF-263] status: todo → done
+[SWF-264] status: todo → done
+[SWF-265] status: todo → done
+[SWF-266] status: todo → done
+[SWF-79] status: in_progress → done
+DoD 통과
+[SWF-10] status: todo → done
+하위 스토리 전부 완료
+[SWF-80] status: todo → in_progress
+[SWF-267] created: [subtask] T-062.1 T-062 가드 함수 _guard_t062 를 추가하라
+[SWF-268] created: [subtask] T-062.2 T-062 액션 함수 _action_t062 를 추가하라
+[SWF-269] created: [subtask] T-062.3 TRANSITIONS 표에 T-062 항목을 등록하라
+[SWF-270] created: [subtask] T-062.4 모듈 헤더 문서의 구현 전이 목록을 갱신하라
+[SWF-80] commit 01cbcee: SWF-80 [T-062] AWAITING_DISPENSE_ADMIN_PENDING --DISPENSE_COMPLETE--> AW
+[SWF-267] status: todo → done
+[SWF-268] status: todo → done
+[SWF-269] status: todo → done
+[SWF-270] status: todo → done
+[SWF-80] status: in_progress → done
+DoD 통과
+[SWF-7] status: todo → done
+하위 스토리 전부 완료
+[SWF-81] status: todo → in_progress
+[SWF-271] created: [subtask] T-063.1 registered drink 판정과 재고 증가를 담당할 장부 메서드를 추가하라
+[SWF-272] created: [subtask] T-063.2 T-063 의 guard 함수를 작성하라
+[SWF-273] created: [subtask] T-063.3 T-063 의 action 함수를 작성하라
+[SWF-274] created: [subtask] T-063.4 TRANSITIONS 표에 T-063 을 등록하라
+[SWF-81] commit d48619a: SWF-81 [T-063] ADMIN_MODE --REPLENISH_STOCK--> ADMIN_MODE
+[SWF-271] status: todo → done
+[SWF-272] status: todo → done
+[SWF-273] status: todo → done
+[SWF-274] status: todo → done
+[SWF-81] status: in_progress → done
+DoD 통과
+[SWF-82] status: todo → in_progress
+[SWF-275] created: [subtask] T-064.1 거절 알림 메시지 상수 REPLENISH_STOCK_REJECTED 를 추가하라
+[SWF-276] created: [subtask] T-064.2 T-064 의 guard 를 _guard_t064 로 구현하라
+[SWF-277] created: [subtask] T-064.3 T-064 의 action 을 _action_t064 로 구현하라
+[SWF-278] created: [subtask] T-064.4 TRANSITIONS 에 T-064 항목을 등록하라
+[SWF-82] commit 66c531e: SWF-82 [T-064] ADMIN_MODE --REPLENISH_STOCK--> ADMIN_MODE
+[SWF-275] status: todo → done
+[SWF-276] status: todo → done
+[SWF-277] status: todo → done
+[SWF-278] status: todo → done
+[SWF-82] status: in_progress → done
+DoD 통과
+[SWF-83] status: todo → in_progress
+[SWF-279] created: [subtask] T-065.1 동전 보충용 장부 갱신 헬퍼 replenish_coins() 를 VendingMachine 에 추가한다
+[SWF-280] created: [subtask] T-065.2 T-065 의 guard 를 구현한다
+[SWF-281] created: [subtask] T-065.3 T-065 의 action 을 구현한다
+[SWF-282] created: [subtask] T-065.4 TRANSITIONS 에 T-065 항목을 등록한다
+[SWF-83] commit 10d8083: SWF-83 [T-065] ADMIN_MODE --REPLENISH_COIN--> ADMIN_MODE
+[SWF-279] status: todo → done
+[SWF-280] status: todo → done
+[SWF-281] status: todo → done
+[SWF-282] status: todo → done
+[SWF-83] status: in_progress → done
+DoD 통과
+[SWF-84] status: todo → in_progress
+[SWF-283] created: [subtask] T-066.1 T-066 guard 함수 `_guard_t065` 의 부정형인 `_guard_t066` 을 추가하라
+[SWF-284] created: [subtask] T-066.2 지시 전체를 거절하고 관리자 알림만 남기는 `_action_t066` 을 추가하라
+[SWF-285] created: [subtask] T-066.3 TRANSITIONS 표에 T-066 을 T-065 뒤로 등록하고 모듈 문서를 갱신하라
+[SWF-84] commit 09926f6: SWF-84 [T-066] ADMIN_MODE --REPLENISH_COIN--> ADMIN_MODE
+[SWF-283] status: todo → done
+[SWF-284] status: todo → done
+[SWF-285] status: todo → done
+[SWF-84] status: in_progress → done
+DoD 통과
+[SWF-11] status: todo → done
+하위 스토리 전부 완료
+[SWF-85] status: todo → in_progress
+[SWF-286] created: [subtask] T-067.1 재고 조정·지연 배출 확인 헬퍼를 VendingMachine에 추가하라
+[SWF-287] created: [subtask] T-067.2 _guard_t067을 추가하라
+[SWF-288] created: [subtask] T-067.3 _action_t067을 추가하라
+[SWF-289] created: [subtask] T-067.4 TRANSITIONS 표에 T-067 항목을 등록하라
+[SWF-85] commit 5420aeb: SWF-85 [T-067] ADMIN_MODE --ADJUST_STOCK--> ADMIN_MODE
+[SWF-286] status: todo → done
+[SWF-287] status: todo → done
+[SWF-288] status: todo → done
+[SWF-289] status: todo → done
+[SWF-85] status: in_progress → done
+DoD 통과
+[SWF-86] status: todo → in_progress
+[SWF-290] created: [subtask] T-068.1 ADJUST_STOCK 거절 알림 상수를 추가한다
+[SWF-291] created: [subtask] T-068.2 _guard_t068 을 구현한다
+[SWF-292] created: [subtask] T-068.3 _action_t068 을 구현한다
+[SWF-293] created: [subtask] T-068.4 T-068 을 TRANSITIONS 에 등록한다
+[SWF-294] created: [subtask] T-068.5 INTERFACE.md 에 T-068 을 반영한다
+[SWF-86] commit 161a113: SWF-86 [T-068] ADMIN_MODE --ADJUST_STOCK--> ADMIN_MODE
+[SWF-290] status: todo → done
+[SWF-291] status: todo → done
+[SWF-292] status: todo → done
+[SWF-293] status: todo → done
+[SWF-294] status: todo → done
+[SWF-86] status: in_progress → done
+DoD 통과
+[SWF-12] status: todo → done
+하위 스토리 전부 완료
+[SWF-87] status: todo → in_progress
+[SWF-295] created: [subtask] T-069.1 VendingMachine에 admin_display 필드와 showAdmin() 헬퍼를 추가하라
+[SWF-296] created: [subtask] T-069.2 T-069 액션 함수 _action_t069 를 구현하라
+[SWF-297] created: [subtask] T-069.3 전이 테이블에 T-069 를 등록하라
+[SWF-87] commit 2adeaa5: SWF-87 [T-069] ADMIN_MODE --VIEW_LEDGER--> ADMIN_MODE
+[SWF-295] status: todo → done
+[SWF-296] status: todo → done
+[SWF-297] status: todo → done
+[SWF-87] status: in_progress → done
+DoD 통과
+[SWF-88] status: todo → in_progress
+[SWF-298] created: [subtask] T-070.1 VendingMachine 에 collect_coins(denomination, count) 코어 메서드를 추가한다
+[SWF-299] created: [subtask] T-070.2 T-070 의 guard 인 _guard_t070 을 작성한다
+[SWF-300] created: [subtask] T-070.3 T-070 의 action 인 _action_t070 을 작성한다
+[SWF-301] created: [subtask] T-070.4 TRANSITIONS 에 T-070 항목을 등록한다
+[SWF-88] commit 7d31222: SWF-88 [T-070] ADMIN_MODE --COLLECT_COIN--> ADMIN_MODE
+[SWF-298] status: todo → done
+[SWF-299] status: todo → done
+[SWF-300] status: todo → done
+[SWF-301] status: todo → done
+[SWF-88] status: in_progress → done
+DoD 통과
+[SWF-89] status: todo → in_progress
+[SWF-302] created: [subtask] T-071.1 COLLECT_COIN 거절 알림 상수를 추가하라
+[SWF-303] created: [subtask] T-071.2 T-071 guard 를 구현하라
+[SWF-304] created: [subtask] T-071.3 T-071 action 을 구현하라
+[SWF-305] created: [subtask] T-071.4 T-071 을 TRANSITIONS 에 등록하라
+[SWF-89] commit d626db1: SWF-89 [T-071] ADMIN_MODE --COLLECT_COIN--> ADMIN_MODE
+[SWF-302] status: todo → done
+[SWF-303] status: todo → done
+[SWF-304] status: todo → done
+[SWF-305] status: todo → done
+[SWF-89] status: in_progress → done
+DoD 통과
+[SWF-13] status: todo → done
+하위 스토리 전부 완료
+[SWF-90] status: todo → in_progress
+[SWF-306] created: [subtask] T-072.1 _guard_t072 가드 함수를 추가한다
+[SWF-307] created: [subtask] T-072.2 _action_t072 액션 함수를 추가한다
+[SWF-308] created: [subtask] T-072.3 TRANSITIONS 표에 T-072 항목을 등록한다
+[SWF-90] commit 3b849c2: SWF-90 [T-072] ADMIN_MODE --ACK_DISPENSE_FAILURE--> ADMIN_MODE
+[SWF-306] status: todo → done
+[SWF-307] status: todo → done
+[SWF-308] status: todo → done
+[SWF-90] status: in_progress → done
+DoD 통과
+[SWF-91] status: todo → in_progress
+[SWF-309] created: [subtask] T-073.1 nothing_to_acknowledge 알림 상수를 추가하라
+[SWF-310] created: [subtask] T-073.2 T-073 guard 함수를 구현하라
+[SWF-311] created: [subtask] T-073.3 T-073 action 함수를 구현하라
+[SWF-312] created: [subtask] T-073.4 전이표에 T-073 항목을 등록하라
+[SWF-91] commit f2a6581: SWF-91 [T-073] ADMIN_MODE --ACK_DISPENSE_FAILURE--> ADMIN_MODE
+[SWF-309] status: todo → done
+[SWF-310] status: todo → done
+[SWF-311] status: todo → done
+[SWF-312] status: todo → done
+[SWF-91] status: in_progress → done
+DoD 통과
+[SWF-92] status: todo → in_progress
+[SWF-313] created: [subtask] T-074.1 T-074 의 guard 함수 `_guard_t074` 를 추가하라
+[SWF-314] created: [subtask] T-074.2 T-074 의 action 함수 `_action_t074` 를 추가하라
+[SWF-315] created: [subtask] T-074.3 TRANSITIONS 표에 T-074 항목을 등록하라
+[SWF-316] created: [subtask] T-074.4 모듈 docstring 의 등록 전이 목록을 갱신하라
+[SWF-92] commit 4a38644: SWF-92 [T-074] ADMIN_MODE --REMOVE_ADMIN_KEY--> FAULT
+[SWF-313] status: todo → done
+[SWF-314] status: todo → done
+[SWF-315] status: todo → done
+[SWF-316] status: todo → done
+[SWF-92] status: in_progress → done
+DoD 통과
+[SWF-14] status: todo → done
+하위 스토리 전부 완료
+[SWF-93] status: todo → in_progress
+[SWF-317] created: [subtask] T-075.1 T-075 가드 함수 _guard_t075 를 추가하라
+[SWF-318] created: [subtask] T-075.2 T-075 액션 함수 _action_t075 를 추가하라
+[SWF-319] created: [subtask] T-075.3 TRANSITIONS 표에 T-075 항목을 등록하라
+[SWF-320] created: [subtask] T-075.4 공개 인터페이스 변경 여부를 확인하고 INTERFACE.md 를 맞춰라
+[SWF-93] commit 2a43eec: SWF-93 [T-075] ADMIN_MODE --REMOVE_ADMIN_KEY--> SALE_IDLE
+[SWF-317] status: todo → done
+[SWF-318] status: todo → done
+[SWF-319] status: todo → done
+[SWF-320] status: todo → done
+[SWF-93] status: in_progress → done
+DoD 통과
+[SWF-94] status: todo → in_progress
+[SWF-321] created: [subtask] T-076.1 T-076 guard 함수 `_guard_t076` 를 추가하라
+[SWF-322] created: [subtask] T-076.2 T-076 action 함수 `_action_t076` 를 추가하라
+[SWF-323] created: [subtask] T-076.3 전이 표에 T-076 항목을 등록하라
+[SWF-94] commit 66db7b8: SWF-94 [T-076] ADMIN_MODE --REMOVE_ADMIN_KEY--> SALE_STOPPED
+[SWF-321] status: todo → done
+[SWF-322] status: todo → done
+[SWF-323] status: todo → done
+[SWF-94] status: in_progress → done
+DoD 통과
+[SWF-15] status: todo → done
+하위 스토리 전부 완료
+[SWF-324] created: [bug] [검토/high] 배출 중 정전 시 재고 1 차감 · 매출 기록 · 차액 보관 규칙이 구현에도 테스트에도 없다
+[SWF-325] created: [bug] [검토/high] 반환 도중 전원이 끊긴 경우의 규칙이 없고, 그 목적으로 만든 payout_intent 를 아무도 읽지 않는다
+[SWF-326] created: [bug] [검토/high] 30 초 · 10 초 · 2 초 시한을 재는 주체가 없고 어떤 테스트도 시간을 재지 않는다
+[SWF-327] created: [bug] [검토/medium] 보유량 합계 등식의 항이 장부에 없어 REQ-87 · REQ-88 · REQ-93 의 등식 검사가 성립할 수 없다
+[SWF-328] created: [bug] [검토/medium] 동전 회수가 미반환 보관액을 회수액만큼 지우는 규칙은 문서에 없는 추측이다
+[SWF-329] created: [bug] [검토/medium] 선택 버튼의 활성 상태가 구현에 없고, 그것을 확인한다는 단언은 테스트가 자기 자신을 확인한다
+[SWF-330] created: [bug] [검토/medium] 고장 해제 수단이 '배출 실패 확인' 하나뿐이라 진행 중 배출 기록이 없는 고장은 영구히 풀리지 않는다
+[SWF-331] created: [bug] [검토/medium] 원자성 · 격리성 요구사항이 어떤 단언으로도 옮겨지지 않았고, 두 번 저장하는 전이가 그 요구를 어긴다
+[SWF-332] created: [bug] [검토/low] 고장 화면의 '관리자 호출 안내'가 고장 표시와 한 불리언으로 합쳐져 별도로 확인되지 않는다
+[SWF-324] status: todo → done
+검토 지적 해소, 전체 테스트 통과
+[SWF-324] commit 8b93df9: SWF-324 [검토/high] 배출 중 정전 시 재고 1 차감 · 매출 기록 · 차액 보관 규칙이 구현에도 테스트에도 없다
+[SWF-326] status: todo → done
+검토 지적 해소, 전체 테스트 통과
+[SWF-326] commit d4bc0d4: SWF-326 [검토/high] 30 초 · 10 초 · 2 초 시한을 재는 주체가 없고 어떤 테스트도 시간을 재지 않는다
+[SWF-329] status: todo → done
+검토 지적 해소, 전체 테스트 통과
+[SWF-329] commit e67c15a: SWF-329 [검토/medium] 선택 버튼의 활성 상태가 구현에 없고, 그것을 확인한다는 단언은 테스트가 자기 자신을 확인한다
+[SWF-331] status: todo → blocked
+3회 시도 후에도 해소 실패
+[SWF-332] status: todo → done
+검토 지적 해소, 전체 테스트 통과
+[SWF-332] commit 378b0e6: SWF-332 [검토/low] 고장 화면의 '관리자 호출 안내'가 고장 표시와 한 불리언으로 합쳐져 별도로 확인되지 않는다
+[SWF-333] created: [bug] [검토/high] 30 초 · 10 초 시한을 재는 주체가 제품에 없다 — 시한을 쏘는 것은 테스트 파일 안의 시뮬레이터다
+[SWF-334] created: [bug] [검토/high] 배출 중 정전의 정산(REQ-79 · REQ-80 · REQ-81)이 빈 함수이고, 테스트가 UC-16 acceptance 를
+[SWF-335] created: [bug] [검토/high] 매출이 장부가 아니다 — 전원이 꺼지면 사라지고 관리자에게 보이지도 않아, 보유량 합계 등식을 아무도 계산할 수 없다
+[SWF-336] created: [bug] [검토/medium] 동전을 회수하면 회수한 금액만큼 미반환 보관액이 무조건 깎인다 — 매출만 걷어도 손님에게 돌려줄 돈의 기록이 사라진다
+[SWF-337] created: [bug] [검토/medium] ADMIN_ENTRY_DUE 를 쏘는 주체가 제품에 없다 — 고장 전환 뒤 예약된 관리 모드 진입이 자동으로 일어나지 않는다
+[SWF-338] created: [bug] [검토/medium] payout_intent 는 쓰이기만 하고 어디서도 읽히지 않는다 — 반환 도중 전원이 끊기면 이미 나간 돈이 보관액으로 다시
+[SWF-339] created: [bug] [검토/medium] 선택 버튼의 활성 상태를 내보내는 출력이 제품에 없다 — REQ-09 는 관측 가능한 형태로 구현되지 않았다
+[SWF-340] created: [bug] [검토/low] 원자성(REQ-86) · 격리성(REQ-89) 을 확인하는 테스트가 하나도 없고, 지급 실패를 무시한 채 잔액을 0 으로 만드
+[SWF-334] status: todo → blocked
+3회 시도 후에도 해소 실패
+[SWF-341] created: [bug] [검토/high] 배출 중 정전의 자동 정산(재고 1 차감 · 매출 기록 · 차액 보관)이 구현에 없다
+[SWF-342] created: [bug] [검토/high] REQ-80 · REQ-81 을 확인한다는 단언이 실제로는 동전 회수 연산의 산술 항등식이다
+[SWF-343] created: [bug] [검토/high] 매출 누계가 장부 항목이 아니어서 REQ-10 의 보유량 합계 등식을 어느 시점에도 세울 수 없다
+[SWF-344] created: [bug] [검토/high] 등식을 깨는 전이를 거부하는 규칙(REQ-88)이 전이에도 코드에도 테스트에도 없고, 기동 시 정합성 검사는 부등식 하나로 대
+[SWF-345] created: [bug] [검토/high] IDLE_TIMEOUT · DISPENSE_TIMEOUT · ADMIN_ENTRY_DUE 를 발생시키는 주체가 배송물 어디에도
+[SWF-346] created: [bug] [검토/medium] 동전 회수가 회수액만큼 미반환 보관액을 무조건 상계해서, 두 번의 회수로 보관액 보호가 무너진다
+[SWF-347] created: [bug] [검토/medium] 고장 표시를 내리는 경로가 없다 — 관리자가 확인해도 화면의 고장 안내가 그대로 남는다
+[SWF-348] created: [bug] [검토/medium] 선택 버튼의 활성 상태가 구현에 관측 가능한 형태로 존재하지 않아, 하드웨어 램프를 켤 출력이 없다
+[SWF-349] created: [bug] [검토/medium] 원자성 · 격리성(REQ-86 · REQ-89)을 보장하는 장치도 그것을 확인하는 테스트도 없다
+[SWF-350] created: [bug] [검토/low] 배출 대기 중 반환 레버 조작을 조용히 무시하는 것이 요구사항 확인 없이 굳었다
+[SWF-351] created: [bug] [검토/low] 고장 표시와 관리자 호출 안내가 불리언 하나로 합쳐져 REQ-43 이 따로 확인되지 않는다
+[SWF-337] status: todo → done
+검토 지적 해소, 전체 테스트 통과
+[SWF-337] commit 0c634e1: SWF-337 [검토/medium] ADMIN_ENTRY_DUE 를 쏘는 주체가 제품에 없다 — 고장 전환 뒤 예약된 관리 모드 
+[SWF-339] status: todo → done
+검토 지적 해소, 전체 테스트 통과
+[SWF-339] commit 398be2f: SWF-339 [검토/medium] 선택 버튼의 활성 상태를 내보내는 출력이 제품에 없다 — REQ-09 는 관측 가능한 형태로 
+[SWF-340] status: todo → blocked
+3회 시도 후에도 해소 실패
+[SWF-341] status: todo → blocked
+3회 시도 후에도 해소 실패
+[SWF-342] status: todo → done
+검토 지적 해소, 전체 테스트 통과
+[SWF-342] commit cdbe4a0: SWF-342 [검토/high] REQ-80 · REQ-81 을 확인한다는 단언이 실제로는 동전 회수 연산의 산술 항등식이다
+[SWF-344] status: todo → done
+검토 지적 해소, 전체 테스트 통과
+[SWF-344] commit 5d2702f: SWF-344 [검토/high] 등식을 깨는 전이를 거부하는 규칙(REQ-88)이 전이에도 코드에도 테스트에도 없고, 기동 시 정
+[SWF-345] status: todo → done
+검토 지적 해소, 전체 테스트 통과
+[SWF-345] commit 9de6e66: SWF-345 [검토/high] IDLE_TIMEOUT · DISPENSE_TIMEOUT · ADMIN_ENTRY_DUE 를 발생
+[SWF-347] status: todo → done
+검토 지적 해소, 전체 테스트 통과
+[SWF-347] commit ede896e: SWF-347 [검토/medium] 고장 표시를 내리는 경로가 없다 — 관리자가 확인해도 화면의 고장 안내가 그대로 남는다
+[SWF-348] status: todo → done
+검토 지적 해소, 전체 테스트 통과
+[SWF-348] commit 32e93a5: SWF-348 [검토/medium] 선택 버튼의 활성 상태가 구현에 관측 가능한 형태로 존재하지 않아, 하드웨어 램프를 켤 출력이
+[SWF-325] status: todo → blocked
+요구사항·명세 결정이 필요한 지적 -- 기계가 임의로 정할 수 없음
+[SWF-327] status: todo → blocked
+요구사항·명세 결정이 필요한 지적 -- 기계가 임의로 정할 수 없음
+[SWF-328] status: todo → blocked
+요구사항·명세 결정이 필요한 지적 -- 기계가 임의로 정할 수 없음
+[SWF-330] status: todo → blocked
+요구사항·명세 결정이 필요한 지적 -- 기계가 임의로 정할 수 없음
+[SWF-333] status: todo → blocked
+요구사항·명세 결정이 필요한 지적 -- 기계가 임의로 정할 수 없음
+[SWF-335] status: todo → blocked
+요구사항·명세 결정이 필요한 지적 -- 기계가 임의로 정할 수 없음
+[SWF-336] status: todo → blocked
+요구사항·명세 결정이 필요한 지적 -- 기계가 임의로 정할 수 없음
+[SWF-338] status: todo → blocked
+요구사항·명세 결정이 필요한 지적 -- 기계가 임의로 정할 수 없음
+[SWF-343] status: todo → blocked
+요구사항·명세 결정이 필요한 지적 -- 기계가 임의로 정할 수 없음
+[SWF-346] status: todo → blocked
+요구사항·명세 결정이 필요한 지적 -- 기계가 임의로 정할 수 없음
+[SWF-350] status: todo → blocked
+요구사항·명세 결정이 필요한 지적 -- 기계가 임의로 정할 수 없음

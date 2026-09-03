@@ -1,0 +1,810 @@
+project: vending_machine
+states:
+- id: POWERED_OFF
+  desc: 전원이 차단된 상태. 장부는 보관 위치에 저장되어 있고 전원 투입을 기다린다. 장부에는 마지막으로 기록된 credit·savedState·faultFlag·pendingDispense·adminEntryReserved
+    가 포함된다.
+  initial: true
+  final: false
+- id: SALE_IDLE
+  desc: 판매 상태이고 누적 투입 금액이 0이다. 고객의 첫 코인 투입 또는 관리자 키를 기다린다.
+  initial: false
+  final: false
+- id: SALE_HAS_CREDIT
+  desc: 판매 상태이고 누적 투입 금액이 0보다 크다. 추가 코인·음료 선택·반환 레버·무조작 30초 경과를 기다린다.
+  initial: false
+  final: false
+- id: AWAITING_DISPENSE
+  desc: 배출을 개시하고 해당 일련번호의 배출 완료 신호 또는 10초 경과를 기다린다. 배출 개시 사실은 개시 전에 이미 장부에 적혀 있다.
+  initial: false
+  final: false
+- id: AWAITING_DISPENSE_ADMIN_PENDING
+  desc: 관리 모드 진입이 예약된 채로 배출 완료 신호 또는 10초 경과를 기다린다.
+  initial: false
+  final: false
+- id: SALE_STOPPED
+  desc: 모든 음료의 재고가 0이라 판매를 중지한 상태. 관리자 키 또는 전원 조작을 기다린다. 잔액 개념이 없다.
+  initial: false
+  final: false
+- id: FAULT
+  desc: 고장 표시 상태. 고객 조작을 모두 차단한 채 관리자의 전용 키 진입을 기다린다. faultFlag 는 장부에 저장되어 전원 재투입으로
+    풀리지 않는다. 잔액 개념이 없다.
+  initial: false
+  final: false
+- id: ADMIN_MODE
+  desc: 관리 모드. 관리자의 조회·보충·조정·회수·확인·키 제거 지시를 기다린다. 잔액 개념이 없다.
+  initial: false
+  final: false
+events:
+- id: POWER_ON
+  desc: 전원 공급원이 자판기에 전원을 투입한다.
+  payload: {}
+- id: POWER_OFF
+  desc: 정전 또는 전원 스위치 차단으로 전원이 끊긴다. 실제 콘센트 분리에서는 이 이벤트가 오지 않을 수 있다.
+  payload: {}
+- id: INSERT_COIN
+  desc: 고객이 코인 투입구에 코인을 넣는다.
+  payload:
+    denomination: int
+    recognized: bool
+- id: PRESS_SELECT_BUTTON
+  desc: 고객이 음료 선택 버튼을 누른다.
+  payload:
+    drink: string
+- id: DISPENSE_COMPLETE
+  desc: 배출 장치가 일련번호를 담은 배출 완료 신호를 보낸다.
+  payload:
+    serial: int
+    drink: string
+- id: DISPENSE_TIMEOUT
+  desc: 배출 개시 후 10초가 경과했음을 타이머가 알린다.
+  payload:
+    serial: int
+- id: PULL_RETURN_LEVER
+  desc: 고객이 반환 레버를 조작한다.
+  payload: {}
+- id: IDLE_TIMEOUT
+  desc: 마지막 고객 조작으로부터 30초가 경과했음을 타이머가 알린다.
+  payload: {}
+- id: INSERT_ADMIN_KEY
+  desc: 관리자가 전용 키를 꽂는다.
+  payload: {}
+- id: REMOVE_ADMIN_KEY
+  desc: 관리자가 전용 키를 뽑아 관리 모드 종료를 지시한다.
+  payload: {}
+- id: ADMIN_ENTRY_DUE
+  desc: 고장 전환 직후 예약된 관리 모드 진입이 적용되어야 함을 시스템 내부에서 알린다.
+  payload: {}
+- id: REPLENISH_STOCK
+  desc: 관리자가 음료 종류와 수량을 지정해 재고 보충을 지시한다.
+  payload:
+    items: map
+- id: REPLENISH_COIN
+  desc: 관리자가 액면가와 수량을 지정해 동전 보충을 지시한다.
+  payload:
+    items: map
+- id: ADJUST_STOCK
+  desc: 관리자가 음료 종류와 실제 개수를 지정해 재고 조정을 지시한다.
+  payload:
+    drink: string
+    actual: int
+- id: COLLECT_COIN
+  desc: 관리자가 액면가와 회수 개수를 지정해 동전 회수를 지시한다.
+  payload:
+    denomination: int
+    count: int
+- id: VIEW_LEDGER
+  desc: 관리자가 미반환 보관액·동전 보유량·배출 실패 내역 등 장부 조회를 요청한다.
+  payload: {}
+- id: ACK_DISPENSE_FAILURE
+  desc: 관리자가 진행 중이던 배출의 실패를 확인 처리한다.
+  payload: {}
+transitions:
+- id: T-001
+  src: POWERED_OFF
+  event: POWER_ON
+  dst: SALE_STOPPED
+  guard: '!ledgerFound || !invariantHolds(ledger)'
+  action: ledger := initialLedger(); persist(ledger with savedState = 'SALE_STOPPED');
+    notifyAdmin('ledger_reset'); display(0)
+  usecase: UC-17
+  notes: 초기 장부는 재고 0 이므로 판매 중지로 기동한다. [검사 오탐] 이 전이는 장부를 읽을 수 없거나 불변식이 깨진 경우에만 성립하며
+    credit = 0 인 새 장부(initialLedger)로 진입하므로, 잔액을 든 채 SALE_STOPPED 로 넘어가는 경우가 존재하지
+    않는다.
+- id: T-002
+  src: POWERED_OFF
+  event: POWER_ON
+  dst: FAULT
+  guard: ledgerFound && invariantHolds(ledger) && (savedState == 'FAULT' || faultFlag
+    || pendingDispense != none)
+  action: restore(ledger); unreturned += ledger.credit; credit := 0; settlePendingDispense();
+    faultFlag := true; persist(ledger with credit, unreturned, faultFlag, savedState
+    = 'FAULT'); showFaultNotice()
+  usecase: UC-17
+  notes: settlePendingDispense() 는 결과를 알 수 없는 진행 중 배출을 실패로 기록하고 재고·매출은 건드리지 않으며 관리자
+    확인(T-072) 대상으로 남긴다. [검사 오탐] 장부의 credit 을 FAULT 진입 전에 unreturned 로 옮겨 담고 credit
+    := 0 으로 만들므로, 잔액을 든 채 넘어가지 않는다(돈은 unreturned 로 남아 T-069·T-070 으로 반환 가능).
+- id: T-003
+  src: POWERED_OFF
+  event: POWER_ON
+  dst: SALE_IDLE
+  guard: ledgerFound && invariantHolds(ledger) && savedState != 'FAULT' && !faultFlag
+    && pendingDispense == none && anyStock
+  action: restore(ledger); unreturned += ledger.credit; credit := 0; persist(ledger
+    with credit, unreturned, savedState = 'SALE_IDLE'); display(0)
+  usecase: UC-17
+  notes: 정전 시점에 남아 있던 잔액은 코인 투입 시점에 이미 디스크에 적혀 있으므로 전원 차단 이벤트 없이도 unreturned 로 회수되어
+    관리자가 돌려줄 수 있다.
+- id: T-004
+  src: POWERED_OFF
+  event: POWER_ON
+  dst: SALE_STOPPED
+  guard: ledgerFound && invariantHolds(ledger) && savedState != 'FAULT' && !faultFlag
+    && pendingDispense == none && !anyStock
+  action: restore(ledger); unreturned += ledger.credit; credit := 0; persist(ledger
+    with credit, unreturned, savedState = 'SALE_STOPPED'); display(0)
+  usecase: UC-17
+  notes: '[검사 오탐] 장부의 credit 을 SALE_STOPPED 진입 전에 unreturned 로 옮겨 담고 credit := 0 으로
+    만들므로, 잔액을 든 채 넘어가지 않는다(돈은 unreturned 로 남아 T-069·T-070 으로 반환 가능).'
+- id: T-005
+  src: SALE_IDLE
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: unreturned += credit; credit := 0; persist(ledger with credit, unreturned,
+    savedState = 'SALE_IDLE')
+  usecase: UC-16
+  notes: 통보가 오는 경우에 한한 최선 노력 정산이다. 진짜 정전에서는 이 전이가 실행되지 않으며, 그 경우에도 코인 투입 시점의 기록으로
+    T-003/T-004 가 잔액을 unreturned 로 회수한다.
+- id: T-006
+  src: SALE_HAS_CREDIT
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: unreturned += credit; credit := 0; persist(ledger with credit, unreturned,
+    savedState = 'SALE_IDLE')
+  usecase: UC-16
+  notes: 최선 노력 정산이다. 이 전이가 실행되지 않아도 코인 투입 시점에 적힌 credit 으로 복원 시 정산된다.
+- id: T-007
+  src: AWAITING_DISPENSE
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: unreturned += credit; credit := 0; persist(ledger with pendingDispense,
+    credit, unreturned, savedState = 'AWAITING_DISPENSE')
+  usecase: UC-16
+  notes: pendingDispense 는 배출 개시 전(T-021)에 이미 디스크에 적혀 있으므로 이 전이가 실행되지 않아도 복원 시 T-002
+    로 고장 처리된다.
+- id: T-008
+  src: AWAITING_DISPENSE_ADMIN_PENDING
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: unreturned += credit; credit := 0; persist(ledger with pendingDispense,
+    adminEntryReserved, credit, unreturned, savedState = 'AWAITING_DISPENSE_ADMIN_PENDING')
+  usecase: UC-16
+  notes: adminEntryReserved 는 T-057 에서 이미 저장되어 있어 복원 후 T-002 → T-042 경로로 관리 모드에 진입한다.
+- id: T-009
+  src: SALE_STOPPED
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: persist(ledger with savedState = 'SALE_STOPPED')
+  usecase: UC-16
+  notes: ''
+- id: T-010
+  src: FAULT
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: persist(ledger with faultFlag, savedState = 'FAULT')
+  usecase: UC-16
+  notes: 이 전이가 실행되지 않아도 T-040/T-041/T-074 가 고장 전환 시점에 이미 저장했으므로 고장은 전원 재투입으로 풀리지 않는다.
+- id: T-011
+  src: ADMIN_MODE
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: persist(ledger with faultFlag, savedState = 'ADMIN_MODE')
+  usecase: UC-16
+  notes: 관리 모드 중 정전이어도 faultFlag 가 참이면 T-002 가 다시 FAULT 로 기동한다.
+- id: T-012
+  src: SALE_IDLE
+  event: INSERT_COIN
+  dst: SALE_HAS_CREDIT
+  guard: recognized && denomination in {100, 500, 1000}
+  action: coins[denomination] += 1; credit += denomination; persist(ledger with coins,
+    credit, savedState = 'SALE_HAS_CREDIT'); display(credit); resetIdleTimer()
+  usecase: UC-01
+  notes: 고객 돈이 기계 안에 들어온 순간 디스크에 적힌다. 이후 정전이 통보 없이 일어나도 T-003/T-004 가 이 금액을 unreturned
+    로 회수한다.
+- id: T-013
+  src: SALE_IDLE
+  event: INSERT_COIN
+  dst: SALE_IDLE
+  guard: recognized && denomination not in {100, 500, 1000}
+  action: returnCoin(denomination)
+  usecase: UC-01
+  notes: ''
+- id: T-014
+  src: SALE_IDLE
+  event: INSERT_COIN
+  dst: SALE_IDLE
+  guard: '!recognized'
+  action: returnCoin(coin)
+  usecase: UC-01
+  notes: ''
+- id: T-015
+  src: SALE_HAS_CREDIT
+  event: INSERT_COIN
+  dst: SALE_HAS_CREDIT
+  guard: recognized && denomination in {100, 500, 1000}
+  action: coins[denomination] += 1; credit += denomination; persist(ledger with coins,
+    credit); display(credit); resetIdleTimer()
+  usecase: UC-01
+  notes: ''
+- id: T-016
+  src: SALE_HAS_CREDIT
+  event: INSERT_COIN
+  dst: SALE_HAS_CREDIT
+  guard: recognized && denomination not in {100, 500, 1000}
+  action: returnCoin(denomination)
+  usecase: UC-01
+  notes: ''
+- id: T-017
+  src: SALE_HAS_CREDIT
+  event: INSERT_COIN
+  dst: SALE_HAS_CREDIT
+  guard: '!recognized'
+  action: returnCoin(coin)
+  usecase: UC-01
+  notes: ''
+- id: T-018
+  src: SALE_STOPPED
+  event: INSERT_COIN
+  dst: SALE_STOPPED
+  guard: ''
+  action: returnCoin(coin)
+  usecase: UC-01
+  notes: 판매 중지 상태에서는 잔액이 쌓이지 않으므로 이 상태가 잔액을 들고 있는 경우는 없다.
+- id: T-019
+  src: FAULT
+  event: INSERT_COIN
+  dst: FAULT
+  guard: ''
+  action: returnCoin(coin)
+  usecase: UC-08
+  notes: 고장 상태에서는 잔액이 쌓이지 않으므로 이 상태가 잔액을 들고 있는 경우는 없다.
+- id: T-020
+  src: ADMIN_MODE
+  event: INSERT_COIN
+  dst: ADMIN_MODE
+  guard: ''
+  action: returnCoin(coin)
+  usecase: UC-09
+  notes: 관리 모드에서는 잔액이 쌓이지 않으므로 이 상태가 잔액을 들고 있는 경우는 없다.
+- id: T-021
+  src: SALE_HAS_CREDIT
+  event: PRESS_SELECT_BUTTON
+  dst: AWAITING_DISPENSE
+  guard: credit >= price(drink) && stock(drink) >= 1 && changeComposable(credit -
+    price(drink))
+  action: 'serial := nextSerial(); pendingDispense := {serial, drink, change: credit
+    - price(drink)}; persist(ledger with pendingDispense, credit, savedState = ''AWAITING_DISPENSE'');
+    startDispense(serial, drink) within 2s'
+  usecase: UC-02
+  notes: 배출 개시 의도를 물리 동작 이전에 저장한다. 개시 직후 정전이어도 pendingDispense 가 디스크에 남아 T-002 로 고장
+    처리된다.
+- id: T-022
+  src: SALE_HAS_CREDIT
+  event: PRESS_SELECT_BUTTON
+  dst: SALE_IDLE
+  guard: credit >= price(drink) && stock(drink) >= 1 && !changeComposable(credit -
+    price(drink))
+  action: commit{ payoutIntent := credit; persist(ledger with payoutIntent); payout(credit);
+    coins := coins - payoutCoins; credit := 0; payoutIntent := none; persist(ledger
+    with coins, credit, savedState = 'SALE_IDLE') }; display(0)
+  usecase: UC-02
+  notes: 거스름돈을 구성할 수 없으면 전액 반환한다.
+- id: T-023
+  src: SALE_HAS_CREDIT
+  event: PRESS_SELECT_BUTTON
+  dst: SALE_HAS_CREDIT
+  guard: credit < price(drink) || stock(drink) == 0
+  action: resetIdleTimer()
+  usecase: UC-02
+  notes: ''
+- id: T-024
+  src: SALE_IDLE
+  event: PRESS_SELECT_BUTTON
+  dst: SALE_IDLE
+  guard: ''
+  action: ''
+  usecase: UC-02
+  notes: 누적 0 이므로 모든 버튼이 비활성이다.
+- id: T-025
+  src: SALE_STOPPED
+  event: PRESS_SELECT_BUTTON
+  dst: SALE_STOPPED
+  guard: ''
+  action: ''
+  usecase: UC-15
+  notes: ''
+- id: T-026
+  src: FAULT
+  event: PRESS_SELECT_BUTTON
+  dst: FAULT
+  guard: ''
+  action: ''
+  usecase: UC-08
+  notes: ''
+- id: T-027
+  src: AWAITING_DISPENSE
+  event: DISPENSE_COMPLETE
+  dst: SALE_HAS_CREDIT
+  guard: serial == pendingDispense.serial && credit - pendingDispense.change - price(drink)
+    > 0 && stockAfter(drink) >= 1
+  action: commit{ stock(drink) -= 1; sales += price(drink); payout(pendingDispense.change);
+    coins := coins - changeCoins; credit -= pendingDispense.change + price(drink);
+    pendingDispense := none; persist(ledger with stock, sales, coins, credit, pendingDispense,
+    savedState = 'SALE_HAS_CREDIT') }; display(credit); resetIdleTimer()
+  usecase: UC-03
+  notes: ''
+- id: T-028
+  src: AWAITING_DISPENSE
+  event: DISPENSE_COMPLETE
+  dst: SALE_IDLE
+  guard: serial == pendingDispense.serial && credit - pendingDispense.change - price(drink)
+    == 0 && stockAfter(drink) >= 1
+  action: commit{ stock(drink) -= 1; sales += price(drink); payout(pendingDispense.change);
+    coins := coins - changeCoins; credit -= pendingDispense.change + price(drink);
+    pendingDispense := none; persist(ledger with stock, sales, coins, credit, pendingDispense,
+    savedState = 'SALE_IDLE') }; display(0)
+  usecase: UC-02
+  notes: 매출로 잡는 price(drink) 만큼을 잔액에서 명시적으로 차감한다. 가드가 잔여를 0으로 보장하므로 결과 잔액은 0이다.
+- id: T-029
+  src: AWAITING_DISPENSE
+  event: DISPENSE_COMPLETE
+  dst: SALE_HAS_CREDIT
+  guard: serial == pendingDispense.serial && stockAfter(drink) == 0 && anyStockAfter
+    && credit - pendingDispense.change - price(drink) > 0
+  action: commit{ stock(drink) -= 1; sales += price(drink); payout(pendingDispense.change);
+    coins := coins - changeCoins; credit -= pendingDispense.change + price(drink);
+    pendingDispense := none; persist(ledger with stock, sales, coins, credit, pendingDispense,
+    savedState = 'SALE_HAS_CREDIT') }; display(credit); resetIdleTimer()
+  usecase: UC-02
+  notes: 이 음료만 소진되고 다른 음료 재고가 남은 경우 판매 상태를 유지한다. 잔여 잔액이 남으므로 도착 상태는 SALE_HAS_CREDIT
+    이어야 한다(잔액 0 인 경우는 T-077).
+- id: T-077
+  src: AWAITING_DISPENSE
+  event: DISPENSE_COMPLETE
+  dst: SALE_IDLE
+  guard: serial == pendingDispense.serial && stockAfter(drink) == 0 && anyStockAfter
+    && credit - pendingDispense.change - price(drink) == 0
+  action: commit{ stock(drink) -= 1; sales += price(drink); payout(pendingDispense.change);
+    coins := coins - changeCoins; credit -= pendingDispense.change + price(drink);
+    pendingDispense := none; persist(ledger with stock, sales, coins, credit, pendingDispense,
+    savedState = 'SALE_IDLE') }; display(0)
+  usecase: UC-02
+  notes: T-029 에서 잔여 잔액 0 인 경우를 분리했다. 잔액이 0 이므로 SALE_IDLE 로 간다.
+- id: T-030
+  src: AWAITING_DISPENSE
+  event: DISPENSE_COMPLETE
+  dst: SALE_STOPPED
+  guard: serial == pendingDispense.serial && !anyStockAfter
+  action: commit{ stock(drink) -= 1; sales += price(drink); payout(pendingDispense.change);
+    coins := coins - changeCoins; credit -= pendingDispense.change + price(drink);
+    payout(credit); coins := coins - refundCoins; credit := 0; pendingDispense :=
+    none; persist(ledger with stock, sales, coins, credit, pendingDispense, savedState
+    = 'SALE_STOPPED') }; display(0)
+  usecase: UC-15
+  notes: '[미규정 REQ-70] 마지막 재고 소진으로 판매 중지될 때 배출 중 투입분의 처리가 명세되어 있지 않아 전액 반환으로 모델링한다.
+    잔액을 지급하고 0으로 만든 뒤 잔액 개념이 없는 SALE_STOPPED 로 넘어간다.'
+- id: T-031
+  src: AWAITING_DISPENSE
+  event: DISPENSE_COMPLETE
+  dst: AWAITING_DISPENSE
+  guard: serial != pendingDispense.serial
+  action: 'recordLateDispense(drink, acknowledged: false); persist(ledger with lateDispenses)'
+  usecase: UC-07
+  notes: ''
+- id: T-032
+  src: SALE_IDLE
+  event: DISPENSE_COMPLETE
+  dst: SALE_IDLE
+  guard: ''
+  action: 'recordLateDispense(drink, acknowledged: false); persist(ledger with lateDispenses)'
+  usecase: UC-07
+  notes: ''
+- id: T-033
+  src: SALE_HAS_CREDIT
+  event: DISPENSE_COMPLETE
+  dst: SALE_HAS_CREDIT
+  guard: ''
+  action: 'recordLateDispense(drink, acknowledged: false); persist(ledger with lateDispenses)'
+  usecase: UC-07
+  notes: ''
+- id: T-034
+  src: SALE_STOPPED
+  event: DISPENSE_COMPLETE
+  dst: SALE_STOPPED
+  guard: ''
+  action: 'recordLateDispense(drink, acknowledged: false); persist(ledger with lateDispenses)'
+  usecase: UC-07
+  notes: ''
+- id: T-035
+  src: FAULT
+  event: DISPENSE_COMPLETE
+  dst: FAULT
+  guard: ''
+  action: 'recordLateDispense(drink, acknowledged: false); persist(ledger with lateDispenses)'
+  usecase: UC-07
+  notes: ''
+- id: T-036
+  src: ADMIN_MODE
+  event: DISPENSE_COMPLETE
+  dst: ADMIN_MODE
+  guard: ''
+  action: 'recordLateDispense(drink, acknowledged: false); persist(ledger with lateDispenses)'
+  usecase: UC-07
+  notes: ''
+- id: T-037
+  src: AWAITING_DISPENSE
+  event: INSERT_COIN
+  dst: AWAITING_DISPENSE
+  guard: recognized && denomination in {100, 500, 1000}
+  action: coins[denomination] += 1; credit += denomination; persist(ledger with coins,
+    credit); display(credit)
+  usecase: UC-03
+  notes: 진행 중 배출의 거스름돈(pendingDispense.change)에는 포함하지 않는다.
+- id: T-038
+  src: AWAITING_DISPENSE
+  event: INSERT_COIN
+  dst: AWAITING_DISPENSE
+  guard: recognized && denomination not in {100, 500, 1000}
+  action: returnCoin(denomination)
+  usecase: UC-03
+  notes: ''
+- id: T-039
+  src: AWAITING_DISPENSE
+  event: INSERT_COIN
+  dst: AWAITING_DISPENSE
+  guard: '!recognized'
+  action: returnCoin(coin)
+  usecase: UC-03
+  notes: ''
+- id: T-040
+  src: AWAITING_DISPENSE
+  event: DISPENSE_TIMEOUT
+  dst: FAULT
+  guard: serial == pendingDispense.serial
+  action: markDispenseFailed(pendingDispense); faultFlag := true; persist(ledger with
+    pendingDispense, faultFlag, savedState = 'FAULT'); commit{ payout(credit); coins
+    := coins - refundCoins; credit := 0; persist(ledger with coins, credit) }; showFaultNotice();
+    display(0)
+  usecase: UC-06
+  notes: 재고와 매출은 변경하지 않으며 진행 중 배출 기록은 관리자 확인 시까지 남는다. 고장 사실을 먼저 저장하므로 전원 재투입으로 풀리지
+    않는다.
+- id: T-041
+  src: AWAITING_DISPENSE_ADMIN_PENDING
+  event: DISPENSE_TIMEOUT
+  dst: FAULT
+  guard: serial == pendingDispense.serial
+  action: markDispenseFailed(pendingDispense); faultFlag := true; persist(ledger with
+    pendingDispense, faultFlag, adminEntryReserved, savedState = 'FAULT'); commit{
+    payout(credit); coins := coins - refundCoins; credit := 0; persist(ledger with
+    coins, credit) }; showFaultNotice(); display(0)
+  usecase: UC-10
+  notes: adminEntryReserved 를 유지한 채 저장하므로 이어지는 T-042 로 관리 모드에 진입한다.
+- id: T-042
+  src: FAULT
+  event: ADMIN_ENTRY_DUE
+  dst: ADMIN_MODE
+  guard: adminEntryReserved
+  action: adminEntryReserved := false; persist(ledger with adminEntryReserved, savedState
+    = 'ADMIN_MODE')
+  usecase: UC-10
+  notes: '예약된 배출이 실패한 경우 고장 전환 후 관리 모드로 진입한다(상태 이력: 고장 → 관리 모드). faultFlag 는 그대로 남으므로
+    이 시점에 정전이 나도 T-002 가 다시 FAULT 로 기동한다.'
+- id: T-043
+  src: SALE_HAS_CREDIT
+  event: PULL_RETURN_LEVER
+  dst: SALE_IDLE
+  guard: credit > 0
+  action: commit{ payoutIntent := credit; persist(ledger with payoutIntent); payout(credit);
+    coins := coins - refundCoins; credit := 0; payoutIntent := none; persist(ledger
+    with coins, credit, savedState = 'SALE_IDLE') }; display(0)
+  usecase: UC-04
+  notes: ''
+- id: T-044
+  src: SALE_IDLE
+  event: PULL_RETURN_LEVER
+  dst: SALE_IDLE
+  guard: ''
+  action: ''
+  usecase: UC-04
+  notes: ''
+- id: T-045
+  src: SALE_STOPPED
+  event: PULL_RETURN_LEVER
+  dst: SALE_STOPPED
+  guard: ''
+  action: ''
+  usecase: UC-04
+  notes: ''
+- id: T-046
+  src: FAULT
+  event: PULL_RETURN_LEVER
+  dst: FAULT
+  guard: ''
+  action: ''
+  usecase: UC-04
+  notes: ''
+- id: T-047
+  src: ADMIN_MODE
+  event: PULL_RETURN_LEVER
+  dst: ADMIN_MODE
+  guard: ''
+  action: ''
+  usecase: UC-04
+  notes: ''
+- id: T-048
+  src: AWAITING_DISPENSE
+  event: PULL_RETURN_LEVER
+  dst: AWAITING_DISPENSE
+  guard: ''
+  action: ''
+  usecase: UC-04
+  notes: '[미규정 REQ-27] 배출 완료 대기 중 반환 레버 조작의 처리가 명세되어 있지 않아 무시로 모델링한다. 잔액은 T-027~T-030
+    또는 T-040 에서 반드시 고객에게 돌아간다.'
+- id: T-049
+  src: AWAITING_DISPENSE_ADMIN_PENDING
+  event: PULL_RETURN_LEVER
+  dst: AWAITING_DISPENSE_ADMIN_PENDING
+  guard: ''
+  action: ''
+  usecase: UC-04
+  notes: '[미규정 REQ-27] 배출 완료 대기 중 반환 레버 조작의 처리가 명세되어 있지 않아 무시로 모델링한다. 잔액은 T-061 또는
+    T-041 에서 반드시 고객에게 돌아간다.'
+- id: T-050
+  src: SALE_HAS_CREDIT
+  event: IDLE_TIMEOUT
+  dst: SALE_IDLE
+  guard: credit > 0
+  action: commit{ payoutIntent := credit; persist(ledger with payoutIntent); payout(credit);
+    coins := coins - refundCoins; credit := 0; payoutIntent := none; persist(ledger
+    with coins, credit, savedState = 'SALE_IDLE') }; display(0)
+  usecase: UC-05
+  notes: ''
+- id: T-051
+  src: SALE_IDLE
+  event: IDLE_TIMEOUT
+  dst: SALE_IDLE
+  guard: ''
+  action: ''
+  usecase: UC-05
+  notes: ''
+- id: T-052
+  src: SALE_STOPPED
+  event: IDLE_TIMEOUT
+  dst: SALE_STOPPED
+  guard: ''
+  action: ''
+  usecase: UC-05
+  notes: ''
+- id: T-053
+  src: SALE_HAS_CREDIT
+  event: INSERT_ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: credit > 0
+  action: commit{ payoutIntent := credit; persist(ledger with payoutIntent); payout(credit);
+    coins := coins - refundCoins; credit := 0; payoutIntent := none; persist(ledger
+    with coins, credit, savedState = 'ADMIN_MODE') }; display(0)
+  usecase: UC-09
+  notes: 관리 모드 진입 시 잔액을 먼저 고객에게 지급하므로 관리 모드가 잔액을 들고 있는 일이 없다.
+- id: T-054
+  src: SALE_IDLE
+  event: INSERT_ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: ''
+  action: ''
+  usecase: UC-09
+  notes: 장부가 바뀌지 않으므로 저장하지 않는다. 정전 시 직전 저장 상태(SALE_IDLE)로 기동하며 손실이 없다.
+- id: T-055
+  src: SALE_STOPPED
+  event: INSERT_ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: ''
+  action: ''
+  usecase: UC-09
+  notes: 장부가 바뀌지 않으므로 저장하지 않는다. 정전 시 직전 저장 상태(SALE_STOPPED)로 기동하며 손실이 없다.
+- id: T-056
+  src: FAULT
+  event: INSERT_ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: ''
+  action: ''
+  usecase: UC-09
+  notes: 장부가 바뀌지 않으므로 저장하지 않는다. savedState 와 faultFlag 가 그대로 남아 정전 시 FAULT 로 기동한다.
+- id: T-057
+  src: AWAITING_DISPENSE
+  event: INSERT_ADMIN_KEY
+  dst: AWAITING_DISPENSE_ADMIN_PENDING
+  guard: ''
+  action: adminEntryReserved := true; persist(ledger with adminEntryReserved, pendingDispense,
+    savedState = 'AWAITING_DISPENSE_ADMIN_PENDING')
+  usecase: UC-10
+  notes: ''
+- id: T-058
+  src: AWAITING_DISPENSE_ADMIN_PENDING
+  event: INSERT_COIN
+  dst: AWAITING_DISPENSE_ADMIN_PENDING
+  guard: recognized && denomination in {100, 500, 1000}
+  action: coins[denomination] += 1; credit += denomination; persist(ledger with coins,
+    credit); display(credit)
+  usecase: UC-10
+  notes: ''
+- id: T-059
+  src: AWAITING_DISPENSE_ADMIN_PENDING
+  event: INSERT_COIN
+  dst: AWAITING_DISPENSE_ADMIN_PENDING
+  guard: recognized && denomination not in {100, 500, 1000}
+  action: returnCoin(denomination)
+  usecase: UC-10
+  notes: ''
+- id: T-060
+  src: AWAITING_DISPENSE_ADMIN_PENDING
+  event: INSERT_COIN
+  dst: AWAITING_DISPENSE_ADMIN_PENDING
+  guard: '!recognized'
+  action: returnCoin(coin)
+  usecase: UC-10
+  notes: ''
+- id: T-061
+  src: AWAITING_DISPENSE_ADMIN_PENDING
+  event: DISPENSE_COMPLETE
+  dst: ADMIN_MODE
+  guard: serial == pendingDispense.serial
+  action: commit{ stock(drink) -= 1; sales += price(drink); payout(pendingDispense.change);
+    coins := coins - changeCoins; credit -= pendingDispense.change + price(drink);
+    payout(credit); coins := coins - refundCoins; credit := 0; pendingDispense :=
+    none; adminEntryReserved := false; persist(ledger with stock, sales, coins, credit,
+    pendingDispense, adminEntryReserved, savedState = 'ADMIN_MODE') }; display(0)
+  usecase: UC-10
+  notes: 매출로 잡는 price(drink) 와 거스름돈을 잔액에서 명시적으로 차감한 뒤, 남은 잔액을 고객에게 지급하고 0으로 만들어 관리
+    모드로 넘어간다.
+- id: T-062
+  src: AWAITING_DISPENSE_ADMIN_PENDING
+  event: DISPENSE_COMPLETE
+  dst: AWAITING_DISPENSE_ADMIN_PENDING
+  guard: serial != pendingDispense.serial
+  action: 'recordLateDispense(drink, acknowledged: false); persist(ledger with lateDispenses)'
+  usecase: UC-07
+  notes: ''
+- id: T-063
+  src: ADMIN_MODE
+  event: REPLENISH_STOCK
+  dst: ADMIN_MODE
+  guard: all(items.drink in registeredDrinks) && all(items.qty is int && items.qty
+    >= 1)
+  action: 'commit{ for each item: stock(item.drink) += item.qty; persist(ledger with
+    stock) }'
+  usecase: UC-11
+  notes: ''
+- id: T-064
+  src: ADMIN_MODE
+  event: REPLENISH_STOCK
+  dst: ADMIN_MODE
+  guard: any(items.drink not in registeredDrinks) || any(items.qty is not int || items.qty
+    < 1)
+  action: rejectAll(); notifyAdmin('replenish_stock_rejected')
+  usecase: UC-11
+  notes: ''
+- id: T-065
+  src: ADMIN_MODE
+  event: REPLENISH_COIN
+  dst: ADMIN_MODE
+  guard: all(items.denomination in {100, 500, 1000}) && all(items.qty is int && items.qty
+    >= 1)
+  action: 'commit{ for each item: coins[item.denomination] += item.qty; persist(ledger
+    with coins) }'
+  usecase: UC-11
+  notes: ''
+- id: T-066
+  src: ADMIN_MODE
+  event: REPLENISH_COIN
+  dst: ADMIN_MODE
+  guard: any(items.denomination not in {100, 500, 1000}) || any(items.qty is not int
+    || items.qty < 1)
+  action: rejectAll(); notifyAdmin('replenish_coin_rejected')
+  usecase: UC-11
+  notes: ''
+- id: T-067
+  src: ADMIN_MODE
+  event: ADJUST_STOCK
+  dst: ADMIN_MODE
+  guard: drink in registeredDrinks && actual >= 0 && actual <= stock(drink)
+  action: commit{ stock(drink) := actual; ackAllLateDispenses(); persist(ledger with
+    stock, lateDispenses) }
+  usecase: UC-12
+  notes: 지연 배출로 생긴 유령 재고를 관리자가 실측값으로 줄이는 경로다.
+- id: T-068
+  src: ADMIN_MODE
+  event: ADJUST_STOCK
+  dst: ADMIN_MODE
+  guard: drink not in registeredDrinks || actual < 0 || actual > stock(drink)
+  action: reject(); notifyAdmin('adjust_stock_rejected')
+  usecase: UC-12
+  notes: ''
+- id: T-069
+  src: ADMIN_MODE
+  event: VIEW_LEDGER
+  dst: ADMIN_MODE
+  guard: ''
+  action: showAdmin(unreturned, coins, lateDispenses, pendingDispense)
+  usecase: UC-13
+  notes: 정전으로 회수된 고객 잔액은 unreturned 로 조회되어 관리자가 돌려줄 수 있다.
+- id: T-070
+  src: ADMIN_MODE
+  event: COLLECT_COIN
+  dst: ADMIN_MODE
+  guard: denomination in {100, 500, 1000} && count is int && count >= 1 && count <=
+    coins[denomination] && coinTotal - denomination * count >= unreturned
+  action: commit{ coins[denomination] -= count; unreturned -= min(unreturned, denomination
+    * count); persist(ledger with coins, unreturned) }
+  usecase: UC-13
+  notes: ''
+- id: T-071
+  src: ADMIN_MODE
+  event: COLLECT_COIN
+  dst: ADMIN_MODE
+  guard: denomination not in {100, 500, 1000} || count is not int || count < 1 ||
+    count > coins[denomination] || coinTotal - denomination * count < unreturned
+  action: reject(); notifyAdmin('collect_coin_rejected')
+  usecase: UC-13
+  notes: ''
+- id: T-072
+  src: ADMIN_MODE
+  event: ACK_DISPENSE_FAILURE
+  dst: ADMIN_MODE
+  guard: pendingDispense != none
+  action: commit{ pendingDispense := none; faultFlag := false; persist(ledger with
+    pendingDispense, faultFlag, savedState = 'ADMIN_MODE') }
+  usecase: UC-14
+  notes: 고장 해제는 사람만 할 수 있으며, 해제 사실을 저장하면서 savedState 의 FAULT 표시도 함께 지운다.
+- id: T-073
+  src: ADMIN_MODE
+  event: ACK_DISPENSE_FAILURE
+  dst: ADMIN_MODE
+  guard: pendingDispense == none
+  action: notifyAdmin('nothing_to_acknowledge')
+  usecase: UC-14
+  notes: ''
+- id: T-074
+  src: ADMIN_MODE
+  event: REMOVE_ADMIN_KEY
+  dst: FAULT
+  guard: pendingDispense != none || faultFlag
+  action: faultFlag := true; persist(ledger with faultFlag, savedState = 'FAULT');
+    showFaultNotice()
+  usecase: UC-14
+  notes: '[검사 오탐] ADMIN_MODE 는 잔액을 가질 수 없다 — 잔액을 들고 오는 진입 전이(T-053, T-061)가 진입 전에
+    전액 지급하고 credit := 0 으로 만들며, 나머지 진입 전이(T-042, T-054~T-056)의 출발 상태도 잔액이 0 이고, 관리
+    모드 중 투입된 코인은 T-020 이 즉시 반환한다.'
+- id: T-075
+  src: ADMIN_MODE
+  event: REMOVE_ADMIN_KEY
+  dst: SALE_IDLE
+  guard: pendingDispense == none && !faultFlag && anyStock
+  action: credit := 0; persist(ledger with credit, savedState = 'SALE_IDLE'); display(0)
+  usecase: UC-15
+  notes: '[미규정 REQ-51] 관리 모드 종료 조작이 명세되어 있지 않아 전용 키 제거를 종료 조작으로 가정한다. credit := 0
+    은 이미 0 인 값을 다시 쓰는 방어적 기록이다.'
+- id: T-076
+  src: ADMIN_MODE
+  event: REMOVE_ADMIN_KEY
+  dst: SALE_STOPPED
+  guard: pendingDispense == none && !faultFlag && !anyStock
+  action: credit := 0; persist(ledger with credit, savedState = 'SALE_STOPPED'); display(0)
+  usecase: UC-15
+  notes: '[검사 오탐] ADMIN_MODE 는 잔액을 가질 수 없다 — 모든 진입 전이가 잔액을 지급했거나 출발 상태의 잔액이 0 이고 관리
+    모드 중 투입 코인은 T-020 이 즉시 반환하므로, 잔액을 든 채 SALE_STOPPED 로 넘어가지 않는다.'

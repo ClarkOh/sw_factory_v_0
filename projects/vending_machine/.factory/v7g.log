@@ -1,0 +1,15 @@
+[11:13:06] -- REVIEW --
+[11:13:06]   사이클 상한(3) 도달
+[11:13:11]   사람 판단 필요 13건: SWF-326, SWF-329, SWF-330, SWF-335, SWF-336, SWF-345, SWF-346, SWF-355, SWF-362, SWF-363, SWF-370, SWF-371, SWF-372
+[11:13:11] 검토 종료 -- 열린 지적 4건
+[11:13:11] -- RELEASE --
+[11:13:19]   [x] 모든 스토리 완료 — 78/78
+[11:13:19]   [x] 모든 요구사항이 테스트에 도달 — 95/95
+[11:13:19]   [x] 전체 테스트 통과 — 234개
+[11:13:19]   [ ] 승인되지 않은 xfail/skip 없음 — 3건 중 승인 0 — 미승인: tests\e2e\test_durability.py:713, tests\e2e\test_durability.py:1090, tests\e2e\test_durability.py:1326
+[11:13:19]   [ ] 열린 high 지적 없음 — 7건 — SWF-326, SWF-327, SWF-329, SWF-330, SWF-331
+[11:13:19]   [ ] 진입점 실행 확인 — app/__main__.py 가 없다
+[11:13:19] 출시 차단 — 승인되지 않은 xfail/skip 없음, 열린 high 지적 없음, 진입점 실행 확인
+[11:13:19] 판정서: C:\work\sw_factory\projects\vending_machine\RELEASE.md
+[11:13:19] 파이프라인 완료
+[11:13:19] 정지 지점: COMPLETE | 통계: {'done': 78, 'critic_blocked': 20, 'critic_fixed': 14, 'needs_human': 13, 'release_blocked': 1}

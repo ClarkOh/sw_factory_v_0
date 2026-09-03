@@ -1,0 +1,417 @@
+project: vending_machine
+states:
+- id: POWERED_OFF
+  desc: 전원이 끊긴 상태로, 외부 전원 공급 설비의 전원 재개를 기다린다.
+  initial: true
+  final: false
+- id: IDLE
+  desc: 판매 상태이고 누적 투입 금액이 0인 상태로, 고객의 코인 투입 또는 관리자의 관리 모드 진입 요청을 기다린다.
+  initial: false
+  final: false
+- id: HAS_CREDIT
+  desc: 판매 상태이고 누적 투입 금액이 0보다 큰 거래 진행 중 상태로, 추가 코인 투입·음료 선택·반환 레버 조작을 기다린다.
+  initial: false
+  final: false
+- id: AWAITING_DISPENSE_COMPLETION
+  desc: 음료 배출을 개시한 뒤 하드웨어의 배출 완료 신호를 기다린다.
+  initial: false
+  final: false
+- id: SOLD_OUT
+  desc: 음료 3종 재고가 모두 0인 판매 중지 상태로, 관리자의 관리 모드 진입 요청을 기다린다. 투입되는 코인은 받지 않는다.
+  initial: false
+  final: false
+- id: ADMIN_MODE
+  desc: 관리 모드로, 관리자의 재고 보충·동전 보충·보충 완료 지시를 기다린다.
+  initial: false
+  final: false
+events:
+- id: POWER_RESTORED
+  desc: 외부 전원 공급 설비가 전원 공급을 재개하여 시스템이 기동할 때 발생한다.
+  payload:
+    power_loss_credit: int
+    total_stock: int
+- id: POWER_LOST
+  desc: 외부 전원 공급 설비가 전원 공급을 중단하여 시스템이 동작을 정지할 때 발생한다.
+  payload: {}
+- id: INSERT_COIN
+  desc: 고객이 코인 투입구에 코인 1개를 투입하고 인식 처리가 끝났을 때 발생한다.
+  payload:
+    recognized: bool
+    denomination: int
+- id: SELECT_BUTTON_PRESSED
+  desc: 고객이 음료 선택 버튼을 누를 때 발생한다.
+  payload:
+    drink: enum(A
+    B: null
+    C): null
+- id: RETURN_LEVER_PULLED
+  desc: 고객이 반환 레버를 조작할 때 발생한다.
+  payload: {}
+- id: DISPENSE_COMPLETED
+  desc: 하드웨어가 음료 1개의 배출을 완료했음을 통지할 때 발생한다.
+  payload:
+    drink: enum(A
+    B: null
+    C): null
+- id: ADMIN_KEY_INSERTED
+  desc: 관리자가 전용 키로 관리 모드 진입을 요청할 때 발생한다.
+  payload:
+    valid_key: bool
+- id: RESTOCK_DRINKS
+  desc: 관리 모드에서 관리자가 음료 종류별 보충 수량을 입력하고 재고 보충을 실행할 때 발생한다.
+  payload:
+    qty: map(drink
+    int): null
+- id: REFILL_COINS
+  desc: 관리 모드에서 관리자가 액면가별 보충 개수를 입력하고 동전 보충을 실행할 때 발생한다.
+  payload:
+    counts: map(denomination
+    int): null
+- id: RESTOCK_COMPLETED
+  desc: 관리 모드에서 관리자가 보충 완료를 지시할 때 발생한다.
+  payload: {}
+transitions:
+- id: T-001
+  src: POWERED_OFF
+  event: POWER_RESTORED
+  dst: IDLE
+  guard: total_stock > 0 && power_loss_credit > 0
+  action: credit = 0; record_as_returned(power_loss_credit); display(credit); refresh_buttons()
+  usecase: UC-05
+  notes: '[미규정 REQ-34] 반환 간주 금액의 물리적 반환 수행 여부와 동전 보유량 반영 여부는 문서에 없어 기록(record_as_returned)까지만
+    모델링한다.'
+- id: T-002
+  src: POWERED_OFF
+  event: POWER_RESTORED
+  dst: IDLE
+  guard: total_stock > 0 && power_loss_credit == 0
+  action: credit = 0; display(credit); refresh_buttons()
+  usecase: UC-05
+  notes: ''
+- id: T-003
+  src: POWERED_OFF
+  event: POWER_RESTORED
+  dst: SOLD_OUT
+  guard: total_stock == 0 && power_loss_credit > 0
+  action: credit = 0; record_as_returned(power_loss_credit); display(credit); refresh_buttons()
+  usecase: UC-05
+  notes: '[미규정 REQ-34] 반환 간주 금액의 물리적 반환 및 보유량 반영 규칙 미확정.'
+- id: T-004
+  src: POWERED_OFF
+  event: POWER_RESTORED
+  dst: SOLD_OUT
+  guard: total_stock == 0 && power_loss_credit == 0
+  action: credit = 0; display(credit); refresh_buttons()
+  usecase: UC-05
+  notes: ''
+- id: T-005
+  src: IDLE
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: power_loss_credit = credit; halt()
+  usecase: UC-05
+  notes: ''
+- id: T-006
+  src: HAS_CREDIT
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: power_loss_credit = credit; halt()
+  usecase: UC-05
+  notes: ''
+- id: T-007
+  src: AWAITING_DISPENSE_COMPLETION
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: power_loss_credit = credit; halt()
+  usecase: UC-05
+  notes: ''
+- id: T-008
+  src: SOLD_OUT
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: power_loss_credit = 0; halt()
+  usecase: UC-05
+  notes: ''
+- id: T-009
+  src: ADMIN_MODE
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: power_loss_credit = 0; halt()
+  usecase: UC-05
+  notes: ''
+- id: T-010
+  src: IDLE
+  event: INSERT_COIN
+  dst: HAS_CREDIT
+  guard: recognized && denomination in [100,500,1000]
+  action: coin_count[denomination] += 1; credit += denomination; display(credit);
+    refresh_buttons()
+  usecase: UC-01
+  notes: ''
+- id: T-011
+  src: IDLE
+  event: INSERT_COIN
+  dst: IDLE
+  guard: '!recognized'
+  action: eject_to_return_tray(coin)
+  usecase: UC-01
+  notes: ''
+- id: T-012
+  src: IDLE
+  event: INSERT_COIN
+  dst: IDLE
+  guard: recognized && denomination not in [100,500,1000]
+  action: eject_to_return_tray(coin)
+  usecase: UC-01
+  notes: ''
+- id: T-013
+  src: IDLE
+  event: RETURN_LEVER_PULLED
+  dst: IDLE
+  guard: credit == 0
+  action: ''
+  usecase: UC-03
+  notes: ''
+- id: T-014
+  src: IDLE
+  event: SELECT_BUTTON_PRESSED
+  dst: IDLE
+  guard: '!button_enabled[drink]'
+  action: ''
+  usecase: UC-02
+  notes: ''
+- id: T-015
+  src: IDLE
+  event: ADMIN_KEY_INSERTED
+  dst: ADMIN_MODE
+  guard: valid_key
+  action: display_admin_mode()
+  usecase: UC-04
+  notes: ''
+- id: T-016
+  src: IDLE
+  event: ADMIN_KEY_INSERTED
+  dst: IDLE
+  guard: '!valid_key'
+  action: ''
+  usecase: UC-04
+  notes: ''
+- id: T-017
+  src: HAS_CREDIT
+  event: INSERT_COIN
+  dst: HAS_CREDIT
+  guard: recognized && denomination in [100,500,1000]
+  action: coin_count[denomination] += 1; credit += denomination; display(credit);
+    refresh_buttons()
+  usecase: UC-01
+  notes: ''
+- id: T-018
+  src: HAS_CREDIT
+  event: INSERT_COIN
+  dst: HAS_CREDIT
+  guard: '!recognized'
+  action: eject_to_return_tray(coin)
+  usecase: UC-01
+  notes: ''
+- id: T-019
+  src: HAS_CREDIT
+  event: INSERT_COIN
+  dst: HAS_CREDIT
+  guard: recognized && denomination not in [100,500,1000]
+  action: eject_to_return_tray(coin)
+  usecase: UC-01
+  notes: ''
+- id: T-020
+  src: HAS_CREDIT
+  event: SELECT_BUTTON_PRESSED
+  dst: AWAITING_DISPENSE_COMPLETION
+  guard: button_enabled[drink] && change_payable(credit - price[drink])
+  action: selected = drink; change_due = credit - price[drink]; start_dispense(drink)
+    within 2000ms
+  usecase: UC-02
+  notes: ''
+- id: T-021
+  src: HAS_CREDIT
+  event: SELECT_BUTTON_PRESSED
+  dst: IDLE
+  guard: button_enabled[drink] && !change_payable(credit - price[drink])
+  action: coins = compose_payout(credit); pay_out(coins); coin_count -= coins; credit
+    = 0; display(credit); refresh_buttons()
+  usecase: UC-02
+  notes: ''
+- id: T-022
+  src: HAS_CREDIT
+  event: SELECT_BUTTON_PRESSED
+  dst: HAS_CREDIT
+  guard: '!button_enabled[drink]'
+  action: ''
+  usecase: UC-02
+  notes: ''
+- id: T-023
+  src: HAS_CREDIT
+  event: RETURN_LEVER_PULLED
+  dst: IDLE
+  guard: credit > 0
+  action: coins = compose_payout(credit); pay_out(coins); coin_count -= coins; credit
+    = 0; display(credit); refresh_buttons()
+  usecase: UC-03
+  notes: ''
+- id: T-024
+  src: HAS_CREDIT
+  event: ADMIN_KEY_INSERTED
+  dst: ADMIN_MODE
+  guard: valid_key
+  action: display_admin_mode()
+  usecase: UC-04
+  notes: '[미규정 REQ-29] 누적 투입 금액이 남은 상태에서 관리 모드로 진입할 때 잔액 처리 규칙이 명시되지 않아 잔액은 변경하지 않는다.'
+- id: T-025
+  src: HAS_CREDIT
+  event: ADMIN_KEY_INSERTED
+  dst: HAS_CREDIT
+  guard: '!valid_key'
+  action: ''
+  usecase: UC-04
+  notes: ''
+- id: T-026
+  src: AWAITING_DISPENSE_COMPLETION
+  event: DISPENSE_COMPLETED
+  dst: IDLE
+  guard: total_stock - 1 > 0
+  action: stock[selected] -= 1; coins = compose_payout(change_due); pay_out(coins);
+    coin_count -= coins; credit = 0; display(credit); refresh_buttons()
+  usecase: UC-02
+  notes: ''
+- id: T-027
+  src: AWAITING_DISPENSE_COMPLETION
+  event: DISPENSE_COMPLETED
+  dst: SOLD_OUT
+  guard: total_stock - 1 == 0
+  action: stock[selected] -= 1; coins = compose_payout(change_due); pay_out(coins);
+    coin_count -= coins; credit = 0; display(credit); refresh_buttons()
+  usecase: UC-02
+  notes: ''
+- id: T-028
+  src: AWAITING_DISPENSE_COMPLETION
+  event: RETURN_LEVER_PULLED
+  dst: AWAITING_DISPENSE_COMPLETION
+  guard: ''
+  action: ''
+  usecase: UC-03
+  notes: 배출 진행 중 반환 레버는 배출 완료 후의 누적 투입 금액(0원) 기준으로 처리되므로 추가 지급이 없다.
+- id: T-029
+  src: AWAITING_DISPENSE_COMPLETION
+  event: INSERT_COIN
+  dst: AWAITING_DISPENSE_COMPLETION
+  guard: ''
+  action: eject_to_return_tray(coin)
+  usecase: UC-01
+  notes: '[미규정 REQ-16] 배출 진행 중 코인 투입 처리 규칙이 명시되지 않아 수납하지 않고 반환한다.'
+- id: T-030
+  src: AWAITING_DISPENSE_COMPLETION
+  event: SELECT_BUTTON_PRESSED
+  dst: AWAITING_DISPENSE_COMPLETION
+  guard: ''
+  action: ''
+  usecase: UC-02
+  notes: 배출 중에는 모든 선택 버튼이 비활성이므로 상태 변화가 없다.
+- id: T-031
+  src: SOLD_OUT
+  event: INSERT_COIN
+  dst: SOLD_OUT
+  guard: ''
+  action: eject_to_return_tray(coin)
+  usecase: UC-01
+  notes: ''
+- id: T-032
+  src: SOLD_OUT
+  event: RETURN_LEVER_PULLED
+  dst: SOLD_OUT
+  guard: credit == 0
+  action: ''
+  usecase: UC-03
+  notes: ''
+- id: T-033
+  src: SOLD_OUT
+  event: SELECT_BUTTON_PRESSED
+  dst: SOLD_OUT
+  guard: '!button_enabled[drink]'
+  action: ''
+  usecase: UC-02
+  notes: ''
+- id: T-034
+  src: SOLD_OUT
+  event: ADMIN_KEY_INSERTED
+  dst: ADMIN_MODE
+  guard: valid_key
+  action: display_admin_mode()
+  usecase: UC-04
+  notes: ''
+- id: T-035
+  src: SOLD_OUT
+  event: ADMIN_KEY_INSERTED
+  dst: SOLD_OUT
+  guard: '!valid_key'
+  action: ''
+  usecase: UC-04
+  notes: ''
+- id: T-036
+  src: ADMIN_MODE
+  event: RESTOCK_DRINKS
+  dst: ADMIN_MODE
+  guard: all(qty[d] >= 0)
+  action: 'for d in drinks: stock[d] += qty[d]'
+  usecase: UC-04
+  notes: 재고 보충을 생략하고 동전만 보충하는 경우 이 전이가 발생하지 않는다.
+- id: T-037
+  src: ADMIN_MODE
+  event: REFILL_COINS
+  dst: ADMIN_MODE
+  guard: all(counts[x] >= 0)
+  action: 'for x in [100,500,1000]: coin_count[x] += counts[x]'
+  usecase: UC-04
+  notes: 동전 보충을 생략하고 재고만 보충하는 경우 이 전이가 발생하지 않는다.
+- id: T-038
+  src: ADMIN_MODE
+  event: INSERT_COIN
+  dst: ADMIN_MODE
+  guard: ''
+  action: eject_to_return_tray(coin)
+  usecase: UC-04
+  notes: ''
+- id: T-039
+  src: ADMIN_MODE
+  event: RESTOCK_COMPLETED
+  dst: IDLE
+  guard: total_stock > 0
+  action: credit = 0; display(credit); refresh_buttons()
+  usecase: UC-04
+  notes: ''
+- id: T-040
+  src: ADMIN_MODE
+  event: RESTOCK_COMPLETED
+  dst: SOLD_OUT
+  guard: total_stock == 0
+  action: credit = 0; display(credit); refresh_buttons()
+  usecase: UC-04
+  notes: ''
+- id: T-041
+  src: ADMIN_MODE
+  event: RETURN_LEVER_PULLED
+  dst: ADMIN_MODE
+  guard: ''
+  action: ''
+  usecase: UC-03
+  notes: '[미규정 REQ-25] 관리 모드에서의 반환 레버 동작이 명시되지 않아 지급 없이 상태를 유지한다.'
+- id: T-042
+  src: ADMIN_MODE
+  event: SELECT_BUTTON_PRESSED
+  dst: ADMIN_MODE
+  guard: ''
+  action: ''
+  usecase: UC-04
+  notes: 관리 모드에서는 모든 선택 버튼이 비활성이다.

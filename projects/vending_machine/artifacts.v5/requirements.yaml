@@ -1,0 +1,345 @@
+requirements:
+- id: REQ-01
+  text: 자판기는 100원, 500원, 1000원 코인을 투입으로 받아들인다.
+  kind: functional
+  source: 고객은 100원, 500원, 1000원짜리 코인을 넣을 수 있다.
+- id: REQ-02
+  text: 100원, 500원, 1000원 이외의 코인은 투입 즉시 그대로 반환한다.
+  kind: functional
+  source: 그 외 금액은 즉시 반환한다.
+- id: REQ-03
+  text: 투입된 코인 금액은 누적 투입 금액에 더해진다.
+  kind: functional
+  source: 투입 금액은 누적된다.
+- id: REQ-04
+  text: 누적 투입 금액은 항상 화면에 표시된다.
+  kind: functional
+  source: 누적 금액은 항상 화면에 표시된다.
+- id: REQ-05
+  text: 자판기는 3종류의 음료를 취급한다.
+  kind: functional
+  source: 음료는 3종류이며
+- id: REQ-06
+  text: 3종류 음료의 가격은 서로 다르다.
+  kind: constraint
+  source: 가격이 각각 다르다.
+- id: REQ-07
+  text: 재고는 음료 종류별로 개수로 관리된다.
+  kind: functional
+  source: 재고는 종류별로 관리된다.
+- id: REQ-08
+  text: 음료 선택 버튼은 누적 투입 금액이 해당 음료 가격 이상이고 해당 음료 재고가 1 이상일 때만 활성화된다.
+  kind: functional
+  source: 누적 금액이 해당 음료 가격 이상이고 재고가 남아 있을 때만 그 음료의 선택 버튼이 활성화된다.
+- id: REQ-09
+  text: 고객이 활성화된 선택 버튼을 누르면 해당 음료를 배출한다.
+  kind: functional
+  source: 고객이 활성화된 버튼을 누르면 음료를 배출하고
+- id: REQ-10
+  text: 배출 시 거스름돈이 0보다 크면 음료와 함께 거스름돈을 반환한다.
+  kind: functional
+  source: 거스름돈이 있으면 함께 반환한다.
+- id: REQ-11
+  text: 배출 진행 중에 투입된 코인은 정상 수납되어 누적 투입 금액에 더해진다.
+  kind: functional
+  source: 배출이 진행 중일 때 투입된 코인은 정상적으로 수납되어 누적 금액에 더해진다.
+- id: REQ-12
+  text: 배출 진행 중에 투입된 금액은 진행 중인 배출의 거스름돈에 포함되지 않는다.
+  kind: functional
+  source: 이 금액은 진행 중인 배출의 거스름돈에 섞이지 않고
+- id: REQ-13
+  text: 배출 진행 중에 투입된 금액은 배출 완료 후 누적 투입 금액으로 남아 다음 구매에 사용된다.
+  kind: functional
+  source: 배출 완료 후 누적 금액으로 남아 다음 구매에 쓰인다.
+- id: REQ-14
+  text: 거스름돈은 버튼을 누른 시점의 누적 투입 금액에서 음료 가격을 뺀 값으로 계산한다.
+  kind: functional
+  source: 거스름돈은 버튼을 누른 시점의 누적 금액에서 음료 가격을 뺀 값으로만 계산한다.
+- id: REQ-15
+  text: 자판기는 거스름돈용 동전을 100원, 500원, 1000원 액면가별 개수로 보유한다.
+  kind: functional
+  source: 자판기는 거스름돈용 동전을 액면가(100원, 500원, 1000원)별 개수로 보유한다.
+- id: REQ-16
+  text: 동전 보유량은 요구사항 7~9(REQ-17~REQ-20)에 정의된 규칙 외의 방법으로는 변하지 않는다.
+  kind: constraint
+  source: 이 보유량은 아래 규칙에 따라서만 변한다.
+- id: REQ-17
+  text: 자판기가 받아들인 코인 1개마다 해당 액면가의 보유 개수가 1 증가한다.
+  kind: functional
+  source: 자판기가 받아들인 코인은 그 액면가의 보유 개수에 1개 더해진다.
+- id: REQ-18
+  text: 거스름돈 또는 반환 금액 지급에 사용한 동전은 액면가별로 사용 개수만큼 보유 개수에서 차감한다.
+  kind: functional
+  source: 지급에 사용한 동전은 액면가별로 보유 개수에서 그만큼 뺀다.
+- id: REQ-19
+  text: 비액면가, 인식 실패, 판매 중지 상태 또는 관리 모드에서 투입된 코인은 보유량에 더해지지 않는다.
+  kind: functional
+  source: 자판기가 받아들이지 않고 그대로 되돌려 보내는 코인(비액면가, 인식 실패, 판매 중지 상태나 관리 모드에서 투입된 코인)은 보유량에
+    더해지지 않는다.
+- id: REQ-20
+  text: 받아들이지 않은 코인은 들어온 그 코인 자체가 그대로 반환된다.
+  kind: functional
+  source: 들어온 그 코인이 그대로 나간다.
+- id: REQ-21
+  text: 어느 시점에나 동전 보유량 합계는 (초기 보유액) + (보충된 금액) − (회수된 금액) + (판매된 음료 가격의 합) + (아직 정산되지
+    않은 누적 투입 금액) + (미반환 보관액)과 같다.
+  kind: constraint
+  source: 어느 시점에나 보유량 합계는 다음과 같다. 이 밖의 항은 없다.
+- id: REQ-22
+  text: 거스름돈을 만들 동전이 부족하면 음료를 배출하지 않는다.
+  kind: functional
+  source: 거스름돈을 만들 동전이 부족하면 배출하지 않고
+- id: REQ-23
+  text: 거스름돈을 만들 동전이 부족하면 투입 금액 전액을 반환한다.
+  kind: functional
+  source: 투입 금액 전액을 반환한다.
+- id: REQ-24
+  text: 판매 상태에서 고객이 반환 레버를 조작하면 언제든 누적 투입 금액 전액을 반환한다.
+  kind: functional
+  source: 고객은 판매 상태에서 언제든 반환 레버로 투입 금액 전액을 돌려받을 수 있다.
+- id: REQ-25
+  text: 누적 투입 금액이 0보다 큰 상태에서 코인 투입, 음료 선택, 반환 레버 조작이 30초 동안 없으면 누적 투입 금액 전액을 자동 반환한다.
+  kind: functional
+  source: 30초 동안 코인 투입, 음료 선택, 반환 레버 조작이 없으면 자판기는 누적 투입 금액 전액을 자동으로 반환하고
+- id: REQ-26
+  text: 30초 무조작 자동 반환 후 자판기는 거래를 종료한다.
+  kind: functional
+  source: 자동으로 반환하고 거래를 종료한다.
+- id: REQ-27
+  text: 배출 개시 후 10초 안에 배출 완료 신호를 받지 못하면 배출 실패로 처리한다.
+  kind: functional
+  source: 배출을 개시한 뒤 10초 안에 배출 완료 신호를 받지 못하면 자판기는 배출 실패로 처리한다.
+- id: REQ-28
+  text: 배출 실패 시 재고를 차감하지 않는다.
+  kind: functional
+  source: 재고를 차감하지 않고
+- id: REQ-29
+  text: 배출 실패 시 누적 투입 금액 전액을 반환한다.
+  kind: functional
+  source: 누적 투입 금액 전액을 반환한 뒤
+- id: REQ-30
+  text: 배출 실패 처리 후 자판기는 판매 상태로 돌아간다.
+  kind: functional
+  source: 판매 상태로 돌아간다.
+- id: REQ-31
+  text: 자판기는 배출을 개시할 때마다 일련번호를 부여한다.
+  kind: functional
+  source: 자판기는 배출을 개시할 때마다 일련번호를 매기고
+- id: REQ-32
+  text: 배출 완료 신호는 현재 대기 중인 일련번호와 일치할 때만 유효하다.
+  kind: functional
+  source: 배출 완료 신호는 현재 기다리는 일련번호와 일치할 때만 유효하다.
+- id: REQ-33
+  text: 일련번호가 일치하지 않거나 배출 실패 처리 후 도착한 배출 완료 신호는 상태·재고·금액을 변경하지 않는다.
+  kind: functional
+  source: 일치하지 않거나 배출 실패로 처리한 뒤에 도착한 배출 완료 신호는 상태·재고·금액을 바꾸지 않는다.
+- id: REQ-34
+  text: 무효한 배출 완료 신호는 '지연 배출'로 기록한다.
+  kind: functional
+  source: 자판기는 그 신호를 '지연 배출'로 기록해
+- id: REQ-35
+  text: 관리자는 관리 모드에서 지연 배출 기록을 확인할 수 있다.
+  kind: functional
+  source: 관리자가 관리 모드에서 확인하고 재고를 맞출 수 있게 한다.
+- id: REQ-36
+  text: 모든 음료의 재고가 0이면 자판기는 판매 중지 상태가 된다.
+  kind: functional
+  source: 모든 음료의 재고가 0이면 자판기는 판매 중지 상태가 되고
+- id: REQ-37
+  text: 판매 중지 상태에서는 코인을 받지 않는다.
+  kind: functional
+  source: 판매 중지 상태가 되고 코인을 받지 않는다.
+- id: REQ-38
+  text: 관리자는 전용 키로 관리 모드에 진입할 수 있다.
+  kind: functional
+  source: 관리자는 전용 키로 관리 모드에 들어갈 수 있다.
+- id: REQ-39
+  text: 배출 완료 대기 중에 관리자 키가 꽂히면 관리 모드 진입을 예약한다.
+  kind: functional
+  source: 배출 완료를 기다리는 중에 키를 꽂으면 자판기는 진입을 예약해 두고
+- id: REQ-40
+  text: 관리 모드 진입이 예약된 경우 배출이 완료되거나 실패로 처리된 직후 관리 모드로 전환한다.
+  kind: functional
+  source: 배출이 완료되거나 실패로 처리된 직후에 관리 모드로 전환한다.
+- id: REQ-41
+  text: 예약된 관리 모드 전환 시 이미 개시된 배출의 음료 가격은 판매로 확정된다.
+  kind: functional
+  source: 이때 이미 개시된 배출의 음료 가격은 판매로 확정되며
+- id: REQ-42
+  text: 예약된 관리 모드 전환 시 배출 중 투입된 금액만 반환한다.
+  kind: functional
+  source: 배출 중 투입된 금액만 반환한다.
+- id: REQ-43
+  text: 누적 투입 금액이 0보다 큰 상태에서 관리 모드 진입이 요청되면 먼저 그 금액 전액을 반환한다.
+  kind: functional
+  source: 누적 투입 금액이 남아 있는 상태에서 관리 모드 진입이 요청되면 자판기는 먼저 그 금액 전액을 반환하고
+- id: REQ-44
+  text: 관리 모드 진입 전 반환 후 누적 투입 금액을 0으로 만든 뒤 관리 모드로 전환한다.
+  kind: functional
+  source: 누적 투입 금액을 0으로 만든 뒤 관리 모드로 전환한다.
+- id: REQ-45
+  text: 관리 모드에서 관리자는 음료 재고를 보충할 수 있다.
+  kind: functional
+  source: 관리 모드에서 관리자는 재고와 동전을 보충할 수 있다.
+- id: REQ-46
+  text: 관리 모드에서 관리자는 동전을 보충할 수 있다.
+  kind: functional
+  source: 관리 모드에서 관리자는 재고와 동전을 보충할 수 있다.
+- id: REQ-47
+  text: 재고 보충은 등록된 3종의 음료에 대해서만 지시할 수 있다.
+  kind: functional
+  source: 재고 보충은 등록된 3종의 음료에 대해서만
+- id: REQ-48
+  text: 동전 보충은 100원, 500원, 1000원 액면가에 대해서만 지시할 수 있다.
+  kind: functional
+  source: 동전 보충은 100원, 500원, 1000원 액면가에 대해서만 지시할 수 있다.
+- id: REQ-49
+  text: 보충 수량과 회수 수량은 1 이상의 정수여야 한다.
+  kind: constraint
+  source: 보충 수량과 회수 수량은 1 이상의 정수여야 한다.
+- id: REQ-50
+  text: 등록되지 않은 대상 또는 0 이하의 수량이 하나라도 포함된 보충·회수 지시는 전체를 거부한다.
+  kind: functional
+  source: 그 밖의 대상이나 0 이하의 수량이 포함된 지시는 전체를 거부하고
+- id: REQ-51
+  text: 보충·회수 지시를 거부하면 관리자에게 알린다.
+  kind: functional
+  source: 전체를 거부하고 관리자에게 알린다.
+- id: REQ-52
+  text: 관리 모드에서 관리자는 음료 종류별 재고를 실제 개수에 맞춰 아래로 조정할 수 있다.
+  kind: functional
+  source: 관리 모드에서 관리자는 음료 종류별 재고를 실제 개수에 맞춰 아래로 조정할 수 있다.
+- id: REQ-53
+  text: 재고 조정값은 0 이상 현재 장부 재고 이하여야 하며, 그 범위 밖의 값은 거부한다.
+  kind: functional
+  source: 조정값은 0 이상 현재 장부 재고 이하여야 하며, 그 밖의 값은 거부한다.
+- id: REQ-54
+  text: 재고 조정 후 지연 배출 기록은 관리자가 확인한 것으로 표시된다.
+  kind: functional
+  source: 지연 배출 기록은 조정 후 관리자가 확인한 것으로 표시된다.
+- id: REQ-55
+  text: 관리 모드에서 관리자는 액면가별로 동전을 회수할 수 있다.
+  kind: functional
+  source: 관리 모드에서 관리자는 액면가별로 동전을 회수할 수 있으며
+- id: REQ-56
+  text: 동전 회수 시 회수한 개수만큼 해당 액면가의 보유 개수를 차감한다.
+  kind: functional
+  source: 회수한 개수만큼 해당 액면가의 보유 개수를 차감한다.
+- id: REQ-57
+  text: 보충이 끝나면 자판기는 판매 상태로 돌아간다. [모호] "보충이 끝남"의 판정 조건(관리자 키 제거 등)이 문서에 명시되지 않음.
+  kind: constraint
+  source: 보충이 끝나면 판매 상태로 돌아간다.
+- id: REQ-58
+  text: 관리 모드 종료 시점에 모든 음료의 재고가 0이면 판매 중지 상태로 돌아간다.
+  kind: functional
+  source: 그 시점에 모든 음료의 재고가 0이면 판매 중지 상태로 돌아간다.
+- id: REQ-59
+  text: 버튼을 누른 뒤 배출이 시작될 때까지 걸리는 시간은 2초를 넘지 않는다.
+  kind: nonfunctional
+  source: 버튼을 누른 뒤 배출이 시작될 때까지 2초를 넘지 않는다.
+- id: REQ-60
+  text: 정전 후 재기동 시 누적 투입 금액은 0에서 시작한다.
+  kind: functional
+  source: 정전 후 재기동 시 누적 투입 금액은 0에서 시작한다.
+- id: REQ-61
+  text: 정전 시점에 투입 중이던 금액은 물리적으로 반환하지 않는다.
+  kind: functional
+  source: 정전 시점에 투입 중이던 금액은 물리적으로 반환하지 않는다.
+- id: REQ-62
+  text: 정전 시점에 투입 중이던 금액은 '미반환 보관액'으로 기록한다.
+  kind: functional
+  source: 자판기는 그 금액을 '미반환 보관액'으로 기록하고
+- id: REQ-63
+  text: 미반환 보관액에 해당하는 동전은 동전 보유량에 그대로 남긴다.
+  kind: functional
+  source: 동전 보유량에 그대로 남긴다.
+- id: REQ-64
+  text: 관리자는 관리 모드에서 미반환 보관액을 확인할 수 있다.
+  kind: functional
+  source: 미반환 보관액은 관리자가 관리 모드에서 확인하고 회수할 수 있다.
+- id: REQ-65
+  text: 관리자는 관리 모드에서 미반환 보관액을 회수할 수 있다. [모호] 회수 후 미반환 보관액 기록이 감소하는지 여부가 명시되지 않음.
+  kind: constraint
+  source: 미반환 보관액은 관리자가 관리 모드에서 확인하고 회수할 수 있다.
+- id: REQ-66
+  text: 동전 보유량 합계를 미반환 보관액 아래로 낮추는 동전 회수 지시는 거부한다.
+  kind: functional
+  source: 보유량 합계를 미반환 보관액 아래로 낮추는 회수 지시는 거부한다.
+- id: REQ-67
+  text: 배출 개시 후 완료 전에 전원이 끊긴 경우 재기동 시 해당 음료의 재고를 1 차감한다.
+  kind: functional
+  source: 배출을 개시한 뒤 완료 전에 전원이 끊긴 경우, 재기동 시 해당 음료의 재고를 1 차감하고
+- id: REQ-68
+  text: 배출 개시 후 완료 전에 전원이 끊긴 경우 재기동 시 그 음료 가격을 판매된 금액으로 계상한다.
+  kind: functional
+  source: 그 음료 가격을 판매된 금액으로 잡는다.
+- id: REQ-69
+  text: 배출 중 정전 시 미반환 보관액은 정전 시점의 누적 투입 금액에서 그 음료 가격을 뺀 차액으로만 계상한다.
+  kind: functional
+  source: 미반환 보관액은 정전 시점의 누적 투입 금액에서 그 음료 가격을 뺀 차액으로만 잡는다.
+- id: REQ-70
+  text: 재기동 시 판매 상태와 판매 중지 상태의 판정은 기기 내부에 보존된 음료 종류별 재고만으로 한다.
+  kind: functional
+  source: 재기동 시 판매 상태와 판매 중지 상태의 판정은 기기 내부에 보존된 음료 종류별 재고로만 한다.
+- id: REQ-71
+  text: 재기동 시 외부에서 재고 정보를 받지 않는다.
+  kind: constraint
+  source: 외부에서 재고 정보를 받지 않는다.
+- id: REQ-72
+  text: 상태가 바뀌는 모든 전이가 끝날 때마다 현재 상태 전체를 기기 내부 저장 파일에 기록한다.
+  kind: functional
+  source: 자판기는 상태가 바뀌는 모든 전이가 끝날 때마다 현재 상태 전체(...)를 기기 내부 저장 파일에 기록한다.
+- id: REQ-73
+  text: 저장되는 상태에는 상태 이름, 누적 투입 금액, 종류별 재고, 액면가별 동전 보유량, 미반환 보관액, 지연 배출 기록, 진행 중인 배출의
+    일련번호와 음료, 관리 모드 진입 예약 여부가 포함된다.
+  kind: functional
+  source: 현재 상태 전체(상태 이름, 누적 투입 금액, 종류별 재고, 액면가별 동전 보유량, 미반환 보관액, 지연 배출 기록, 진행 중인
+    배출의 일련번호와 음료, 관리 모드 진입 예약 여부)
+- id: REQ-74
+  text: 상태 저장은 원자적으로 수행된다.
+  kind: nonfunctional
+  source: 저장은 원자적이어야 한다.
+- id: REQ-75
+  text: 기록 도중 전원이 끊겨도 직전에 완전히 기록된 상태가 저장 파일에 남는다.
+  kind: nonfunctional
+  source: 기록 도중 전원이 끊겨도 직전에 완전히 기록된 상태가 남아야 하며
+- id: REQ-76
+  text: 절반만 쓰인 저장 파일은 상태로 읽히지 않는다.
+  kind: nonfunctional
+  source: 절반만 쓰인 파일이 읽히면 안 된다.
+- id: REQ-77
+  text: 재기동 시 저장 파일에서 상태를 복원한 뒤 정전·재기동 규칙(REQ-60~REQ-71)을 적용한다.
+  kind: functional
+  source: 재기동 시 자판기는 저장 파일에서 상태를 복원한 뒤 정전·재기동 규칙(22~25)을 적용한다.
+- id: REQ-78
+  text: 저장 파일이 없거나 손상된 경우 재고 0, 동전 0, 보관액 0인 초기 상태로 기동한다.
+  kind: functional
+  source: 저장 파일이 없거나 손상됐으면 초기 상태(재고 0, 동전 0, 보관액 0)로 기동하고
+- id: REQ-79
+  text: 초기 상태로 기동한 경우 관리자에게 알린다.
+  kind: functional
+  source: 초기 상태(...)로 기동하고 관리자에게 알린다.
+- id: REQ-80
+  text: 저장 파일의 위치는 자판기 생성 시 지정한다.
+  kind: functional
+  source: 저장 파일의 위치는 자판기 생성 시 지정한다.
+- id: REQ-81
+  text: 테스트에서 저장 파일로 임시 파일을 지정할 수 있다.
+  kind: functional
+  source: 테스트는 임시 파일을 지정할 수 있어야 한다.
+- id: REQ-82
+  text: 자판기는 외부 네트워크에 연결하지 않는다.
+  kind: constraint
+  source: 외부 네트워크에 연결하지 않는다.
+- id: REQ-83
+  text: 모든 처리는 기기 내부에서 완료된다.
+  kind: constraint
+  source: 모든 처리는 기기 내부에서 끝난다.
+- id: REQ-84
+  text: 자판기는 동시에 한 명의 고객만 상대한다.
+  kind: constraint
+  source: 동시에 한 명의 고객만 상대한다.
+- id: REQ-85
+  text: 제어 소프트웨어는 기존 하드웨어(코인 투입구, 버튼, 배출구, 반환 레버) 위에서 동작하며 하드웨어는 개발 대상이 아니다.
+  kind: constraint
+  source: 하드웨어(코인 투입구, 버튼, 배출구, 반환 레버)는 이미 있고, 그 위에서 도는 제어 소프트웨어만 대상이다.

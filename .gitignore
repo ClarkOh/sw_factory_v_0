@@ -1,0 +1,28 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# --- 공장은 추적하고, 공장이 만든 것은 추적하지 않는다 ---
+#
+# 제품 저장소는 자기 git 을 갖고 있다 (커밋마다 티켓 키, 버전마다 태그).
+# 여기에 중첩시키면 gitlink 가 되어 양쪽 다 망가진다.
+projects/*/repo/
+
+# 동결된 과거 세대. 35MB 이고 안에 또 .git 이 있다.
+# 필요해지면 평탄화해서 별도 저장소로 옮긴다.
+baselines/
+
+# --- 계측 데이터는 추적한다 ---
+#
+# 이게 없으면 "v7 을 만든 공장이 어떤 상태였나" 를 복원할 수 없다.
+# 실제로 4일치 토큰 데이터를 세션 로그에서 되살려야 했다.
+# 그래서 .factory/ 를 통째로 무시하지 않고, 매 실행 바뀌는 것만 뺀다.
+projects/*/.factory/state.json
+projects/*/.factory/state.*.json
+projects/*/.factory/raw/
+projects/*/.factory/smoke.txt
+
+# 실행이 남기는 런타임 산출물
+*_state.json
+*.state.json
+demo_script.txt

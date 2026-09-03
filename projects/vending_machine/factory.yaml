@@ -1,0 +1,27 @@
+project: vending_machine
+
+# 산출물(요구사항/유스케이스/FSM)과 백로그가 쌓이는 곳. 이 파일 기준 상대경로.
+workspace: .
+# 실제 코드가 들어갈 git 저장소.
+repo: repo
+
+# local = backlog/tickets.yaml 파일. jira 로 바꾸면 파이프라인 코드 변경 없이 전환된다.
+tracker: local
+jira_project_key: ""
+
+# headless = claude -p 서브프로세스. scripted = 테스트용 가짜.
+worker: headless
+model: ""            # "" 이면 claude 기본 모델. "sonnet" 등으로 지정 가능.
+
+gates:
+  fsm: manual        # FSM은 뒤의 모든 것의 근거 -> 사람이 한 번 본다
+  ticketize: auto
+  commit: auto
+  push: manual       # 바깥으로 나가는 유일한 액션
+
+limits:
+  implement_attempts: 3      # 구현+디버그 재시도 상한. 초과 시 BLOCKED + 버그티켓.
+  e2e_attempts: 2
+  fsm_repair_attempts: 3
+  worker_timeout_s: 900
+  max_tickets_per_run: 0     # 0 = 무제한

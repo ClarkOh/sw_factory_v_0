@@ -1,0 +1,27 @@
+[06:13:38] -- REVIEW --
+[06:13:38]   [검토 1/3]
+[06:24:13]   critic: YAML 파싱 실패 -> 재질의 (원문은 .factory/raw/ 에 보존)
+[06:33:06]   확인함: app/vending_machine.py 의 TRANSITIONS 표 T-001~T-080 전부와 각 guard/action 본문을 읽고 (state, event) 자리마다 guard 합집합이 payload 전체를 덮는지 확인했다
+[06:33:06]   확인함: tests/test_fsm.py 의 전이별 테스트 test_t_001~test_t_080 과 마지막 시나리오 테스트를 읽고 각 단언이 무엇을 배제하는지 확인했다
+[06:33:06]   확인함: tests/test_timing.py 전문(REQ-22 30초 · REQ-24 10초 · REQ-67 2초)과 dispense_timer / idle_timer 의 실제 갱신 지점을 대조했다
+[06:33:06]   확인함: tests/test_lineup.py(REQ-05 · REQ-06 · REQ-07 · REQ-08)와 tests/e2e/test_constraints.py(REQ-77 · REQ-88 · REQ-89)를 읽었다 — 제약 요구사항 셋은 격자 전수 방식으로 실제 검증되고 있다
+[06:33:06]   확인함: tests/e2e/test_durability.py 전문(REQ-80~REQ-82 · 콜드부트 시나리오)과 persist() / load_save() / snapshot() / restore() 를 대조했다
+[06:33:06]   확인함: 저장소 전체에서 REQ-18 보유량 합계 항등식을 평가하는 단언을 검색했다 — 0 건이다
+[06:33:06]   확인함: 저장소 전체에서 RESERVED_ADMIN_ENTRY 를 발화시키는 코드를 검색했다 — 테스트의 수동 주입 외에 0 건이다
+[06:33:06]   확인함: 저장소 전체에서 fsync 호출을 검색했다 — 구현에 0 건, 테스트의 감시 래퍼에만 존재한다
+[06:33:06]   확인함: ADMIN_MODE 의 다섯 관리자 이벤트(REFILL_STOCK · REFILL_COINS · ADJUST_STOCK · COLLECT_COINS · CONFIRM_DISPENSE_FAILURE) guard 를 payload 형태별로 짚어 어느 갈래에도 걸리지 않는 입력을 찾았다
+[06:33:06]   확인함: 코인 수납(credit_coin) · 지급(pay_change) · 보충(refill_coins) · 회수(collect_coins / collect_deposit) · 정산(settle_pending_dispense / complete_pending_dispense) 여섯 곳이 coins · credit · deposit · sales 를 어떻게 움직이는지 손으로 대차를 맞춰 보았다
+[06:33:06] 검토: 8건 (high 4 / medium 4 / low 0)
+[06:33:06]   [high] 배출 중 정전 정산이 이미 정산된 음료 가격을 미반환 보관액에서 한 번 더 빼서 보관액이 음수가 되고, 그 파일이  -> SWF-363
+[06:33:07]   [high] 배출 중 정전 정산의 기대값이 명세가 아니라 구현 공식에서 나왔고, 도달 가능한 입력(credit < 가격)을 어느 -> SWF-364
+[06:33:07]   [high] REQ-18 의 보유량 합계 항등식은 유스케이스 셋의 인수 조건인데 그것을 평가하는 테스트가 저장소에 하나도 없다 -> SWF-365
+[06:33:07]   [high] REQ-80 · REQ-81 의 fsync 가 구현에 한 줄도 없고, 그것을 확인하는 유일한 테스트는 xfail(s -> SWF-366
+[06:33:08]   [medium] REFILL_STOCK · REFILL_COINS · COLLECT_COINS 는 어느 갈래에도 걸리지 않는 지시를 -> SWF-367
+[06:33:08]   [medium] REQ-52 의 "고장 상태로 전환한 뒤 관리 모드로 들어간다" 에서 뒷부분을 아무도 발화시키지 않는다 -> SWF-368
+[06:33:08]   [medium] REQ-24 의 10 초와 REQ-67 의 2 초는 어떤 코드도 세지 않고, 그것을 확인한다는 단언은 언제나 참인  -> SWF-369
+[06:33:09]   [medium] 음료 가격이 취급 액면가로 거스름돈을 구성할 수 있는 값이어야 한다는 규칙이 없어, 특정 가격표에서는 그 음료가 영 -> SWF-370
+[06:33:09]   > SWF-364 [검토/high] 배출 중 정전 정산의 기대값이 명세가 아니라 구현 공식에서 나왔고, 도달 가능한 입력(credit
+[06:41:06]     [FAIL] 테스트 실패 (시도 1/3)
+[06:56:06] [STOP] 워커를 쓸 수 없습니다: remediate:SWF-364: timeout after 900s
+   사용량 한도나 네트워크 문제일 가능성이 높습니다. 상태는 저장됐고, 다시 run 하면 이어집니다.
+[06:56:06] 정지 지점: REVIEW | 통계: {'done': 78, 'critic_blocked': 18, 'critic_fixed': 10}

@@ -1,0 +1,575 @@
+project: vending_machine
+states:
+- id: UNINITIALIZED
+  desc: 전원(생성 요청·전원 재공급)을 기다린다. 저장 파일은 디스크에만 존재한다.
+  initial: true
+  final: false
+- id: CREATE_FAILED
+  desc: 지정 경로에 기록할 수 없어 생성이 실패한 상태. 기동하지 않는다.
+  initial: false
+  final: true
+- id: SELLING
+  desc: 판매 상태. 코인 투입·음료 선택·반환 레버·관리자 키·30초 무조작 타임아웃을 기다린다.
+  initial: false
+  final: false
+- id: DISPENSING
+  desc: 배출 개시 후 배출 완료 신호(또는 10초 타임아웃)를 기다린다. 코인 투입·관리자 키도 받는다.
+  initial: false
+  final: false
+- id: SOLD_OUT
+  desc: 판매 중지 상태(모든 재고 0). 코인을 받지 않고 관리자 키만 기다린다.
+  initial: false
+  final: false
+- id: ADMIN
+  desc: 관리 모드. 보충·조정·회수·기록 확인 지시와 키 제거(종료)를 기다린다. 코인을 받지 않는다.
+  initial: false
+  final: false
+events:
+- id: POWER_ON
+  desc: 저장 파일 경로를 지정하여 자판기가 생성되거나, 정전 후 전원이 재공급될 때
+  payload:
+    path: string
+- id: POWER_LOST
+  desc: 기동 중 전원이 끊길 때
+  payload: {}
+- id: INSERT_COIN
+  desc: 고객이 코인 투입구에 코인을 넣을 때 (amount는 인식된 액면가, 인식 실패 시 0)
+  payload:
+    amount: int
+- id: PRESS_BUTTON
+  desc: 고객이 음료 선택 버튼을 누를 때
+  payload:
+    drink: string
+- id: DISPENSE_DONE
+  desc: 배출 장치가 배출 완료 신호를 보낼 때
+  payload:
+    serial: int
+- id: DISPENSE_TIMEOUT
+  desc: 배출 개시 후 10초 동안 유효한 완료 신호가 없을 때
+  payload: {}
+- id: IDLE_TIMEOUT
+  desc: 누적 투입 금액 > 0 상태에서 코인 투입·음료 선택·반환 레버 조작이 30초 동안 없을 때
+  payload: {}
+- id: PULL_LEVER
+  desc: 고객이 반환 레버를 조작할 때
+  payload: {}
+- id: INSERT_KEY
+  desc: 키가 꽂힐 때 (key_valid는 전용 키 여부)
+  payload:
+    key_valid: bool
+- id: REMOVE_KEY
+  desc: 관리자가 전용 키를 제거하여 관리 모드 종료를 지시할 때
+  payload: {}
+- id: RESTOCK_DRINKS
+  desc: 관리자가 음료 종류·수량 목록으로 재고 보충을 지시할 때
+  payload:
+    items: map<drink,int>
+- id: REFILL_COINS
+  desc: 관리자가 액면가·수량 목록으로 동전 보충을 지시할 때
+  payload:
+    items: map<int,int>
+- id: VIEW_DELAYED_LOG
+  desc: 관리자가 지연 배출 기록 확인을 요청할 때
+  payload: {}
+- id: ADJUST_STOCK
+  desc: 관리자가 음료 종류와 조정값을 지시할 때
+  payload:
+    drink: string
+    count: int
+- id: VIEW_RETAINED
+  desc: 관리자가 미반환 보관액 확인을 요청할 때
+  payload: {}
+- id: COLLECT_COINS
+  desc: 관리자가 액면가·수량 목록으로 동전 회수를 지시할 때
+  payload:
+    items: map<int,int>
+transitions:
+- id: T-001
+  src: UNINITIALIZED
+  event: POWER_ON
+  dst: CREATE_FAILED
+  guard: '!writable(path)'
+  action: report_create_failure()
+  usecase: UC-18
+  notes: 디렉터리 없음·권한 없음. 네트워크 호출 0회.
+- id: T-002
+  src: UNINITIALIZED
+  event: POWER_ON
+  dst: SOLD_OUT
+  guard: writable(path) && !file_valid(path)
+  action: save_path = path; reset_state(); notify_admin('no_or_corrupt_save'); display(0);
+    save()
+  usecase: UC-16
+  notes: 파일 없음 또는 손상/절반 기록. 절반 기록 내용은 상태로 읽지 않음(UC-17 1a/2a, UC-18 3a).
+- id: T-003
+  src: UNINITIALIZED
+  event: POWER_ON
+  dst: SELLING
+  guard: writable(path) && file_valid(path) && pending == none && any(stock > 0)
+  action: save_path = path; load(); retained += credit; credit = 0; admin_reserved
+    = false; display(0); save()
+  usecase: UC-16
+  notes: 복원 상태가 관리 모드여도 재고만으로 판정(2d). 물리 반환 없음.
+- id: T-004
+  src: UNINITIALIZED
+  event: POWER_ON
+  dst: SOLD_OUT
+  guard: writable(path) && file_valid(path) && pending == none && all(stock == 0)
+  action: save_path = path; load(); retained += credit; credit = 0; admin_reserved
+    = false; display(0); save()
+  usecase: UC-16
+  notes: ''
+- id: T-005
+  src: UNINITIALIZED
+  event: POWER_ON
+  dst: SELLING
+  guard: writable(path) && file_valid(path) && pending != none && stock_after_pending_dec()
+    > 0
+  action: save_path = path; load(); stock[pending.drink] -= 1; sold_total += price[pending.drink];
+    retained += pending.change + credit; credit = 0; pending = none; admin_reserved
+    = false; display(0); save()
+  usecase: UC-16
+  notes: 2c. pending.change == 정전 시점 (버튼 시점 누적 − 가격), credit == 배출 중 투입 금액.
+- id: T-006
+  src: UNINITIALIZED
+  event: POWER_ON
+  dst: SOLD_OUT
+  guard: writable(path) && file_valid(path) && pending != none && stock_after_pending_dec()
+    == 0
+  action: save_path = path; load(); stock[pending.drink] -= 1; sold_total += price[pending.drink];
+    retained += pending.change + credit; credit = 0; pending = none; admin_reserved
+    = false; display(0); save()
+  usecase: UC-16
+  notes: 2c + 재고 전부 0 판정.
+- id: T-007
+  src: SELLING
+  event: POWER_LOST
+  dst: UNINITIALIZED
+  guard: ''
+  action: ''
+  usecase: UC-17
+  notes: 디스크에는 직전 완전 기록 상태만 남는다.
+- id: T-008
+  src: DISPENSING
+  event: POWER_LOST
+  dst: UNINITIALIZED
+  guard: ''
+  action: ''
+  usecase: UC-17
+  notes: 진행 중 배출·예약 여부는 저장 파일에 있음(UC-10 6a).
+- id: T-009
+  src: SOLD_OUT
+  event: POWER_LOST
+  dst: UNINITIALIZED
+  guard: ''
+  action: ''
+  usecase: UC-17
+  notes: ''
+- id: T-010
+  src: ADMIN
+  event: POWER_LOST
+  dst: UNINITIALIZED
+  guard: ''
+  action: ''
+  usecase: UC-17
+  notes: ''
+- id: T-011
+  src: SELLING
+  event: INSERT_COIN
+  dst: SELLING
+  guard: amount in {100, 500, 1000}
+  action: credit += amount; coins[amount] += 1; display(credit); refresh_buttons();
+    restart_idle_timer(); save()
+  usecase: UC-01
+  notes: UC-02 버튼 활성 = (credit >= price) && (stock >= 1). UC-07 1b 타이머 재시작.
+- id: T-012
+  src: SELLING
+  event: INSERT_COIN
+  dst: SELLING
+  guard: amount not in {100, 500, 1000}
+  action: eject_inserted_coin()
+  usecase: UC-01
+  notes: 2a. 비액면가 또는 인식 실패(amount == 0). 금액·보유량 변화 없음.
+- id: T-013
+  src: SELLING
+  event: PRESS_BUTTON
+  dst: DISPENSING
+  guard: credit >= price[drink] && stock[drink] >= 1 && can_make_change(credit - price[drink])
+  action: 'pending = {serial: next_serial(), drink: drink, change: credit - price[drink]};
+    credit = 0; stop_idle_timer(); start_dispense(pending.serial); start_timer(10s);
+    save()'
+  usecase: UC-03
+  notes: 버튼 누름부터 배출 개시까지 ≤ 2초. 일련번호는 직전과 달라야 함.
+- id: T-014
+  src: SELLING
+  event: PRESS_BUTTON
+  dst: SELLING
+  guard: credit >= price[drink] && stock[drink] >= 1 && !can_make_change(credit -
+    price[drink])
+  action: refund(credit); credit = 0; stop_idle_timer(); display(0); refresh_buttons();
+    save()
+  usecase: UC-03
+  notes: 3a. 배출 없음, 재고 변화 없음. refund는 사용 동전을 coins에서 차감.
+- id: T-015
+  src: SELLING
+  event: PRESS_BUTTON
+  dst: SELLING
+  guard: credit < price[drink] || stock[drink] == 0
+  action: ''
+  usecase: UC-02
+  notes: 2c. 비활성 버튼 누름 — 아무 변화 없음.
+- id: T-016
+  src: SELLING
+  event: PULL_LEVER
+  dst: SELLING
+  guard: credit > 0
+  action: refund(credit); credit = 0; stop_idle_timer(); display(0); refresh_buttons();
+    save()
+  usecase: UC-07
+  notes: ''
+- id: T-017
+  src: SELLING
+  event: PULL_LEVER
+  dst: SELLING
+  guard: credit == 0
+  action: ''
+  usecase: UC-07
+  notes: 1a.
+- id: T-018
+  src: SELLING
+  event: IDLE_TIMEOUT
+  dst: SELLING
+  guard: credit > 0
+  action: refund(credit); credit = 0; display(0); refresh_buttons(); save()
+  usecase: UC-07
+  notes: 1b. 30초 무조작 자동 반환.
+- id: T-019
+  src: SELLING
+  event: INSERT_KEY
+  dst: ADMIN
+  guard: key_valid && credit == 0
+  action: stop_idle_timer(); display(0); save()
+  usecase: UC-09
+  notes: ''
+- id: T-020
+  src: SELLING
+  event: INSERT_KEY
+  dst: ADMIN
+  guard: key_valid && credit > 0
+  action: refund(credit); credit = 0; stop_idle_timer(); display(0); save()
+  usecase: UC-09
+  notes: 2a. 전액 반환 후 진입.
+- id: T-021
+  src: SELLING
+  event: INSERT_KEY
+  dst: SELLING
+  guard: '!key_valid'
+  action: ''
+  usecase: UC-09
+  notes: 1a.
+- id: T-022
+  src: SELLING
+  event: DISPENSE_DONE
+  dst: SELLING
+  guard: ''
+  action: 'delayed_log.append({serial, drink: none, acked: false}); save()'
+  usecase: UC-06
+  notes: 2a/2b. 대기 중 배출 없음 — 배출 실패 처리 후 원래 번호 신호 포함. 상태·재고·금액 변화 없음.
+- id: T-023
+  src: DISPENSING
+  event: DISPENSE_DONE
+  dst: SELLING
+  guard: serial == pending.serial && !admin_reserved && stock_after_pending_dec()
+    > 0
+  action: 'stop_timer(); stock[pending.drink] -= 1; sold_total += price[pending.drink];
+    if pending.change > 0: refund(pending.change); pending = none; display(credit);
+    refresh_buttons(); if credit > 0: restart_idle_timer(); save()'
+  usecase: UC-03
+  notes: 7a. change == 0이면 반환 없음. 배출 중 투입 금액(credit)은 유지(UC-05).
+- id: T-024
+  src: DISPENSING
+  event: DISPENSE_DONE
+  dst: SOLD_OUT
+  guard: serial == pending.serial && !admin_reserved && stock_after_pending_dec()
+    == 0
+  action: 'stop_timer(); stock[pending.drink] -= 1; sold_total += price[pending.drink];
+    if pending.change > 0: refund(pending.change); pending = none; display(credit);
+    save()'
+  usecase: UC-08
+  notes: '[미규정 REQ-36] 배출 중 투입된 credit의 반환 여부(UC-08 2a). 문서 범위대로 credit은 유지.'
+- id: T-025
+  src: DISPENSING
+  event: DISPENSE_DONE
+  dst: ADMIN
+  guard: serial == pending.serial && admin_reserved
+  action: 'stop_timer(); stock[pending.drink] -= 1; sold_total += price[pending.drink];
+    if pending.change > 0: refund(pending.change); if credit > 0: refund(credit);
+    credit = 0; pending = none; admin_reserved = false; display(0); save()'
+  usecase: UC-10
+  notes: 5a. 배출 중 투입 금액이 0이면 추가 반환 없음.
+- id: T-026
+  src: DISPENSING
+  event: DISPENSE_DONE
+  dst: DISPENSING
+  guard: serial != pending.serial
+  action: 'delayed_log.append({serial, drink: none, acked: false}); save()'
+  usecase: UC-06
+  notes: UC-03 5d. 무시하고 계속 대기, 타이머 유지.
+- id: T-027
+  src: DISPENSING
+  event: DISPENSE_TIMEOUT
+  dst: SELLING
+  guard: '!admin_reserved'
+  action: refund(pending.change + price[pending.drink] + credit); credit = 0; pending
+    = none; display(0); refresh_buttons(); save()
+  usecase: UC-04
+  notes: 재고 차감 없음. [미규정 REQ-29] 전액 반환 동전 부족 시 지급 가능 조합 우선 지급 후 나머지 처리(UC-04 3a).
+- id: T-028
+  src: DISPENSING
+  event: DISPENSE_TIMEOUT
+  dst: ADMIN
+  guard: admin_reserved
+  action: 'sold_total += price[pending.drink]; if pending.change > 0: refund(pending.change);
+    if credit > 0: refund(credit); credit = 0; pending = none; admin_reserved = false;
+    display(0); save()'
+  usecase: UC-10
+  notes: 3a. 재고 차감 없음, 가격은 판매 확정. [미규정 REQ-41] 실패 시 버튼 시점 거스름돈(pending.change) 반환
+    여부 — 본 모델은 반환.
+- id: T-029
+  src: DISPENSING
+  event: INSERT_COIN
+  dst: DISPENSING
+  guard: amount in {100, 500, 1000}
+  action: credit += amount; coins[amount] += 1; display(credit); save()
+  usecase: UC-05
+  notes: 진행 중 배출의 거스름돈(pending.change)에는 포함되지 않음.
+- id: T-030
+  src: DISPENSING
+  event: INSERT_COIN
+  dst: DISPENSING
+  guard: amount not in {100, 500, 1000}
+  action: eject_inserted_coin()
+  usecase: UC-05
+  notes: 1a.
+- id: T-031
+  src: DISPENSING
+  event: INSERT_KEY
+  dst: DISPENSING
+  guard: key_valid
+  action: admin_reserved = true; save()
+  usecase: UC-10
+  notes: 예약 여부를 저장 파일에 기록.
+- id: T-032
+  src: DISPENSING
+  event: INSERT_KEY
+  dst: DISPENSING
+  guard: '!key_valid'
+  action: ''
+  usecase: UC-09
+  notes: 1a 준용.
+- id: T-033
+  src: DISPENSING
+  event: PULL_LEVER
+  dst: DISPENSING
+  guard: ''
+  action: ''
+  usecase: UC-07
+  notes: '[미규정 REQ-24] 1c. 판매 상태가 아니므로 즉시 반환하지 않음까지만 모델링.'
+- id: T-034
+  src: DISPENSING
+  event: PRESS_BUTTON
+  dst: DISPENSING
+  guard: ''
+  action: ''
+  usecase: UC-03
+  notes: '[미규정 REQ-09] 배출 대기 중 버튼 누름 — 문서 범위 내 처리 없음, 무시.'
+- id: T-035
+  src: SOLD_OUT
+  event: INSERT_COIN
+  dst: SOLD_OUT
+  guard: ''
+  action: eject_inserted_coin()
+  usecase: UC-08
+  notes: UC-01 2b. 액면가 여부와 무관하게 그대로 반환.
+- id: T-036
+  src: SOLD_OUT
+  event: INSERT_KEY
+  dst: ADMIN
+  guard: key_valid && credit == 0
+  action: display(0); save()
+  usecase: UC-09
+  notes: ''
+- id: T-037
+  src: SOLD_OUT
+  event: INSERT_KEY
+  dst: ADMIN
+  guard: key_valid && credit > 0
+  action: refund(credit); credit = 0; display(0); save()
+  usecase: UC-09
+  notes: 2a 준용. credit > 0은 T-024 경로에서만 발생 가능.
+- id: T-038
+  src: SOLD_OUT
+  event: INSERT_KEY
+  dst: SOLD_OUT
+  guard: '!key_valid'
+  action: ''
+  usecase: UC-09
+  notes: 1a.
+- id: T-039
+  src: SOLD_OUT
+  event: DISPENSE_DONE
+  dst: SOLD_OUT
+  guard: ''
+  action: 'delayed_log.append({serial, drink: none, acked: false}); save()'
+  usecase: UC-06
+  notes: 2a.
+- id: T-040
+  src: SOLD_OUT
+  event: PRESS_BUTTON
+  dst: SOLD_OUT
+  guard: ''
+  action: ''
+  usecase: UC-02
+  notes: 모든 재고 0 → 모든 버튼 비활성(2b/2c).
+- id: T-041
+  src: SOLD_OUT
+  event: PULL_LEVER
+  dst: SOLD_OUT
+  guard: ''
+  action: ''
+  usecase: UC-07
+  notes: '[미규정 REQ-24] 판매 중지 상태의 레버 처리. 문서 범위 내 변화 없음.'
+- id: T-042
+  src: ADMIN
+  event: INSERT_COIN
+  dst: ADMIN
+  guard: ''
+  action: eject_inserted_coin()
+  usecase: UC-09
+  notes: 4a / UC-01 2c.
+- id: T-043
+  src: ADMIN
+  event: RESTOCK_DRINKS
+  dst: ADMIN
+  guard: all(k in {A,B,C} for k in items) && all(is_int(v) && v >= 1 for v in items)
+  action: 'for k,v in items: stock[k] += v; save(); show_stock()'
+  usecase: UC-11
+  notes: ''
+- id: T-044
+  src: ADMIN
+  event: RESTOCK_DRINKS
+  dst: ADMIN
+  guard: '!(all(k in {A,B,C} for k in items) && all(is_int(v) && v >= 1 for v in items))'
+  action: notify_admin('restock_rejected')
+  usecase: UC-11
+  notes: 2a/2b. 지시 전체 거부, 재고 변화 없음.
+- id: T-045
+  src: ADMIN
+  event: REFILL_COINS
+  dst: ADMIN
+  guard: all(d in {100,500,1000} for d in items) && all(is_int(v) && v >= 1 for v
+    in items)
+  action: 'for d,v in items: coins[d] += v; refilled_total += d * v; save(); show_coins()'
+  usecase: UC-12
+  notes: ''
+- id: T-046
+  src: ADMIN
+  event: REFILL_COINS
+  dst: ADMIN
+  guard: '!(all(d in {100,500,1000} for d in items) && all(is_int(v) && v >= 1 for
+    v in items))'
+  action: notify_admin('refill_rejected')
+  usecase: UC-12
+  notes: 2a/2b.
+- id: T-047
+  src: ADMIN
+  event: VIEW_DELAYED_LOG
+  dst: ADMIN
+  guard: ''
+  action: show(delayed_log)
+  usecase: UC-13
+  notes: 2a. 기록 없으면 빈 목록.
+- id: T-048
+  src: ADMIN
+  event: ADJUST_STOCK
+  dst: ADMIN
+  guard: drink in {A,B,C} && count >= 0 && count <= stock[drink]
+  action: 'stock[drink] = count; for e in delayed_log: e.acked = true; save()'
+  usecase: UC-13
+  notes: ''
+- id: T-049
+  src: ADMIN
+  event: ADJUST_STOCK
+  dst: ADMIN
+  guard: '!(drink in {A,B,C} && count >= 0 && count <= stock[drink])'
+  action: notify_admin('adjust_rejected')
+  usecase: UC-13
+  notes: 4a/4b/4c.
+- id: T-050
+  src: ADMIN
+  event: VIEW_RETAINED
+  dst: ADMIN
+  guard: ''
+  action: show(retained, coins)
+  usecase: UC-14
+  notes: ''
+- id: T-051
+  src: ADMIN
+  event: COLLECT_COINS
+  dst: ADMIN
+  guard: all(d in {100,500,1000} for d in items) && all(is_int(v) && v >= 1 for v
+    in items) && all(v <= coins[d] for d,v in items) && coin_total() - sum(d*v) >=
+    retained
+  action: 'for d,v in items: coins[d] -= v; collected_total += d * v; save(); show_coins()'
+  usecase: UC-14
+  notes: '[미규정 REQ-66] 미반환 보관액 회수 시 retained 기록 감소 여부(6단계).'
+- id: T-052
+  src: ADMIN
+  event: COLLECT_COINS
+  dst: ADMIN
+  guard: '!(all(d in {100,500,1000} for d in items) && all(is_int(v) && v >= 1 for
+    v in items) && all(v <= coins[d] for d,v in items) && coin_total() - sum(d*v)
+    >= retained)'
+  action: notify_admin('collect_rejected')
+  usecase: UC-14
+  notes: 4a/4b/4c. 지시 전체 거부.
+- id: T-053
+  src: ADMIN
+  event: DISPENSE_DONE
+  dst: ADMIN
+  guard: ''
+  action: 'delayed_log.append({serial, drink: none, acked: false}); save()'
+  usecase: UC-06
+  notes: 2a.
+- id: T-054
+  src: ADMIN
+  event: REMOVE_KEY
+  dst: SELLING
+  guard: any(stock > 0)
+  action: credit = 0; display(0); refresh_buttons(); save()
+  usecase: UC-15
+  notes: '[미규정 REQ-57] 종료 판정 조건 — 전용 키 제거로 가정. 1a: 직전 거부 여부와 무관.'
+- id: T-055
+  src: ADMIN
+  event: REMOVE_KEY
+  dst: SOLD_OUT
+  guard: all(stock == 0)
+  action: credit = 0; display(0); save()
+  usecase: UC-15
+  notes: 3a / UC-08 3b.
+- id: T-056
+  src: ADMIN
+  event: PRESS_BUTTON
+  dst: ADMIN
+  guard: ''
+  action: ''
+  usecase: UC-09
+  notes: '[미규정 REQ-38] 관리 모드 중 고객 버튼 — 문서 범위 내 처리 없음, 무시.'
+- id: T-057
+  src: ADMIN
+  event: PULL_LEVER
+  dst: ADMIN
+  guard: ''
+  action: ''
+  usecase: UC-09
+  notes: '[미규정 REQ-24] 관리 모드 중 레버 — credit은 항상 0, 무시.'

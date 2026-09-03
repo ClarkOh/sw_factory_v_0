@@ -1,0 +1,223 @@
+[14:11:14] -- WORK --
+[14:11:14] 중단된 티켓 1건을 대기열로 되돌림: SWF-18
+[14:11:14] > SWF-18 [T-015] IDLE --IDLE_TIMEOUT--> IDLE
+[14:11:22]   SWF-18 → 서브태스크 1건
+[14:11:52]   [OK] DoD 통과 (시도 1)
+[14:11:53]   SWF-18: 변경 없음 → 커밋 생략
+[14:11:53] > SWF-19 [T-016] IDLE --REQUEST_ADMIN--> ADMIN_MODE
+[14:12:02]   SWF-19 → 서브태스크 2건
+[14:12:23]   [OK] DoD 통과 (시도 1)
+[14:12:24]   SWF-19: 변경 없음 → 커밋 생략
+[14:12:25] > SWF-20 [T-017] IDLE --REQUEST_ADMIN--> IDLE
+[14:12:31]   SWF-20 → 서브태스크 1건
+[14:13:01]   [OK] DoD 통과 (시도 1)
+[14:13:01]   SWF-20: 변경 없음 → 커밋 생략
+[14:13:02] > SWF-21 [T-018] IDLE --POWER_LOSS--> POWERED_OFF
+[14:13:09]   SWF-21 → 서브태스크 1건
+[14:13:33]   [OK] DoD 통과 (시도 1)
+[14:13:33]   SWF-21: 변경 없음 → 커밋 생략
+[14:13:34] > SWF-22 [T-020] HAS_CREDIT --INSERT_COIN--> HAS_CREDIT
+[14:13:46]   SWF-22 → 서브태스크 1건
+[14:15:03]   [OK] DoD 통과 (시도 1)
+[14:15:04]   커밋 6ac0025: SWF-22 [T-020] HAS_CREDIT --INSERT_COIN--> HAS_CREDIT
+[14:15:05] > SWF-23 [T-021] HAS_CREDIT --INSERT_COIN--> HAS_CREDIT
+[14:15:17]   SWF-23 → 서브태스크 1건
+[14:15:42]   [OK] DoD 통과 (시도 1)
+[14:15:43]   SWF-23: 변경 없음 → 커밋 생략
+[14:15:43] > SWF-24 [T-022] HAS_CREDIT --INSERT_COIN--> HAS_CREDIT
+[14:15:52]   SWF-24 → 서브태스크 1건
+[14:16:15]   [OK] DoD 통과 (시도 1)
+[14:16:16]   SWF-24: 변경 없음 → 커밋 생략
+[14:16:16] > SWF-25 [T-023] HAS_CREDIT --PRESS_BUTTON--> HAS_CREDIT
+[14:16:24]   SWF-25 → 서브태스크 1건
+[14:16:53]   [OK] DoD 통과 (시도 1)
+[14:16:54]   SWF-25: 변경 없음 → 커밋 생략
+[14:16:54] > SWF-26 [T-024] HAS_CREDIT --PRESS_BUTTON--> DISPENSING
+[14:17:05]   SWF-26 → 서브태스크 2건
+[14:18:04]   [OK] DoD 통과 (시도 1)
+[14:18:05]   커밋 f8675a0: SWF-26 [T-024] HAS_CREDIT --PRESS_BUTTON--> DISPENSING
+[14:18:06] > SWF-27 [T-025] HAS_CREDIT --PRESS_BUTTON--> IDLE
+[14:18:15]   SWF-27 → 서브태스크 1건
+[14:18:59]   [OK] DoD 통과 (시도 1)
+[14:19:01]   커밋 495e8cc: SWF-27 [T-025] HAS_CREDIT --PRESS_BUTTON--> IDLE
+[14:19:01] > SWF-28 [T-026] HAS_CREDIT --PULL_LEVER--> IDLE
+[14:19:09]   SWF-28 → 서브태스크 1건
+[14:19:41]   [OK] DoD 통과 (시도 1)
+[14:19:42]   커밋 11b4b8b: SWF-28 [T-026] HAS_CREDIT --PULL_LEVER--> IDLE
+[14:19:43] > SWF-29 [T-027] HAS_CREDIT --IDLE_TIMEOUT--> IDLE
+[14:19:50]   SWF-29 → 서브태스크 1건
+[14:20:24]   [OK] DoD 통과 (시도 1)
+[14:20:25]   SWF-29: 변경 없음 → 커밋 생략
+[14:20:25] > SWF-30 [T-028] HAS_CREDIT --REQUEST_ADMIN--> ADMIN_MODE
+[14:20:38]   SWF-30 → 서브태스크 1건
+[14:21:19]   [OK] DoD 통과 (시도 1)
+[14:21:20]   커밋 873211f: SWF-30 [T-028] HAS_CREDIT --REQUEST_ADMIN--> ADMIN_MODE
+[14:21:20] > SWF-31 [T-029] HAS_CREDIT --REQUEST_ADMIN--> HAS_CREDIT
+[14:21:27]   SWF-31 → 서브태스크 1건
+[14:22:00]   [OK] DoD 통과 (시도 1)
+[14:22:00]   SWF-31: 변경 없음 → 커밋 생략
+[14:22:01] > SWF-32 [T-030] HAS_CREDIT --POWER_LOSS--> POWERED_OFF
+[14:22:07]   SWF-32 → 서브태스크 1건
+[14:22:32]   [OK] DoD 통과 (시도 1)
+[14:22:33]   SWF-32: 변경 없음 → 커밋 생략
+[14:22:33] > SWF-33 [T-040] DISPENSING --INSERT_COIN--> DISPENSING
+[14:22:40]   SWF-33 → 서브태스크 1건
+[14:23:17]   [OK] DoD 통과 (시도 1)
+[14:23:18]   커밋 bcebf20: SWF-33 [T-040] DISPENSING --INSERT_COIN--> DISPENSING
+[14:23:18] > SWF-34 [T-041] DISPENSING --INSERT_COIN--> DISPENSING
+[14:23:25]   SWF-34 → 서브태스크 1건
+[14:23:57]   [OK] DoD 통과 (시도 1)
+[14:23:58]   SWF-34: 변경 없음 → 커밋 생략
+[14:23:58] > SWF-35 [T-042] DISPENSING --INSERT_COIN--> DISPENSING
+[14:24:06]   SWF-35 → 서브태스크 1건
+[14:24:36]   [OK] DoD 통과 (시도 1)
+[14:24:36]   SWF-35: 변경 없음 → 커밋 생략
+[14:24:37] > SWF-36 [T-043] DISPENSING --PRESS_BUTTON--> DISPENSING
+[14:24:43]   SWF-36 → 서브태스크 1건
+[14:25:13]   [OK] DoD 통과 (시도 1)
+[14:25:13]   SWF-36: 변경 없음 → 커밋 생략
+[14:25:14] > SWF-37 [T-044] DISPENSING --PULL_LEVER--> DISPENSING
+[14:25:21]   SWF-37 → 서브태스크 1건
+[14:25:41]   [OK] DoD 통과 (시도 1)
+[14:25:42]   SWF-37: 변경 없음 → 커밋 생략
+[14:25:42] > SWF-38 [T-045] DISPENSING --IDLE_TIMEOUT--> DISPENSING
+[14:25:50]   SWF-38 → 서브태스크 1건
+[14:26:18]   [OK] DoD 통과 (시도 1)
+[14:26:19]   SWF-38: 변경 없음 → 커밋 생략
+[14:26:19]   [EPIC] SWF-4 완료
+[14:26:19] > SWF-39 [T-046] DISPENSING --REQUEST_ADMIN--> DISPENSING
+[14:26:27]   SWF-39 → 서브태스크 1건
+[14:26:56]   [OK] DoD 통과 (시도 1)
+[14:26:56]   SWF-39: 변경 없음 → 커밋 생략
+[14:26:57] > SWF-40 [T-047] DISPENSING --REQUEST_ADMIN--> DISPENSING
+[14:27:04]   SWF-40 → 서브태스크 1건
+[14:27:33]   [OK] DoD 통과 (시도 1)
+[14:27:34]   SWF-40: 변경 없음 → 커밋 생략
+[14:27:34] > SWF-41 [T-050] DISPENSING --DISPENSE_DONE--> IDLE
+[14:27:45]   SWF-41 → 서브태스크 2건
+[14:28:34]   [OK] DoD 통과 (시도 1)
+[14:28:36]   커밋 c21525c: SWF-41 [T-050] DISPENSING --DISPENSE_DONE--> IDLE
+[14:28:36] > SWF-42 [T-051] DISPENSING --DISPENSE_DONE--> SOLD_OUT
+[14:28:44]   SWF-42 → 서브태스크 1건
+[14:29:18]   [OK] DoD 통과 (시도 1)
+[14:29:19]   SWF-42: 변경 없음 → 커밋 생략
+[14:29:19] > SWF-43 [T-052] DISPENSING --DISPENSE_DONE--> ADMIN_MODE
+[14:29:28]   SWF-43 → 서브태스크 1건
+[14:30:12]   [OK] DoD 통과 (시도 1)
+[14:30:13]   커밋 01f0373: SWF-43 [T-052] DISPENSING --DISPENSE_DONE--> ADMIN_MODE
+[14:30:13] > SWF-44 [T-053] DISPENSING --DISPENSE_TIMEOUT--> IDLE
+[14:30:21]   SWF-44 → 서브태스크 1건
+[14:31:08]   [OK] DoD 통과 (시도 1)
+[14:31:09]   커밋 28b3c14: SWF-44 [T-053] DISPENSING --DISPENSE_TIMEOUT--> IDLE
+[14:31:09] > SWF-45 [T-054] DISPENSING --DISPENSE_TIMEOUT--> ADMIN_MODE
+[14:31:18]   SWF-45 → 서브태스크 2건
+[14:31:48]   [OK] DoD 통과 (시도 1)
+[14:31:49]   SWF-45: 변경 없음 → 커밋 생략
+[14:31:49] > SWF-46 [T-055] DISPENSING --POWER_LOSS--> POWERED_OFF
+[14:31:56]   SWF-46 → 서브태스크 1건
+[14:32:22]   [OK] DoD 통과 (시도 1)
+[14:32:23]   SWF-46: 변경 없음 → 커밋 생략
+[14:32:23] > SWF-47 [T-060] SOLD_OUT --INSERT_COIN--> SOLD_OUT
+[14:32:31]   SWF-47 → 서브태스크 1건
+[14:32:53]   [OK] DoD 통과 (시도 1)
+[14:32:54]   SWF-47: 변경 없음 → 커밋 생략
+[14:32:54]   [EPIC] SWF-1 완료
+[14:32:54] > SWF-48 [T-061] SOLD_OUT --PRESS_BUTTON--> SOLD_OUT
+[14:33:02]   SWF-48 → 서브태스크 1건
+[14:33:22]   [OK] DoD 통과 (시도 1)
+[14:33:23]   SWF-48: 변경 없음 → 커밋 생략
+[14:33:23]   [EPIC] SWF-2 완료
+[14:33:23] > SWF-49 [T-062] SOLD_OUT --PULL_LEVER--> SOLD_OUT
+[14:33:30]   SWF-49 → 서브태스크 1건
+[14:33:54]   [OK] DoD 통과 (시도 1)
+[14:33:55]   SWF-49: 변경 없음 → 커밋 생략
+[14:33:55] > SWF-50 [T-063] SOLD_OUT --REQUEST_ADMIN--> ADMIN_MODE
+[14:34:03]   SWF-50 → 서브태스크 1건
+[14:34:27]   [OK] DoD 통과 (시도 1)
+[14:34:28]   SWF-50: 변경 없음 → 커밋 생략
+[14:34:28] > SWF-51 [T-064] SOLD_OUT --REQUEST_ADMIN--> SOLD_OUT
+[14:34:35]   SWF-51 → 서브태스크 1건
+[14:35:05]   [OK] DoD 통과 (시도 1)
+[14:35:06]   SWF-51: 변경 없음 → 커밋 생략
+[14:35:06] > SWF-52 [T-065] SOLD_OUT --POWER_LOSS--> POWERED_OFF
+[14:35:12]   SWF-52 → 서브태스크 1건
+[14:35:38]   [OK] DoD 통과 (시도 1)
+[14:35:38]   SWF-52: 변경 없음 → 커밋 생략
+[14:35:39] > SWF-53 [T-070] ADMIN_MODE --INSERT_COIN--> ADMIN_MODE
+[14:35:46]   SWF-53 → 서브태스크 2건
+[14:36:14]   [OK] DoD 통과 (시도 1)
+[14:36:14]   SWF-53: 변경 없음 → 커밋 생략
+[14:36:15] > SWF-54 [T-071] ADMIN_MODE --PRESS_BUTTON--> ADMIN_MODE
+[14:36:22]   SWF-54 → 서브태스크 1건
+[14:36:43]   [OK] DoD 통과 (시도 1)
+[14:36:44]   SWF-54: 변경 없음 → 커밋 생략
+[14:36:44] > SWF-55 [T-072] ADMIN_MODE --PULL_LEVER--> ADMIN_MODE
+[14:36:50]   SWF-55 → 서브태스크 1건
+[14:37:14]   [OK] DoD 통과 (시도 1)
+[14:37:15]   SWF-55: 변경 없음 → 커밋 생략
+[14:37:15]   [EPIC] SWF-3 완료
+[14:37:15] > SWF-56 [T-073] ADMIN_MODE --REFILL--> ADMIN_MODE
+[14:37:26]   SWF-56 → 서브태스크 3건
+[14:37:55]   [OK] DoD 통과 (시도 1)
+[14:37:56]   SWF-56: 변경 없음 → 커밋 생략
+[14:37:56] > SWF-57 [T-074] ADMIN_MODE --REFILL--> ADMIN_MODE
+[14:38:05]   SWF-57 → 서브태스크 2건
+[14:38:30]   [OK] DoD 통과 (시도 1)
+[14:38:31]   SWF-57: 변경 없음 → 커밋 생략
+[14:38:31] > SWF-58 [T-075] ADMIN_MODE --END_REFILL--> IDLE
+[14:38:38]   SWF-58 → 서브태스크 1건
+[14:39:04]   [OK] DoD 통과 (시도 1)
+[14:39:05]   SWF-58: 변경 없음 → 커밋 생략
+[14:39:05] > SWF-59 [T-076] ADMIN_MODE --END_REFILL--> SOLD_OUT
+[14:39:13]   SWF-59 → 서브태스크 1건
+[14:39:41]   [OK] DoD 통과 (시도 1)
+[14:39:42]   SWF-59: 변경 없음 → 커밋 생략
+[14:39:42]   [EPIC] SWF-6 완료
+[14:39:42] > SWF-60 [T-077] ADMIN_MODE --QUERY_HELD--> ADMIN_MODE
+[14:39:54]   SWF-60 → 서브태스크 1건
+[14:40:15]   [OK] DoD 통과 (시도 1)
+[14:40:16]   SWF-60: 변경 없음 → 커밋 생략
+[14:40:16] > SWF-61 [T-078] ADMIN_MODE --COLLECT_COINS--> ADMIN_MODE
+[14:40:25]   SWF-61 → 서브태스크 2건
+[14:41:00]   [OK] DoD 통과 (시도 1)
+[14:41:00]   SWF-61: 변경 없음 → 커밋 생략
+[14:41:01] > SWF-62 [T-079] ADMIN_MODE --COLLECT_COINS--> ADMIN_MODE
+[14:41:18]   SWF-62 → 서브태스크 1건
+[14:41:48]   [OK] DoD 통과 (시도 1)
+[14:41:49]   SWF-62: 변경 없음 → 커밋 생략
+[14:41:49] > SWF-63 [T-080] ADMIN_MODE --COLLECT_COINS--> ADMIN_MODE
+[14:41:58]   SWF-63 → 서브태스크 1건
+[14:42:09]   시도 1 워커 오류: exit 1: 
+[14:42:12]   시도 2 워커 오류: exit 1: 
+[14:42:15]   시도 3 워커 오류: exit 1: 
+[14:42:15]   ⛔ SWF-63 BLOCKED → 백로그 SWF-139 등록 (3회 시도 후에도 DoD 미달)
+[14:42:15] > SWF-64 [T-081] ADMIN_MODE --COLLECT_HELD--> ADMIN_MODE
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\work\sw_factory\factory\cli.py", line 173, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "C:\work\sw_factory\factory\cli.py", line 169, in main
+    return args.fn(build_ctx(cfg_path), args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\cli.py", line 52, in cmd_run
+    phase = orch.run()
+            ^^^^^^^^^^
+  File "C:\work\sw_factory\factory\orchestrator.py", line 118, in run
+    finished = self._execute(phase)
+               ^^^^^^^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\orchestrator.py", line 162, in _execute
+    return self._work_loop()     # 상한에 걸리면 False
+           ^^^^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\orchestrator.py", line 198, in _work_loop
+    self._work_one(story)
+  File "C:\work\sw_factory\factory\orchestrator.py", line 293, in _work_one
+    subs = planning.decompose(ctx, story)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\stages\planning.py", line 98, in decompose
+    data = ask_yaml(
+           ^^^^^^^^^
+  File "C:\work\sw_factory\factory\context.py", line 61, in ask_yaml
+    raise RuntimeError(f"{label} 워커 실패: {res.error}")
+RuntimeError: decompose:SWF-64 워커 실패: exit 1: 

@@ -1,0 +1,514 @@
+[13:29:49] -- INIT --
+[13:29:49] 스캐폴딩: app/__init__.py, tests/__init__.py
+[13:29:49] -- ELICIT --
+[13:32:01] 요구사항 98건 → C:\work\sw_factory\projects\vending_machine\artifacts\requirements.yaml
+[13:32:01] -- USECASE --
+[13:35:53] 유스케이스 17건 → C:\work\sw_factory\projects\vending_machine\artifacts\usecases.yaml
+[13:35:53] -- MODEL --
+[13:38:33]     - [P5] T-001: 상태를 바꾸면서 저장하지 않는다 — 여기서 전원이 끊기면 소실된다 (T-001)
+[13:38:33]     - [P5] T-002: 상태를 바꾸면서 저장하지 않는다 — 여기서 전원이 끊기면 소실된다 (T-002)
+[13:38:33]     - [P5] T-003: 상태를 바꾸면서 저장하지 않는다 — 여기서 전원이 끊기면 소실된다 (T-003)
+[13:38:33]     - [P5] T-004: 상태를 바꾸면서 저장하지 않는다 — 여기서 전원이 끊기면 소실된다 (T-004)
+[13:38:33]     - [P5] T-012: 상태를 바꾸면서 저장하지 않는다 — 여기서 전원이 끊기면 소실된다 (T-012)
+[13:38:33]     - [P5] T-021: 상태를 바꾸면서 저장하지 않는다 — 여기서 전원이 끊기면 소실된다 (T-021)
+[13:38:33]     - [P5] T-022: 상태를 바꾸면서 저장하지 않는다 — 여기서 전원이 끊기면 소실된다 (T-022)
+[13:38:33]     - [P5] T-027: 상태를 바꾸면서 저장하지 않는다 — 여기서 전원이 끊기면 소실된다 (T-027)
+[13:38:33]     - [P5] T-028: 상태를 바꾸면서 저장하지 않는다 — 여기서 전원이 끊기면 소실된다 (T-028)
+[13:38:33]     - [P5] T-029: 상태를 바꾸면서 저장하지 않는다 — 여기서 전원이 끊기면 소실된다 (T-029)
+[13:38:33]   모델 검사: 27건 수리 시도 1/3
+[13:43:21]   모델 검사: 4건 수리 시도 2/3
+[13:45:57]   모델 검사: 4건에서 진전 없음 -- 수리를 멈추고 게이트에서 사람이 판단합니다
+[13:45:57] FSM: 상태 8 / 이벤트 17 / 전이 77 → C:\work\sw_factory\projects\vending_machine\artifacts\fsm.yaml
+[13:45:57] [PAUSE] 게이트 'fsm' 승인 대기 중 (phase=MODEL)
+   산출물을 검토한 뒤 `python -m factory.cli approve fsm` 하고 재개하세요.
+[13:45:57] 정지 지점: MODEL | 통계: {}
+[13:52:43] -- MODEL --
+[13:52:43]   (이미 확정된 단계 -- 재생성하지 않고 건너뜀)
+[13:52:43] -- TICKETIZE --
+[13:52:49] 티켓: 신규 94 / 재작업 0 / 기존유지 0
+[13:52:49] -- SPEC_TESTS --
+[14:02:44] 테스트 생성 완료: 1개 수집, FSM 전이 77개와 1:1 (현재 red — 정상)
+[14:02:44] -- WORK --
+[14:02:44] > SWF-18 [T-001] POWERED_OFF --POWER_ON--> SALE_STOPPED
+[14:03:09]   SWF-18 → 서브태스크 3건
+[14:07:01]   [OK] DoD 통과 (시도 1)
+[14:07:01]   커밋 78f4d73: SWF-18 [T-001] POWERED_OFF --POWER_ON--> SALE_STOPPED
+[14:07:01] > SWF-19 [T-002] POWERED_OFF --POWER_ON--> FAULT
+[14:07:37]   SWF-19 → 서브태스크 4건
+[14:09:03]   [OK] DoD 통과 (시도 1)
+[14:09:04]   커밋 116d240: SWF-19 [T-002] POWERED_OFF --POWER_ON--> FAULT
+[14:09:05] > SWF-20 [T-003] POWERED_OFF --POWER_ON--> SALE_IDLE
+[14:09:34]   SWF-20 → 서브태스크 3건
+[14:11:09]   [OK] DoD 통과 (시도 1)
+[14:11:10]   커밋 ec1c1e6: SWF-20 [T-003] POWERED_OFF --POWER_ON--> SALE_IDLE
+[14:11:11] > SWF-21 [T-004] POWERED_OFF --POWER_ON--> SALE_STOPPED
+[14:11:34]   SWF-21 → 서브태스크 2건
+[14:12:45]   [OK] DoD 통과 (시도 1)
+[14:12:46]   커밋 0e08ffb: SWF-21 [T-004] POWERED_OFF --POWER_ON--> SALE_STOPPED
+[14:12:47]   [EPIC] SWF-17 완료
+[14:12:47] > SWF-22 [T-005] SALE_IDLE --POWER_OFF--> POWERED_OFF
+[14:13:10]   SWF-22 → 서브태스크 3건
+[14:14:27]   [OK] DoD 통과 (시도 1)
+[14:14:28]   커밋 5198d0c: SWF-22 [T-005] SALE_IDLE --POWER_OFF--> POWERED_OFF
+[14:14:28] > SWF-23 [T-006] SALE_HAS_CREDIT --POWER_OFF--> POWERED_OFF
+[14:14:48]   SWF-23 → 서브태스크 1건
+[14:16:09]   [OK] DoD 통과 (시도 1)
+[14:16:11]   커밋 63bda7f: SWF-23 [T-006] SALE_HAS_CREDIT --POWER_OFF--> POWERED_OFF
+[14:16:11] > SWF-24 [T-007] AWAITING_DISPENSE --POWER_OFF--> POWERED_OFF
+[14:16:30]   SWF-24 → 서브태스크 3건
+[14:17:26]   [OK] DoD 통과 (시도 1)
+[14:17:28]   커밋 bc24158: SWF-24 [T-007] AWAITING_DISPENSE --POWER_OFF--> POWERED_OFF
+[14:17:28] > SWF-25 [T-008] AWAITING_DISPENSE_ADMIN_PENDING --POWER_OFF--> POWERED_OFF
+[14:17:52]   SWF-25 → 서브태스크 3건
+[14:19:09]   [OK] DoD 통과 (시도 1)
+[14:19:10]   커밋 d76358c: SWF-25 [T-008] AWAITING_DISPENSE_ADMIN_PENDING --POWER_OFF--> POWERED_OF
+[14:19:10] > SWF-26 [T-009] SALE_STOPPED --POWER_OFF--> POWERED_OFF
+[14:19:42]   SWF-26 → 서브태스크 3건
+[14:20:54]   [OK] DoD 통과 (시도 1)
+[14:20:55]   커밋 e72d61c: SWF-26 [T-009] SALE_STOPPED --POWER_OFF--> POWERED_OFF
+[14:20:56] > SWF-27 [T-010] FAULT --POWER_OFF--> POWERED_OFF
+[14:21:20]   SWF-27 → 서브태스크 3건
+[14:22:40]   [OK] DoD 통과 (시도 1)
+[14:22:41]   커밋 d26bb87: SWF-27 [T-010] FAULT --POWER_OFF--> POWERED_OFF
+[14:22:42] > SWF-28 [T-011] ADMIN_MODE --POWER_OFF--> POWERED_OFF
+[14:23:08]   SWF-28 → 서브태스크 3건
+[14:24:19]   [OK] DoD 통과 (시도 1)
+[14:24:21]   커밋 29aed5b: SWF-28 [T-011] ADMIN_MODE --POWER_OFF--> POWERED_OFF
+[14:24:21]   [EPIC] SWF-16 완료
+[14:24:21] > SWF-29 [T-012] SALE_IDLE --INSERT_COIN--> SALE_HAS_CREDIT
+[14:24:41]   SWF-29 → 서브태스크 3건
+[14:26:46]   [OK] DoD 통과 (시도 1)
+[14:26:47]   커밋 6f21ec0: SWF-29 [T-012] SALE_IDLE --INSERT_COIN--> SALE_HAS_CREDIT
+[14:26:48] > SWF-30 [T-013] SALE_IDLE --INSERT_COIN--> SALE_IDLE
+[14:27:14]   SWF-30 → 서브태스크 4건
+[14:28:28]   [OK] DoD 통과 (시도 1)
+[14:28:29]   커밋 deff275: SWF-30 [T-013] SALE_IDLE --INSERT_COIN--> SALE_IDLE
+[14:28:30] > SWF-31 [T-014] SALE_IDLE --INSERT_COIN--> SALE_IDLE
+[14:28:54]   SWF-31 → 서브태스크 4건
+[14:30:09]   [OK] DoD 통과 (시도 1)
+[14:30:10]   커밋 c16dd26: SWF-31 [T-014] SALE_IDLE --INSERT_COIN--> SALE_IDLE
+[14:30:11] > SWF-32 [T-015] SALE_HAS_CREDIT --INSERT_COIN--> SALE_HAS_CREDIT
+[14:30:38]   SWF-32 → 서브태스크 3건
+[14:31:37]   [OK] DoD 통과 (시도 1)
+[14:31:38]   커밋 77f1d27: SWF-32 [T-015] SALE_HAS_CREDIT --INSERT_COIN--> SALE_HAS_CREDIT
+[14:31:39] > SWF-33 [T-016] SALE_HAS_CREDIT --INSERT_COIN--> SALE_HAS_CREDIT
+[14:31:56]   SWF-33 → 서브태스크 2건
+[14:33:21]   [OK] DoD 통과 (시도 1)
+[14:33:22]   커밋 5341311: SWF-33 [T-016] SALE_HAS_CREDIT --INSERT_COIN--> SALE_HAS_CREDIT
+[14:33:23] > SWF-34 [T-017] SALE_HAS_CREDIT --INSERT_COIN--> SALE_HAS_CREDIT
+[14:33:47]   SWF-34 → 서브태스크 3건
+[14:34:32]   [OK] DoD 통과 (시도 1)
+[14:34:34]   커밋 9eb4c00: SWF-34 [T-017] SALE_HAS_CREDIT --INSERT_COIN--> SALE_HAS_CREDIT
+[14:34:34] > SWF-35 [T-018] SALE_STOPPED --INSERT_COIN--> SALE_STOPPED
+[14:35:12]   SWF-35 → 서브태스크 3건
+[14:36:31]   [OK] DoD 통과 (시도 1)
+[14:36:32]   커밋 5ca6ef7: SWF-35 [T-018] SALE_STOPPED --INSERT_COIN--> SALE_STOPPED
+[14:36:33]   [EPIC] SWF-1 완료
+[14:36:33] > SWF-36 [T-019] FAULT --INSERT_COIN--> FAULT
+[14:36:54]   SWF-36 → 서브태스크 2건
+[14:37:44]   [OK] DoD 통과 (시도 1)
+[14:37:45]   커밋 49da286: SWF-36 [T-019] FAULT --INSERT_COIN--> FAULT
+[14:37:46] > SWF-37 [T-020] ADMIN_MODE --INSERT_COIN--> ADMIN_MODE
+[14:38:07]   SWF-37 → 서브태스크 2건
+[14:39:35]   [OK] DoD 통과 (시도 1)
+[14:39:36]   커밋 e7f135b: SWF-37 [T-020] ADMIN_MODE --INSERT_COIN--> ADMIN_MODE
+[14:39:37] > SWF-38 [T-021] SALE_HAS_CREDIT --PRESS_SELECT_BUTTON--> AWAITING_DISPENSE
+[14:40:12]   SWF-38 → 서브태스크 4건
+[14:42:41]   [OK] DoD 통과 (시도 1)
+[14:42:42]   커밋 ab67318: SWF-38 [T-021] SALE_HAS_CREDIT --PRESS_SELECT_BUTTON--> AWAITING_DISPENS
+[14:42:43] > SWF-39 [T-022] SALE_HAS_CREDIT --PRESS_SELECT_BUTTON--> SALE_IDLE
+[14:43:14]   SWF-39 → 서브태스크 5건
+[14:48:13]   [비용] implement:SWF-39 이 implement 중앙값의 5.7배를 썼습니다 (3,334,573 vs 581,242) -- 헤매고 있을 수 있습니다
+[14:48:13]   [OK] DoD 통과 (시도 1)
+[14:48:15]   커밋 24c347d: SWF-39 [T-022] SALE_HAS_CREDIT --PRESS_SELECT_BUTTON--> SALE_IDLE
+[14:48:16] > SWF-40 [T-023] SALE_HAS_CREDIT --PRESS_SELECT_BUTTON--> SALE_HAS_CREDIT
+[14:48:45]   SWF-40 → 서브태스크 3건
+[14:50:11]   [OK] DoD 통과 (시도 1)
+[14:50:13]   커밋 5cbe393: SWF-40 [T-023] SALE_HAS_CREDIT --PRESS_SELECT_BUTTON--> SALE_HAS_CREDIT
+[14:50:13] > SWF-41 [T-024] SALE_IDLE --PRESS_SELECT_BUTTON--> SALE_IDLE
+[14:50:45]   SWF-41 → 서브태스크 2건
+[14:51:18]   [OK] DoD 통과 (시도 1)
+[14:51:19]   커밋 33c2664: SWF-41 [T-024] SALE_IDLE --PRESS_SELECT_BUTTON--> SALE_IDLE
+[14:51:20] > SWF-42 [T-025] SALE_STOPPED --PRESS_SELECT_BUTTON--> SALE_STOPPED
+[14:51:38]   SWF-42 → 서브태스크 1건
+[14:52:16]   [OK] DoD 통과 (시도 1)
+[14:52:18]   커밋 29598a8: SWF-42 [T-025] SALE_STOPPED --PRESS_SELECT_BUTTON--> SALE_STOPPED
+[14:52:18] > SWF-43 [T-026] FAULT --PRESS_SELECT_BUTTON--> FAULT
+[14:52:37]   SWF-43 → 서브태스크 2건
+[14:53:13]   [OK] DoD 통과 (시도 1)
+[14:53:14]   커밋 45c3d31: SWF-43 [T-026] FAULT --PRESS_SELECT_BUTTON--> FAULT
+[14:53:15]   [EPIC] SWF-8 완료
+[14:53:15] > SWF-44 [T-027] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[14:53:52]   SWF-44 → 서브태스크 3건
+[14:55:13] [STOP] 워커를 쓸 수 없습니다: exit 1: 
+   사용량 한도나 네트워크 문제일 가능성이 높습니다. 상태는 저장됐고, 다시 run 하면 이어집니다.
+[14:55:13] 정지 지점: WORK | 통계: {'done': 26}
+[16:11:20] -- WORK --
+[16:11:20] > SWF-44 [T-027] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[16:12:54]   [OK] DoD 통과 (시도 1)
+[16:12:56]   커밋 42d6353: SWF-44 [T-027] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[16:12:56] > SWF-45 [T-028] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_IDLE
+[16:13:30]   SWF-45 → 서브태스크 3건
+[16:15:17]   [OK] DoD 통과 (시도 1)
+[16:15:19]   커밋 545a12a: SWF-45 [T-028] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_IDLE
+[16:15:19] > SWF-46 [T-029] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[16:15:57]   SWF-46 → 서브태스크 3건
+[16:17:18]   [OK] DoD 통과 (시도 1)
+[16:17:19]   커밋 b2e8f2c: SWF-46 [T-029] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[16:17:20] > SWF-47 [T-077] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_IDLE
+[16:17:47]   SWF-47 → 서브태스크 4건
+[16:19:40]   [OK] DoD 통과 (시도 1)
+[16:19:41]   커밋 b955c91: SWF-47 [T-077] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_IDLE
+[16:19:42]   [EPIC] SWF-2 완료
+[16:19:42] > SWF-48 [T-030] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_STOPPED
+[16:20:11]   SWF-48 → 서브태스크 3건
+[16:22:04]   [OK] DoD 통과 (시도 1)
+[16:22:05]   커밋 8050a6c: SWF-48 [T-030] AWAITING_DISPENSE --DISPENSE_COMPLETE--> SALE_STOPPED
+[16:22:06] > SWF-49 [T-031] AWAITING_DISPENSE --DISPENSE_COMPLETE--> AWAITING_DISPENSE
+[16:22:32]   SWF-49 → 서브태스크 3건
+[16:25:03]   [OK] DoD 통과 (시도 1)
+[16:25:04]   커밋 a4e5255: SWF-49 [T-031] AWAITING_DISPENSE --DISPENSE_COMPLETE--> AWAITING_DISPENS
+[16:25:05] > SWF-50 [T-032] SALE_IDLE --DISPENSE_COMPLETE--> SALE_IDLE
+[16:25:28]   SWF-50 → 서브태스크 2건
+[16:26:21]   [OK] DoD 통과 (시도 1)
+[16:26:23]   커밋 99d6586: SWF-50 [T-032] SALE_IDLE --DISPENSE_COMPLETE--> SALE_IDLE
+[16:26:23] > SWF-51 [T-033] SALE_HAS_CREDIT --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[16:26:52]   SWF-51 → 서브태스크 3건
+[16:28:28]   [OK] DoD 통과 (시도 1)
+[16:28:29]   커밋 958e2b9: SWF-51 [T-033] SALE_HAS_CREDIT --DISPENSE_COMPLETE--> SALE_HAS_CREDIT
+[16:28:30] > SWF-52 [T-034] SALE_STOPPED --DISPENSE_COMPLETE--> SALE_STOPPED
+[16:28:57]   SWF-52 → 서브태스크 3건
+[16:30:02]   [OK] DoD 통과 (시도 1)
+[16:30:03]   커밋 91cfb5a: SWF-52 [T-034] SALE_STOPPED --DISPENSE_COMPLETE--> SALE_STOPPED
+[16:30:04] > SWF-53 [T-035] FAULT --DISPENSE_COMPLETE--> FAULT
+[16:30:22]   SWF-53 → 서브태스크 2건
+[16:31:50]   [OK] DoD 통과 (시도 1)
+[16:31:52]   커밋 d714c1b: SWF-53 [T-035] FAULT --DISPENSE_COMPLETE--> FAULT
+[16:31:52] > SWF-54 [T-036] ADMIN_MODE --DISPENSE_COMPLETE--> ADMIN_MODE
+[16:32:21]   SWF-54 → 서브태스크 2건
+[16:33:35]   [OK] DoD 통과 (시도 1)
+[16:33:36]   커밋 12a5e53: SWF-54 [T-036] ADMIN_MODE --DISPENSE_COMPLETE--> ADMIN_MODE
+[16:33:37] > SWF-55 [T-037] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[16:34:05]   SWF-55 → 서브태스크 3건
+[16:35:45]   [OK] DoD 통과 (시도 1)
+[16:35:47]   커밋 0237259: SWF-55 [T-037] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[16:35:47] > SWF-56 [T-038] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[16:36:23]   SWF-56 → 서브태스크 4건
+[16:37:53]   [OK] DoD 통과 (시도 1)
+[16:37:55]   커밋 cd66fc1: SWF-56 [T-038] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[16:37:56] > SWF-57 [T-039] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[16:38:23]   SWF-57 → 서브태스크 4건
+[16:39:15]   [OK] DoD 통과 (시도 1)
+[16:39:16]   커밋 c455249: SWF-57 [T-039] AWAITING_DISPENSE --INSERT_COIN--> AWAITING_DISPENSE
+[16:39:17]   [EPIC] SWF-3 완료
+[16:39:17] > SWF-58 [T-040] AWAITING_DISPENSE --DISPENSE_TIMEOUT--> FAULT
+[16:40:03]   SWF-58 → 서브태스크 4건
+[16:42:05]   [OK] DoD 통과 (시도 1)
+[16:42:07]   커밋 e97c942: SWF-58 [T-040] AWAITING_DISPENSE --DISPENSE_TIMEOUT--> FAULT
+[16:42:08]   [EPIC] SWF-6 완료
+[16:42:08] > SWF-59 [T-041] AWAITING_DISPENSE_ADMIN_PENDING --DISPENSE_TIMEOUT--> FAULT
+[16:42:35]   SWF-59 → 서브태스크 4건
+[16:44:15]   [OK] DoD 통과 (시도 1)
+[16:44:16]   커밋 33e61bc: SWF-59 [T-041] AWAITING_DISPENSE_ADMIN_PENDING --DISPENSE_TIMEOUT--> FAU
+[16:44:17] > SWF-60 [T-042] FAULT --ADMIN_ENTRY_DUE--> ADMIN_MODE
+[16:44:46]   SWF-60 → 서브태스크 3건
+[16:45:50]   [OK] DoD 통과 (시도 1)
+[16:45:51]   커밋 7418b29: SWF-60 [T-042] FAULT --ADMIN_ENTRY_DUE--> ADMIN_MODE
+[16:45:52] > SWF-61 [T-043] SALE_HAS_CREDIT --PULL_RETURN_LEVER--> SALE_IDLE
+[16:46:26]   SWF-61 → 서브태스크 3건
+[16:47:52]   [OK] DoD 통과 (시도 1)
+[16:47:54]   커밋 6831cfe: SWF-61 [T-043] SALE_HAS_CREDIT --PULL_RETURN_LEVER--> SALE_IDLE
+[16:47:54] > SWF-62 [T-044] SALE_IDLE --PULL_RETURN_LEVER--> SALE_IDLE
+[16:48:24]   SWF-62 → 서브태스크 2건
+[16:49:05]   [OK] DoD 통과 (시도 1)
+[16:49:06]   커밋 bc98ff5: SWF-62 [T-044] SALE_IDLE --PULL_RETURN_LEVER--> SALE_IDLE
+[16:49:07] > SWF-63 [T-045] SALE_STOPPED --PULL_RETURN_LEVER--> SALE_STOPPED
+[16:49:33]   SWF-63 → 서브태스크 2건
+[16:50:12]   [OK] DoD 통과 (시도 1)
+[16:50:13]   커밋 ec75b31: SWF-63 [T-045] SALE_STOPPED --PULL_RETURN_LEVER--> SALE_STOPPED
+[16:50:14] > SWF-64 [T-046] FAULT --PULL_RETURN_LEVER--> FAULT
+[16:50:38]   SWF-64 → 서브태스크 1건
+[16:51:33]   [OK] DoD 통과 (시도 1)
+[16:51:35]   커밋 4ea1862: SWF-64 [T-046] FAULT --PULL_RETURN_LEVER--> FAULT
+[16:51:35] > SWF-65 [T-047] ADMIN_MODE --PULL_RETURN_LEVER--> ADMIN_MODE
+[16:51:59]   SWF-65 → 서브태스크 2건
+[16:52:36]   [OK] DoD 통과 (시도 1)
+[16:52:38]   커밋 2ce70b3: SWF-65 [T-047] ADMIN_MODE --PULL_RETURN_LEVER--> ADMIN_MODE
+[16:52:38] > SWF-66 [T-048] AWAITING_DISPENSE --PULL_RETURN_LEVER--> AWAITING_DISPENSE
+[16:53:02]   SWF-66 → 서브태스크 2건
+[16:53:40]   [OK] DoD 통과 (시도 1)
+[16:53:41]   커밋 864bb5e: SWF-66 [T-048] AWAITING_DISPENSE --PULL_RETURN_LEVER--> AWAITING_DISPENS
+[16:53:42] > SWF-67 [T-049] AWAITING_DISPENSE_ADMIN_PENDING --PULL_RETURN_LEVER--> AWAITING_DISPENSE_ADMIN_PENDING
+[16:54:04]   SWF-67 → 서브태스크 2건
+[16:54:41]   [OK] DoD 통과 (시도 1)
+[16:54:43]   커밋 62a0cb3: SWF-67 [T-049] AWAITING_DISPENSE_ADMIN_PENDING --PULL_RETURN_LEVER--> AW
+[16:54:43]   [EPIC] SWF-4 완료
+[16:54:43] > SWF-68 [T-050] SALE_HAS_CREDIT --IDLE_TIMEOUT--> SALE_IDLE
+[16:55:17]   SWF-68 → 서브태스크 3건
+[16:56:38]   [OK] DoD 통과 (시도 1)
+[16:56:39]   커밋 5957430: SWF-68 [T-050] SALE_HAS_CREDIT --IDLE_TIMEOUT--> SALE_IDLE
+[16:56:40] > SWF-69 [T-051] SALE_IDLE --IDLE_TIMEOUT--> SALE_IDLE
+[16:57:03]   SWF-69 → 서브태스크 2건
+[16:57:41]   [OK] DoD 통과 (시도 1)
+[16:57:42]   커밋 4bae08e: SWF-69 [T-051] SALE_IDLE --IDLE_TIMEOUT--> SALE_IDLE
+[16:57:43] > SWF-70 [T-052] SALE_STOPPED --IDLE_TIMEOUT--> SALE_STOPPED
+[16:58:00]   SWF-70 → 서브태스크 1건
+[16:58:35]   [OK] DoD 통과 (시도 1)
+[16:58:36]   커밋 4fda78e: SWF-70 [T-052] SALE_STOPPED --IDLE_TIMEOUT--> SALE_STOPPED
+[16:58:37]   [EPIC] SWF-5 완료
+[16:58:37] > SWF-71 [T-053] SALE_HAS_CREDIT --INSERT_ADMIN_KEY--> ADMIN_MODE
+[16:59:08]   SWF-71 → 서브태스크 3건
+[17:00:40]   [OK] DoD 통과 (시도 1)
+[17:00:42]   커밋 84e480d: SWF-71 [T-053] SALE_HAS_CREDIT --INSERT_ADMIN_KEY--> ADMIN_MODE
+[17:00:43] > SWF-72 [T-054] SALE_IDLE --INSERT_ADMIN_KEY--> ADMIN_MODE
+[17:01:06]   SWF-72 → 서브태스크 2건
+[17:01:40]   [OK] DoD 통과 (시도 1)
+[17:01:42]   커밋 d00929d: SWF-72 [T-054] SALE_IDLE --INSERT_ADMIN_KEY--> ADMIN_MODE
+[17:01:43] > SWF-73 [T-055] SALE_STOPPED --INSERT_ADMIN_KEY--> ADMIN_MODE
+[17:01:58]   SWF-73 → 서브태스크 2건
+[17:02:33]   [OK] DoD 통과 (시도 1)
+[17:02:34]   커밋 1fd5ccc: SWF-73 [T-055] SALE_STOPPED --INSERT_ADMIN_KEY--> ADMIN_MODE
+[17:02:35] > SWF-74 [T-056] FAULT --INSERT_ADMIN_KEY--> ADMIN_MODE
+[17:03:01]   SWF-74 → 서브태스크 2건
+[17:03:44]   [OK] DoD 통과 (시도 1)
+[17:03:45]   커밋 4449398: SWF-74 [T-056] FAULT --INSERT_ADMIN_KEY--> ADMIN_MODE
+[17:03:46]   [EPIC] SWF-9 완료
+[17:03:46] > SWF-75 [T-057] AWAITING_DISPENSE --INSERT_ADMIN_KEY--> AWAITING_DISPENSE_ADMIN_PENDING
+[17:04:21]   SWF-75 → 서브태스크 2건
+[17:05:37]   [OK] DoD 통과 (시도 1)
+[17:05:39]   커밋 4194594: SWF-75 [T-057] AWAITING_DISPENSE --INSERT_ADMIN_KEY--> AWAITING_DISPENSE
+[17:05:40] > SWF-76 [T-058] AWAITING_DISPENSE_ADMIN_PENDING --INSERT_COIN--> AWAITING_DISPENSE_ADMIN_PENDING
+[17:06:14]   SWF-76 → 서브태스크 3건
+[17:07:18]   [OK] DoD 통과 (시도 1)
+[17:07:19]   커밋 c557587: SWF-76 [T-058] AWAITING_DISPENSE_ADMIN_PENDING --INSERT_COIN--> AWAITING
+[17:07:20] > SWF-77 [T-059] AWAITING_DISPENSE_ADMIN_PENDING --INSERT_COIN--> AWAITING_DISPENSE_ADMIN_PENDING
+[17:07:47]   SWF-77 → 서브태스크 3건
+[17:08:56]   [OK] DoD 통과 (시도 1)
+[17:08:57]   커밋 e33e036: SWF-77 [T-059] AWAITING_DISPENSE_ADMIN_PENDING --INSERT_COIN--> AWAITING
+[17:08:58] > SWF-78 [T-060] AWAITING_DISPENSE_ADMIN_PENDING --INSERT_COIN--> AWAITING_DISPENSE_ADMIN_PENDING
+[17:09:27]   SWF-78 → 서브태스크 4건
+[17:10:23]   [OK] DoD 통과 (시도 1)
+[17:10:24]   커밋 3194d20: SWF-78 [T-060] AWAITING_DISPENSE_ADMIN_PENDING --INSERT_COIN--> AWAITING
+[17:10:26] > SWF-79 [T-061] AWAITING_DISPENSE_ADMIN_PENDING --DISPENSE_COMPLETE--> ADMIN_MODE
+[17:10:57]   SWF-79 → 서브태스크 4건
+[17:12:47]   [OK] DoD 통과 (시도 1)
+[17:12:49]   커밋 6c88fa3: SWF-79 [T-061] AWAITING_DISPENSE_ADMIN_PENDING --DISPENSE_COMPLETE--> AD
+[17:12:50]   [EPIC] SWF-10 완료
+[17:12:50] > SWF-80 [T-062] AWAITING_DISPENSE_ADMIN_PENDING --DISPENSE_COMPLETE--> AWAITING_DISPENSE_ADMIN_PENDING
+[17:13:25]   SWF-80 → 서브태스크 4건
+[17:14:54]   [OK] DoD 통과 (시도 1)
+[17:14:55]   커밋 01cbcee: SWF-80 [T-062] AWAITING_DISPENSE_ADMIN_PENDING --DISPENSE_COMPLETE--> AW
+[17:14:57]   [EPIC] SWF-7 완료
+[17:14:57] > SWF-81 [T-063] ADMIN_MODE --REPLENISH_STOCK--> ADMIN_MODE
+[17:15:35]   SWF-81 → 서브태스크 4건
+[17:17:29]   [OK] DoD 통과 (시도 1)
+[17:17:30]   커밋 d48619a: SWF-81 [T-063] ADMIN_MODE --REPLENISH_STOCK--> ADMIN_MODE
+[17:17:32] > SWF-82 [T-064] ADMIN_MODE --REPLENISH_STOCK--> ADMIN_MODE
+[17:18:07]   SWF-82 → 서브태스크 4건
+[17:19:51]   [OK] DoD 통과 (시도 1)
+[17:19:53]   커밋 66c531e: SWF-82 [T-064] ADMIN_MODE --REPLENISH_STOCK--> ADMIN_MODE
+[17:19:54] > SWF-83 [T-065] ADMIN_MODE --REPLENISH_COIN--> ADMIN_MODE
+[17:20:20]   SWF-83 → 서브태스크 4건
+[17:22:30]   [OK] DoD 통과 (시도 1)
+[17:22:32]   커밋 10d8083: SWF-83 [T-065] ADMIN_MODE --REPLENISH_COIN--> ADMIN_MODE
+[17:22:33] > SWF-84 [T-066] ADMIN_MODE --REPLENISH_COIN--> ADMIN_MODE
+[17:22:58]   SWF-84 → 서브태스크 3건
+[17:24:44]   [OK] DoD 통과 (시도 1)
+[17:24:45]   커밋 09926f6: SWF-84 [T-066] ADMIN_MODE --REPLENISH_COIN--> ADMIN_MODE
+[17:24:46]   [EPIC] SWF-11 완료
+[17:24:46] > SWF-85 [T-067] ADMIN_MODE --ADJUST_STOCK--> ADMIN_MODE
+[17:25:10]   SWF-85 → 서브태스크 4건
+[17:27:16]   [OK] DoD 통과 (시도 1)
+[17:27:18]   커밋 5420aeb: SWF-85 [T-067] ADMIN_MODE --ADJUST_STOCK--> ADMIN_MODE
+[17:27:19] > SWF-86 [T-068] ADMIN_MODE --ADJUST_STOCK--> ADMIN_MODE
+[17:27:45]   SWF-86 → 서브태스크 5건
+[17:30:11]   [OK] DoD 통과 (시도 1)
+[17:30:13]   커밋 161a113: SWF-86 [T-068] ADMIN_MODE --ADJUST_STOCK--> ADMIN_MODE
+[17:30:15]   [EPIC] SWF-12 완료
+[17:30:15] > SWF-87 [T-069] ADMIN_MODE --VIEW_LEDGER--> ADMIN_MODE
+[17:30:41]   SWF-87 → 서브태스크 3건
+[17:34:28]   [OK] DoD 통과 (시도 1)
+[17:34:29]   커밋 2adeaa5: SWF-87 [T-069] ADMIN_MODE --VIEW_LEDGER--> ADMIN_MODE
+[17:34:30] > SWF-88 [T-070] ADMIN_MODE --COLLECT_COIN--> ADMIN_MODE
+[17:35:05]   SWF-88 → 서브태스크 4건
+[17:37:17]   [OK] DoD 통과 (시도 1)
+[17:37:19]   커밋 7d31222: SWF-88 [T-070] ADMIN_MODE --COLLECT_COIN--> ADMIN_MODE
+[17:37:20] > SWF-89 [T-071] ADMIN_MODE --COLLECT_COIN--> ADMIN_MODE
+[17:37:53]   SWF-89 → 서브태스크 4건
+[17:39:01]   [OK] DoD 통과 (시도 1)
+[17:39:02]   커밋 d626db1: SWF-89 [T-071] ADMIN_MODE --COLLECT_COIN--> ADMIN_MODE
+[17:39:04]   [EPIC] SWF-13 완료
+[17:39:04] > SWF-90 [T-072] ADMIN_MODE --ACK_DISPENSE_FAILURE--> ADMIN_MODE
+[17:39:34]   SWF-90 → 서브태스크 3건
+[17:41:53]   [OK] DoD 통과 (시도 1)
+[17:41:55]   커밋 3b849c2: SWF-90 [T-072] ADMIN_MODE --ACK_DISPENSE_FAILURE--> ADMIN_MODE
+[17:41:56] > SWF-91 [T-073] ADMIN_MODE --ACK_DISPENSE_FAILURE--> ADMIN_MODE
+[17:42:20]   SWF-91 → 서브태스크 4건
+[17:43:47]   [OK] DoD 통과 (시도 1)
+[17:43:48]   커밋 f2a6581: SWF-91 [T-073] ADMIN_MODE --ACK_DISPENSE_FAILURE--> ADMIN_MODE
+[17:43:50] > SWF-92 [T-074] ADMIN_MODE --REMOVE_ADMIN_KEY--> FAULT
+[17:44:28]   SWF-92 → 서브태스크 4건
+[17:45:58]   [OK] DoD 통과 (시도 1)
+[17:46:00]   커밋 4a38644: SWF-92 [T-074] ADMIN_MODE --REMOVE_ADMIN_KEY--> FAULT
+[17:46:01]   [EPIC] SWF-14 완료
+[17:46:01] > SWF-93 [T-075] ADMIN_MODE --REMOVE_ADMIN_KEY--> SALE_IDLE
+[17:46:43]   SWF-93 → 서브태스크 4건
+[17:49:21]   [OK] DoD 통과 (시도 1)
+[17:49:23]   커밋 2a43eec: SWF-93 [T-075] ADMIN_MODE --REMOVE_ADMIN_KEY--> SALE_IDLE
+[17:49:24] > SWF-94 [T-076] ADMIN_MODE --REMOVE_ADMIN_KEY--> SALE_STOPPED
+[17:49:53]   SWF-94 → 서브태스크 3건
+[17:50:54]   [OK] DoD 통과 (시도 1)
+[17:50:56]   커밋 66db7b8: SWF-94 [T-076] ADMIN_MODE --REMOVE_ADMIN_KEY--> SALE_STOPPED
+[17:50:57]   [EPIC] SWF-15 완료
+[17:50:57] 처리할 스토리 없음 -> 작업 루프 종료
+[17:50:57] -- DRIVER --
+[17:50:57]   FSM 명세 표 갱신: app/_fsm_spec.py (전이 77개)
+[17:55:05] 진입점 생성 완료: `python -m app` 실행 확인
+[17:55:05]   커밋 543924e: 진입점
+[17:55:05] -- E2E_SPEC --
+[17:55:44] [STOP] 워커를 쓸 수 없습니다: E2E 시나리오 생성 실패: exit 1: 
+   사용량 한도나 네트워크 문제일 가능성이 높습니다. 상태는 저장됐고, 다시 run 하면 이어집니다.
+[17:55:44] 정지 지점: E2E_SPEC | 통계: {'done': 77}
+[07:23:06] 한도 해제 확인 -- 파이프라인 재개
+[22:23:07] -- E2E_SPEC --
+[22:42:43] E2E 시나리오 생성: 39개
+[22:42:43]   커밋 5812732: E2E 시나리오
+[22:42:43] -- E2E --
+[22:42:48] [OK] E2E 통과
+[22:42:48] push 게이트가 manual -> `python -m factory.cli push` 로 직접 내보내세요
+[22:42:48] -- REVIEW --
+[22:42:48]   [검토 1/3]
+[22:53:59]   critic: YAML 파싱 실패 -> 재질의 (원문은 .factory/raw/ 에 보존)
+[23:05:02]   확인함: requirements.md 의 원자 요구사항 98 건을 유스케이스 · FSM 전이 · 구현(app/vending_machine.py) · 테스트(tests/test_fsm.py, tests/e2e/test_scenarios.py)로 각각 따라가며 끊긴 지점을 찾았다
+[23:05:02]   확인함: app/vending_machine.py 3301 줄(장부 헬퍼 · 전이 표 T-001~T-077 · 39 개 guard)을 읽고 TRANSITIONS 표와 FSM 명세를 항목별로 대조했다
+[23:05:02]   확인함: 같은 (상태, 이벤트)에 여러 갈래가 있는 자리를 모두 열거해 덮이지 않는 입력을 찾았다: AWAITING_DISPENSE + DISPENSE_COMPLETE (T-027 · T-028 · T-029 · T-077 · T-030 · T-031), SALE_HAS_CREDIT + PRESS_SELECT_BUTTON (T-021 · T-022 · T-023), ADMIN_MODE + REMOVE_ADMIN_KEY (T-074 · T-075 · T-076), ADMIN_MODE + COLLECT_COIN (T-070 · T-071), POWER_ON (T-001~T-004). 재고·잔액·일련번호의 모든 경우가 갈래로 덮이고 겹치지 않는다 — 이 항목에서는 결함을 찾지 못했다
+[23:05:02]   확인함: [모호] 표시가 붙은 REQ-69(관리 모드 종료 조작) · REQ-94(관리자 알림 수단)와 FSM 이 스스로 [미규정] 이라 적은 T-030(마지막 재고 소진 시 배출 중 투입분) · T-048 · T-049(배출 대기 중 반환 레버)를 추적했다 — 넷 다 가정이 유스케이스 acceptance 나 전이 notes 에 드러나 있어 은폐된 추측이 아니다
+[23:05:02]   확인함: 돈이 보존되는지 확인했다: 코인 수납(REQ-26) · 지급 차감(REQ-27) · 보충(REQ-60) · 회수(REQ-68) 네 경로만 coins 를 건드리고, e2e 의 무작위 이벤트 열 불변식 테스트가 이 등식을 매 스텝 확인한다 — 최초 사례로 언급된 '동전이 줄지 않는' 유형의 누수는 없다
+[23:05:02]   확인함: 제약 요구사항의 검증 수단을 확인했다: REQ-97(외부 네트워크 금지)은 socket 을 막고 전 구간을 흘리는 테스트가 있고, REQ-83 · REQ-95 · REQ-96 도 대응 단언이 있다
+[23:05:02]   확인함: payout() 의 반환값을 무시하고 credit 을 0 으로 만드는 경로(T-022 · T-030 · T-043 · T-050 · T-053 · T-061)를 살폈으나, 액면가 100/500/1000 아래에서 지급 불가가 실제로 도달하는 이벤트 열을 손으로 구성하지 못해 지적에 넣지 않았다
+[23:05:02] 검토: 9건 (high 3 / medium 5 / low 1)
+[23:05:02]   [high] 배출 중 정전 시 재고 1 차감 · 매출 기록 · 차액 보관 규칙이 구현에도 테스트에도 없다 -> SWF-324
+[23:05:03]   [high] 반환 도중 전원이 끊긴 경우의 규칙이 없고, 그 목적으로 만든 payout_intent 를 아무도 읽지 않는다 -> SWF-325
+[23:05:03]   [high] 30 초 · 10 초 · 2 초 시한을 재는 주체가 없고 어떤 테스트도 시간을 재지 않는다 -> SWF-326
+[23:05:03]   [medium] 보유량 합계 등식의 항이 장부에 없어 REQ-87 · REQ-88 · REQ-93 의 등식 검사가 성립할 수 없다 -> SWF-327
+[23:05:03]   [medium] 동전 회수가 미반환 보관액을 회수액만큼 지우는 규칙은 문서에 없는 추측이다 -> SWF-328
+[23:05:04]   [medium] 선택 버튼의 활성 상태가 구현에 없고, 그것을 확인한다는 단언은 테스트가 자기 자신을 확인한다 -> SWF-329
+[23:05:04]   [medium] 고장 해제 수단이 '배출 실패 확인' 하나뿐이라 진행 중 배출 기록이 없는 고장은 영구히 풀리지 않는다 -> SWF-330
+[23:05:04]   [medium] 원자성 · 격리성 요구사항이 어떤 단언으로도 옮겨지지 않았고, 두 번 저장하는 전이가 그 요구를 어긴다 -> SWF-331
+[23:05:05]   [low] 고장 화면의 '관리자 호출 안내'가 고장 표시와 한 불리언으로 합쳐져 별도로 확인되지 않는다 -> SWF-332
+[23:05:05]   > SWF-324 [검토/high] 배출 중 정전 시 재고 1 차감 · 매출 기록 · 차액 보관 규칙이 구현에도 테스트에도 없다
+[23:09:38]     [OK] 전체 통과 (시도 1)
+[23:09:38]   커밋 8b93df9: SWF-324 [검토/high] 배출 중 정전 시 재고 1 차감 · 매출 기록 · 차액 보관 규칙이 구현에도 테스트에도 없다
+[23:09:38]   > SWF-326 [검토/high] 30 초 · 10 초 · 2 초 시한을 재는 주체가 없고 어떤 테스트도 시간을 재지 않는다
+[23:21:51]     [OK] 전체 통과 (시도 1)
+[23:21:53]   커밋 d4bc0d4: SWF-326 [검토/high] 30 초 · 10 초 · 2 초 시한을 재는 주체가 없고 어떤 테스트도 시간을 재지 않는다
+[23:21:53]   > SWF-329 [검토/medium] 선택 버튼의 활성 상태가 구현에 없고, 그것을 확인한다는 단언은 테스트가 자기 자신을 확인한다
+[23:29:06]     [OK] 전체 통과 (시도 1)
+[23:29:06]   커밋 e67c15a: SWF-329 [검토/medium] 선택 버튼의 활성 상태가 구현에 없고, 그것을 확인한다는 단언은 테스트가 자기 자신을 확인한다
+[23:29:06]   > SWF-331 [검토/medium] 원자성 · 격리성 요구사항이 어떤 단언으로도 옮겨지지 않았고, 두 번 저장하는 전이가 그 요구
+[23:44:07]     시도 1 실패: timeout after 900s
+[23:59:07]     시도 2 실패: timeout after 900s
+[00:14:07]     시도 3 실패: timeout after 900s
+[00:14:08]   > SWF-332 [검토/low] 고장 화면의 '관리자 호출 안내'가 고장 표시와 한 불리언으로 합쳐져 별도로 확인되지 않는다
+[00:25:11]     [OK] 전체 통과 (시도 1)
+[00:25:12]   커밋 378b0e6: SWF-332 [검토/low] 고장 화면의 '관리자 호출 안내'가 고장 표시와 한 불리언으로 합쳐져 별도로 확인되지 않는다
+[00:25:12]   [검토 2/3]
+[00:37:24]   critic: YAML 파싱 실패 -> 재질의 (원문은 .factory/raw/ 에 보존)
+[00:47:39]   확인함: requirements.md 의 REQ-01~REQ-98 을 UC-01~UC-17 · T-001~T-077 · tests/test_fsm.py · tests/e2e/test_scenarios.py 로 한 건씩 따라가며 어디서 끊기는지 확인했다
+[00:47:39]   확인함: app/vending_machine.py 의 TRANSITIONS 표에 77 개 전이가 모두 등록되어 있고 FSM 목록과 1:1 로 대응하는 것을 확인했다
+[00:47:39]   확인함: 같은 (상태, 이벤트) 를 나눠 받는 갈래(T-012/013/014, T-021/022/023, T-027/028/029/077/030/031, T-063/064, T-070/071, T-074/075/076)의 guard 를 읽고 겹침 · 빈 구멍을 확인했다
+[00:47:39]   확인함: change_composable() · compose_payout() 의 조합 탐색(_reachable_combinations)이 완전한 유한 배낭 DP 인지 손으로 따라가 확인했다 — 정확하다
+[00:47:39]   확인함: 동전 보유량이 변하는 경로가 accept_coin · payout · replenish_coins · collect_coins 넷뿐인지 확인했다 — 넷뿐이다(REQ-25 는 지켜진다)
+[00:47:39]   확인함: 재고가 변하는 경로가 판매 정산 · replenish_stock · adjust_stock 뿐인지 확인했다 — 그렇다
+[00:47:39]   확인함: persist() 가 임시 파일 + fsync + os.replace 로 원자적 교체를 하는지 확인했다 — 한다(REQ-90 은 지켜진다)
+[00:47:39]   확인함: app/ 전체에서 시각을 읽거나 타이머를 거는 코드, 네트워크 호출, 외부 재고 입력이 있는지 확인했다 — 시각은 없고(아래 F-01), 네트워크 · 외부 입력도 없다(REQ-83 · REQ-97 은 지켜진다)
+[00:47:39]   확인함: [모호] 표시된 REQ-69(관리 모드 종료 조작) · REQ-94(알림 수단)가 추측으로 메워졌는지 확인했다 — 둘 다 UC-15 acceptance 와 T-075 notes 에 가정으로 명시되어 있어 숨겨진 추측이 아니다
+[00:47:39]   확인함: app/__main__.py 의 진입점이 어떤 구동 루프를 도는지 확인했다 — input() 을 기다리는 REPL 과 스크립트 재생기뿐이다
+[00:47:39] 검토: 8건 (high 3 / medium 4 / low 1)
+[00:47:39]   [high] 30 초 · 10 초 시한을 재는 주체가 제품에 없다 — 시한을 쏘는 것은 테스트 파일 안의 시뮬레이터다 -> SWF-333
+[00:47:39]   [high] 배출 중 정전의 정산(REQ-79 · REQ-80 · REQ-81)이 빈 함수이고, 테스트가 UC-16 accept -> SWF-334
+[00:47:39]   [high] 매출이 장부가 아니다 — 전원이 꺼지면 사라지고 관리자에게 보이지도 않아, 보유량 합계 등식을 아무도 계산할 수 없 -> SWF-335
+[00:47:40]   [medium] 동전을 회수하면 회수한 금액만큼 미반환 보관액이 무조건 깎인다 — 매출만 걷어도 손님에게 돌려줄 돈의 기록이 사라진 -> SWF-336
+[00:47:40]   [medium] ADMIN_ENTRY_DUE 를 쏘는 주체가 제품에 없다 — 고장 전환 뒤 예약된 관리 모드 진입이 자동으로 일어나 -> SWF-337
+[00:47:40]   [medium] payout_intent 는 쓰이기만 하고 어디서도 읽히지 않는다 — 반환 도중 전원이 끊기면 이미 나간 돈이 보관 -> SWF-338
+[00:47:41]   [medium] 선택 버튼의 활성 상태를 내보내는 출력이 제품에 없다 — REQ-09 는 관측 가능한 형태로 구현되지 않았다 -> SWF-339
+[00:47:41]   [low] 원자성(REQ-86) · 격리성(REQ-89) 을 확인하는 테스트가 하나도 없고, 지급 실패를 무시한 채 잔액을 0 -> SWF-340
+[00:47:41]   > SWF-334 [검토/high] 배출 중 정전의 정산(REQ-79 · REQ-80 · REQ-81)이 빈 함수이고, 테스트가 UC
+[00:56:10]     [FAIL] 테스트 실패 (시도 1/3)
+[01:06:22]     [FAIL] 테스트 실패 (시도 2/3)
+[01:21:08]     [FAIL] 테스트 실패 (시도 3/3)
+[01:21:08]   > SWF-337 [검토/medium] ADMIN_ENTRY_DUE 를 쏘는 주체가 제품에 없다 — 고장 전환 뒤 예약된 관리 모드 
+[01:22:03] [STOP] 워커를 쓸 수 없습니다: remediate:SWF-337: exit 1: 
+   사용량 한도나 네트워크 문제일 가능성이 높습니다. 상태는 저장됐고, 다시 run 하면 이어집니다.
+[01:22:03] 정지 지점: REVIEW | 통계: {'done': 77, 'critic_fixed': 4, 'critic_blocked': 2}
+[03:21:28] -- REVIEW --
+[03:21:28]   [검토 3/3]
+[03:34:06]   critic: YAML 파싱 실패 -> 재질의 (원문은 .factory/raw/ 에 보존)
+[03:43:34]   확인함: app/vending_machine.py 의 TRANSITIONS 표에 T-001~T-077 77 건이 모두 등록되어 있고 app/_fsm_spec.py 의 (src, event) 쌍과 일치함을 확인했다.
+[03:43:34]   확인함: 요구사항 REQ-01~REQ-98 을 유스케이스 → 전이 → 구현 함수 → 테스트 순으로 따라가며 중간에 끊기는 지점을 찾았다.
+[03:43:34]   확인함: 보존되어야 하는 양을 하나씩 따라갔다 — 동전 보유량은 accept_coin() 이 더하고 payout()/collect_coins() 가 빼며, 재고는 판매/보충/조정에서만 변하고, 매출은 sales 에 쌓인다.
+[03:43:34]   확인함: payout() 이 조합을 구성하지 못할 때 credit 이 그대로 0 이 되는 경로(T-022, T-030, T-043, T-050, T-053, T-061)를 액면가 100/500/1000 조합으로 재현하려 했으나 실패 사례를 만들지 못해 지적에 넣지 않았다.
+[03:43:34]   확인함: 같은 (상태, 이벤트) 를 나눠 갖는 갈래의 덮개를 확인했다 — SALE_HAS_CREDIT+PRESS_SELECT_BUTTON(T-021/022/023), AWAITING_DISPENSE+DISPENSE_COMPLETE(T-027/028/029/077/030/031), ADMIN_MODE+REMOVE_ADMIN_KEY(T-074/075/076), COLLECT_COIN(T-070/071) 은 상호 배타이며 빈틈이 없다.
+[03:43:34]   확인함: tests/test_fsm.py 77 개 단위 테스트와 tests/e2e/test_scenarios.py 의 3 개 절(시나리오 · 불변식 · 커버리지)을 읽고, 각 단언이 명세에서 온 것인지 구현에서 온 것인지 대조했다.
+[03:43:34]   확인함: git log 로 이전 검토 티켓(SWF-324 · SWF-326 · SWF-329 · SWF-332)이 무엇을 바꿨는지 확인했다 — 네 건 모두 app/ 은 한 줄도 바뀌지 않았고 tests/e2e/test_scenarios.py 만 늘었다.
+[03:43:34] 검토: 11건 (high 5 / medium 4 / low 2)
+[03:43:34]   [high] 배출 중 정전의 자동 정산(재고 1 차감 · 매출 기록 · 차액 보관)이 구현에 없다 -> SWF-341
+[03:43:34]   [high] REQ-80 · REQ-81 을 확인한다는 단언이 실제로는 동전 회수 연산의 산술 항등식이다 -> SWF-342
+[03:43:34]   [high] 매출 누계가 장부 항목이 아니어서 REQ-10 의 보유량 합계 등식을 어느 시점에도 세울 수 없다 -> SWF-343
+[03:43:35]   [high] 등식을 깨는 전이를 거부하는 규칙(REQ-88)이 전이에도 코드에도 테스트에도 없고, 기동 시 정합성 검사는 부등식 -> SWF-344
+[03:43:35]   [high] IDLE_TIMEOUT · DISPENSE_TIMEOUT · ADMIN_ENTRY_DUE 를 발생시키는 주체가 배송 -> SWF-345
+[03:43:35]   [medium] 동전 회수가 회수액만큼 미반환 보관액을 무조건 상계해서, 두 번의 회수로 보관액 보호가 무너진다 -> SWF-346
+[03:43:36]   [medium] 고장 표시를 내리는 경로가 없다 — 관리자가 확인해도 화면의 고장 안내가 그대로 남는다 -> SWF-347
+[03:43:36]   [medium] 선택 버튼의 활성 상태가 구현에 관측 가능한 형태로 존재하지 않아, 하드웨어 램프를 켤 출력이 없다 -> SWF-348
+[03:43:36]   [medium] 원자성 · 격리성(REQ-86 · REQ-89)을 보장하는 장치도 그것을 확인하는 테스트도 없다 -> SWF-349
+[03:43:36]   [low] 배출 대기 중 반환 레버 조작을 조용히 무시하는 것이 요구사항 확인 없이 굳었다 -> SWF-350
+[03:43:37]   [low] 고장 표시와 관리자 호출 안내가 불리언 하나로 합쳐져 REQ-43 이 따로 확인되지 않는다 -> SWF-351
+[03:43:37]   > SWF-337 [검토/medium] ADMIN_ENTRY_DUE 를 쏘는 주체가 제품에 없다 — 고장 전환 뒤 예약된 관리 모드 
+[03:54:23]     [FAIL] 테스트 실패 (시도 1/3)
+[04:03:31]     [OK] 전체 통과 (시도 2)
+[04:03:32]   커밋 0c634e1: SWF-337 [검토/medium] ADMIN_ENTRY_DUE 를 쏘는 주체가 제품에 없다 — 고장 전환 뒤 예약된 관리 모드 
+[04:03:32]   > SWF-339 [검토/medium] 선택 버튼의 활성 상태를 내보내는 출력이 제품에 없다 — REQ-09 는 관측 가능한 형태로 
+[04:13:05]     [OK] 전체 통과 (시도 1)
+[04:13:06]   커밋 398be2f: SWF-339 [검토/medium] 선택 버튼의 활성 상태를 내보내는 출력이 제품에 없다 — REQ-09 는 관측 가능한 형태로 
+[04:13:06]   > SWF-340 [검토/low] 원자성(REQ-86) · 격리성(REQ-89) 을 확인하는 테스트가 하나도 없고, 지급 실패를 무시
+[04:28:06]     시도 1 실패: timeout after 900s
+[04:43:07]     시도 2 실패: timeout after 900s
+[04:58:07]     시도 3 실패: timeout after 900s
+[04:58:07]   > SWF-341 [검토/high] 배출 중 정전의 자동 정산(재고 1 차감 · 매출 기록 · 차액 보관)이 구현에 없다
+[05:05:35]     [FAIL] 테스트 실패 (시도 1/3)
+[05:20:35]     시도 2 실패: timeout after 900s
+[05:35:36]     시도 3 실패: timeout after 900s
+[05:35:36]   > SWF-342 [검토/high] REQ-80 · REQ-81 을 확인한다는 단언이 실제로는 동전 회수 연산의 산술 항등식이다
+[05:48:29]     [OK] 전체 통과 (시도 1)
+[05:48:30]   커밋 cdbe4a0: SWF-342 [검토/high] REQ-80 · REQ-81 을 확인한다는 단언이 실제로는 동전 회수 연산의 산술 항등식이다
+[05:48:30]   > SWF-344 [검토/high] 등식을 깨는 전이를 거부하는 규칙(REQ-88)이 전이에도 코드에도 테스트에도 없고, 기동 시 정
+[05:54:31]     [OK] 전체 통과 (시도 1)
+[05:54:32]   커밋 5d2702f: SWF-344 [검토/high] 등식을 깨는 전이를 거부하는 규칙(REQ-88)이 전이에도 코드에도 테스트에도 없고, 기동 시 정
+[05:54:32]   > SWF-345 [검토/high] IDLE_TIMEOUT · DISPENSE_TIMEOUT · ADMIN_ENTRY_DUE 를 발생
+[06:04:04]     [OK] 전체 통과 (시도 1)
+[06:04:05]   커밋 9de6e66: SWF-345 [검토/high] IDLE_TIMEOUT · DISPENSE_TIMEOUT · ADMIN_ENTRY_DUE 를 발생
+[06:04:05]   > SWF-347 [검토/medium] 고장 표시를 내리는 경로가 없다 — 관리자가 확인해도 화면의 고장 안내가 그대로 남는다
+[06:13:02]     [OK] 전체 통과 (시도 1)
+[06:13:03]   커밋 ede896e: SWF-347 [검토/medium] 고장 표시를 내리는 경로가 없다 — 관리자가 확인해도 화면의 고장 안내가 그대로 남는다
+[06:13:03]   > SWF-348 [검토/medium] 선택 버튼의 활성 상태가 구현에 관측 가능한 형태로 존재하지 않아, 하드웨어 램프를 켤 출력이
+[06:23:25]     [OK] 전체 통과 (시도 1)
+[06:23:26]   커밋 32e93a5: SWF-348 [검토/medium] 선택 버튼의 활성 상태가 구현에 관측 가능한 형태로 존재하지 않아, 하드웨어 램프를 켤 출력이
+[06:23:26]   > SWF-349 [검토/medium] 원자성 · 격리성(REQ-86 · REQ-89)을 보장하는 장치도 그것을 확인하는 테스트도 없
+[06:31:25] [STOP] 워커를 쓸 수 없습니다: remediate:SWF-349: exit 1: 
+   사용량 한도나 네트워크 문제일 가능성이 높습니다. 상태는 저장됐고, 다시 run 하면 이어집니다.
+[06:31:25] 정지 지점: REVIEW | 통계: {'done': 77, 'critic_fixed': 11, 'critic_blocked': 4}
+[08:21:39] -- REVIEW --
+[08:21:39]   사이클 상한(3) 도달
+[08:21:42]   사람 판단 필요 11건: SWF-325, SWF-327, SWF-328, SWF-330, SWF-333, SWF-335, SWF-336, SWF-338, SWF-343, SWF-346, SWF-350
+[08:21:42] 검토 종료 -- 열린 지적 2건
+[08:21:42] -- RELEASE --
+[08:21:49]   [x] 모든 스토리 완료 — 77/77
+[08:21:49]   [x] 모든 요구사항이 테스트에 도달 — 98/98
+[08:21:49]   [x] 전체 테스트 통과 — 127개
+[08:21:49]   [x] 승인되지 않은 xfail/skip 없음 — 0건 중 승인 0
+[08:21:49]   [ ] 열린 high 지적 없음 — 4건 — SWF-325, SWF-333, SWF-334, SWF-335
+[08:21:49]   [x] 진입점 실행 확인
+[08:21:49] 출시 차단 — 열린 high 지적 없음
+[08:21:49] 판정서: C:\work\sw_factory\projects\vending_machine\RELEASE.md
+[08:21:49] 파이프라인 완료
+[08:21:49] 정지 지점: COMPLETE | 통계: {'done': 77, 'critic_fixed': 11, 'critic_blocked': 4, 'needs_human': 11, 'release_blocked': 1}

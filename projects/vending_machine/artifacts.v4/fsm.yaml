@@ -1,0 +1,548 @@
+project: vending_machine
+states:
+- id: SELLING
+  desc: 판매 상태. 코인 투입, 음료 선택 버튼, 반환 레버, 관리자 키, 무조작 타이머 만료, 정전을 기다린다.
+  initial: true
+  final: false
+- id: AWAITING_DISPENSE
+  desc: 배출을 개시한 뒤 배출 장치의 완료 신호(또는 10초 타임아웃)를 기다린다. 이 동안의 코인 투입·관리자 키·정전도 받는다.
+  initial: false
+  final: false
+- id: SOLD_OUT
+  desc: 모든 음료 재고가 0인 판매 중지 상태. 관리자 키 또는 정전을 기다린다. 코인은 즉시 되돌려 보낸다.
+  initial: false
+  final: false
+- id: ADMIN_MODE
+  desc: 관리 모드. 보충·회수·조회 지시와 관리 모드 종료를 기다린다. 코인은 즉시 되돌려 보낸다.
+  initial: false
+  final: false
+- id: POWERED_OFF
+  desc: 전원이 끊긴 상태. 복전(재기동)을 기다린다. 정전 직전의 credit·pending 배출 정보는 내부 보존된다.
+  initial: false
+  final: false
+events:
+- id: INSERT_COIN
+  desc: 고객이 코인 투입구에 코인을 넣어 시스템이 인식 시도를 마쳤을 때
+  payload:
+    amount: int
+    recognized: bool
+- id: PRESS_BUTTON
+  desc: 고객이 음료 선택 버튼을 눌렀을 때
+  payload:
+    drink: string
+- id: PULL_RETURN_LEVER
+  desc: 고객이 반환 레버를 조작했을 때
+  payload: {}
+- id: DISPENSE_DONE
+  desc: 배출 장치가 배출 완료 신호를 보냈을 때
+  payload:
+    drink: string
+- id: DISPENSE_TIMEOUT
+  desc: 배출 개시 후 10초 안에 완료 신호가 없어 타이머가 만료됐을 때
+  payload: {}
+- id: IDLE_TIMEOUT
+  desc: 마지막 조작(코인 투입·음료 선택·레버 조작) 이후 30초가 경과했을 때
+  payload: {}
+- id: ADMIN_KEY
+  desc: 관리 모드 진입이 시도됐을 때 (전용 키 여부 포함)
+  payload:
+    valid_key: bool
+- id: REFILL_REQUEST
+  desc: 관리자가 보충 지시(음료별 수량 및/또는 액면가별 동전 수량)를 입력했을 때
+  payload:
+    items: map
+- id: COLLECT_COINS_REQUEST
+  desc: 관리자가 액면가별 동전 회수 수량을 입력했을 때
+  payload:
+    items: map
+- id: QUERY_DELAYED_DISPENSE
+  desc: 관리자가 지연 배출 기록 조회를 요청했을 때
+  payload: {}
+- id: QUERY_UNRETURNED
+  desc: 관리자가 미반환 보관액 조회를 요청했을 때
+  payload: {}
+- id: COLLECT_UNRETURNED_REQUEST
+  desc: 관리자가 미반환 보관액 회수를 지시했을 때
+  payload: {}
+- id: QUERY_COIN_INVENTORY
+  desc: 관리자가 동전 보유량 및 정합성 조회를 요청했을 때
+  payload: {}
+- id: ADMIN_EXIT
+  desc: 관리자가 관리 모드(보충) 종료를 지시했을 때
+  payload: {}
+- id: POWER_LOST
+  desc: 전원이 끊겼을 때
+  payload: {}
+- id: POWER_RESTORED
+  desc: 전원이 다시 공급되어 재기동할 때
+  payload: {}
+transitions:
+- id: T-001
+  src: SELLING
+  event: INSERT_COIN
+  dst: SELLING
+  guard: recognized && amount in {100,500,1000}
+  action: credit += amount; coins[amount] += 1; display(credit); updateButtons();
+    restartIdleTimer()
+  usecase: UC-01
+  notes: ''
+- id: T-002
+  src: SELLING
+  event: INSERT_COIN
+  dst: SELLING
+  guard: recognized && !(amount in {100,500,1000})
+  action: ejectCoin()
+  usecase: UC-01
+  notes: ''
+- id: T-003
+  src: SELLING
+  event: INSERT_COIN
+  dst: SELLING
+  guard: '!recognized'
+  action: ejectCoin()
+  usecase: UC-01
+  notes: ''
+- id: T-004
+  src: SOLD_OUT
+  event: INSERT_COIN
+  dst: SOLD_OUT
+  guard: ''
+  action: ejectCoin()
+  usecase: UC-01
+  notes: ''
+- id: T-005
+  src: ADMIN_MODE
+  event: INSERT_COIN
+  dst: ADMIN_MODE
+  guard: ''
+  action: ejectCoin()
+  usecase: UC-01
+  notes: ''
+- id: T-010
+  src: SELLING
+  event: PRESS_BUTTON
+  dst: AWAITING_DISPENSE
+  guard: credit >= price[drink] && stock[drink] >= 1 && canMakeChange(credit - price[drink])
+  action: pending.drink = drink; pending.change = credit - price[drink]; pending.credit
+    = credit; startDispense(drink) within 2s; startDispenseTimer(10s); restartIdleTimer()
+  usecase: UC-02
+  notes: ''
+- id: T-011
+  src: SELLING
+  event: PRESS_BUTTON
+  dst: SELLING
+  guard: credit >= price[drink] && stock[drink] >= 1 && !canMakeChange(credit - price[drink])
+  action: payout(credit); coins -= used; credit = 0; display(0); updateButtons()
+  usecase: UC-02
+  notes: ''
+- id: T-012
+  src: SELLING
+  event: PRESS_BUTTON
+  dst: SELLING
+  guard: credit < price[drink] || stock[drink] < 1
+  action: ''
+  usecase: UC-02
+  notes: ''
+- id: T-013
+  src: AWAITING_DISPENSE
+  event: DISPENSE_DONE
+  dst: SELLING
+  guard: stockAfterDecrement(pending.drink) > 0 || anyOtherStock() > 0
+  action: 'stock[pending.drink] -= 1; soldAmount += price[pending.drink]; if pending.change
+    > 0: payout(pending.change); coins -= used; credit -= price[pending.drink] + pending.change;
+    display(credit); updateButtons(); clearPending(); restartIdleTimer()'
+  usecase: UC-02
+  notes: ''
+- id: T-014
+  src: AWAITING_DISPENSE
+  event: PRESS_BUTTON
+  dst: AWAITING_DISPENSE
+  guard: ''
+  action: ''
+  usecase: UC-02
+  notes: ''
+- id: T-015
+  src: AWAITING_DISPENSE
+  event: PULL_RETURN_LEVER
+  dst: AWAITING_DISPENSE
+  guard: ''
+  action: ''
+  usecase: UC-02
+  notes: '[미규정 REQ-27] 배출 대기 중 레버 조작은 명세 없음. 무반응으로 모델링.'
+- id: T-016
+  src: AWAITING_DISPENSE
+  event: IDLE_TIMEOUT
+  dst: AWAITING_DISPENSE
+  guard: ''
+  action: ''
+  usecase: UC-06
+  notes: ''
+- id: T-020
+  src: AWAITING_DISPENSE
+  event: DISPENSE_DONE
+  dst: SOLD_OUT
+  guard: stockAfterDecrement(pending.drink) == 0 && anyOtherStock() == 0
+  action: 'stock[pending.drink] -= 1; soldAmount += price[pending.drink]; if pending.change
+    > 0: payout(pending.change); coins -= used; credit -= price[pending.drink] + pending.change;
+    if credit > 0: payout(credit); coins -= used; credit = 0; display(0); disableAllButtons();
+    clearPending()'
+  usecase: UC-11
+  notes: ''
+- id: T-030
+  src: SELLING
+  event: PULL_RETURN_LEVER
+  dst: SELLING
+  guard: credit > 0
+  action: payout(credit); coins -= used; credit = 0; display(0); disableAllButtons();
+    restartIdleTimer()
+  usecase: UC-03
+  notes: ''
+- id: T-031
+  src: SELLING
+  event: PULL_RETURN_LEVER
+  dst: SELLING
+  guard: credit == 0
+  action: ''
+  usecase: UC-03
+  notes: ''
+- id: T-032
+  src: SOLD_OUT
+  event: PULL_RETURN_LEVER
+  dst: SOLD_OUT
+  guard: ''
+  action: ''
+  usecase: UC-03
+  notes: ''
+- id: T-033
+  src: ADMIN_MODE
+  event: PULL_RETURN_LEVER
+  dst: ADMIN_MODE
+  guard: ''
+  action: ''
+  usecase: UC-03
+  notes: ''
+- id: T-040
+  src: AWAITING_DISPENSE
+  event: INSERT_COIN
+  dst: AWAITING_DISPENSE
+  guard: recognized && amount in {100,500,1000}
+  action: credit += amount; coins[amount] += 1; display(credit)
+  usecase: UC-04
+  notes: ''
+- id: T-041
+  src: AWAITING_DISPENSE
+  event: INSERT_COIN
+  dst: AWAITING_DISPENSE
+  guard: '!recognized || !(amount in {100,500,1000})'
+  action: ejectCoin()
+  usecase: UC-04
+  notes: ''
+- id: T-050
+  src: AWAITING_DISPENSE
+  event: DISPENSE_TIMEOUT
+  dst: SELLING
+  guard: ''
+  action: payout(credit) with available coins; coins -= used; unpaidRemainder = credit
+    - paid; credit = 0; display(0); disableAllButtons(); clearPending(); restartIdleTimer()
+  usecase: UC-05
+  notes: '[미규정 REQ-18/REQ-33] 전액 반환 동전 부족 시 나머지 처리 규정 없음. 가능한 조합만 반환하고 나머지는 반환 불가로
+    관리자 표시.'
+- id: T-051
+  src: SELLING
+  event: DISPENSE_DONE
+  dst: SELLING
+  guard: ''
+  action: delayedDispenseLog.append(drink, now)
+  usecase: UC-05
+  notes: ''
+- id: T-052
+  src: SOLD_OUT
+  event: DISPENSE_DONE
+  dst: SOLD_OUT
+  guard: ''
+  action: delayedDispenseLog.append(drink, now)
+  usecase: UC-05
+  notes: ''
+- id: T-053
+  src: ADMIN_MODE
+  event: DISPENSE_DONE
+  dst: ADMIN_MODE
+  guard: ''
+  action: delayedDispenseLog.append(drink, now)
+  usecase: UC-05
+  notes: ''
+- id: T-060
+  src: SELLING
+  event: IDLE_TIMEOUT
+  dst: SELLING
+  guard: credit > 0
+  action: payout(credit); coins -= used; credit = 0; display(0); disableAllButtons()
+  usecase: UC-06
+  notes: ''
+- id: T-061
+  src: SELLING
+  event: IDLE_TIMEOUT
+  dst: SELLING
+  guard: credit == 0
+  action: ''
+  usecase: UC-06
+  notes: ''
+- id: T-070
+  src: SELLING
+  event: ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: valid_key && credit > 0
+  action: payout(credit); coins -= used; credit = 0; display(0); stopIdleTimer()
+  usecase: UC-07
+  notes: ''
+- id: T-071
+  src: SELLING
+  event: ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: valid_key && credit == 0
+  action: display(0); stopIdleTimer()
+  usecase: UC-07
+  notes: ''
+- id: T-072
+  src: SELLING
+  event: ADMIN_KEY
+  dst: SELLING
+  guard: '!valid_key'
+  action: ''
+  usecase: UC-07
+  notes: ''
+- id: T-073
+  src: SOLD_OUT
+  event: ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: valid_key
+  action: display(0)
+  usecase: UC-07
+  notes: ''
+- id: T-074
+  src: SOLD_OUT
+  event: ADMIN_KEY
+  dst: SOLD_OUT
+  guard: '!valid_key'
+  action: ''
+  usecase: UC-07
+  notes: ''
+- id: T-075
+  src: AWAITING_DISPENSE
+  event: ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: valid_key
+  action: 'stopDispenseTimer(); if credit > 0: payout(credit); coins -= used; credit
+    = 0; display(0); clearPending()'
+  usecase: UC-07
+  notes: '[미규정 REQ-41] 배출 대기 중 진입 시 진행 중 배출의 재고 차감·거스름돈 처리 규정 없음. 잔여 credit 전액 반환으로만
+    모델링.'
+- id: T-076
+  src: AWAITING_DISPENSE
+  event: ADMIN_KEY
+  dst: AWAITING_DISPENSE
+  guard: '!valid_key'
+  action: ''
+  usecase: UC-07
+  notes: ''
+- id: T-077
+  src: ADMIN_MODE
+  event: ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: ''
+  action: ''
+  usecase: UC-07
+  notes: ''
+- id: T-080
+  src: ADMIN_MODE
+  event: REFILL_REQUEST
+  dst: ADMIN_MODE
+  guard: allTargetsRegistered(items) && allQtyPositiveInt(items)
+  action: 'for d in items.drinks: stock[d] += qty; for c in items.coins: coins[c]
+    += qty; refilledAmount += sum(c * qty)'
+  usecase: UC-08
+  notes: ''
+- id: T-081
+  src: ADMIN_MODE
+  event: REFILL_REQUEST
+  dst: ADMIN_MODE
+  guard: '!allTargetsRegistered(items)'
+  action: notifyAdmin(REJECT_UNKNOWN_TARGET)
+  usecase: UC-08
+  notes: ''
+- id: T-082
+  src: ADMIN_MODE
+  event: REFILL_REQUEST
+  dst: ADMIN_MODE
+  guard: allTargetsRegistered(items) && !allQtyPositiveInt(items)
+  action: notifyAdmin(REJECT_INVALID_QTY)
+  usecase: UC-08
+  notes: ''
+- id: T-083
+  src: ADMIN_MODE
+  event: ADMIN_EXIT
+  dst: SELLING
+  guard: totalStock() >= 1
+  action: credit = 0; display(0); updateButtons()
+  usecase: UC-08
+  notes: ''
+- id: T-084
+  src: ADMIN_MODE
+  event: ADMIN_EXIT
+  dst: SOLD_OUT
+  guard: totalStock() == 0
+  action: credit = 0; display(0); disableAllButtons()
+  usecase: UC-08
+  notes: ''
+- id: T-090
+  src: ADMIN_MODE
+  event: COLLECT_COINS_REQUEST
+  dst: ADMIN_MODE
+  guard: allDenomsValid(items) && allQtyPositiveInt(items) && allWithinHolding(items)
+    && holdingAfter(items) >= unreturnedAmount
+  action: 'for c in items: coins[c] -= qty; collectedAmount += sum(c * qty); showAdmin(result)'
+  usecase: UC-09
+  notes: ''
+- id: T-091
+  src: ADMIN_MODE
+  event: COLLECT_COINS_REQUEST
+  dst: ADMIN_MODE
+  guard: '!allDenomsValid(items) || !allQtyPositiveInt(items)'
+  action: notifyAdmin(REJECT_INVALID_REQUEST)
+  usecase: UC-09
+  notes: ''
+- id: T-092
+  src: ADMIN_MODE
+  event: COLLECT_COINS_REQUEST
+  dst: ADMIN_MODE
+  guard: allDenomsValid(items) && allQtyPositiveInt(items) && !allWithinHolding(items)
+  action: notifyAdmin(REJECT_EXCEEDS_HOLDING)
+  usecase: UC-09
+  notes: ''
+- id: T-093
+  src: ADMIN_MODE
+  event: COLLECT_COINS_REQUEST
+  dst: ADMIN_MODE
+  guard: allDenomsValid(items) && allQtyPositiveInt(items) && allWithinHolding(items)
+    && holdingAfter(items) < unreturnedAmount
+  action: notifyAdmin(REJECT_BELOW_UNRETURNED)
+  usecase: UC-09
+  notes: ''
+- id: T-100
+  src: ADMIN_MODE
+  event: QUERY_DELAYED_DISPENSE
+  dst: ADMIN_MODE
+  guard: delayedDispenseLog.size > 0
+  action: showAdmin(delayedDispenseLog)
+  usecase: UC-10
+  notes: ''
+- id: T-101
+  src: ADMIN_MODE
+  event: QUERY_DELAYED_DISPENSE
+  dst: ADMIN_MODE
+  guard: delayedDispenseLog.size == 0
+  action: showAdmin(NO_RECORDS)
+  usecase: UC-10
+  notes: ''
+- id: T-102
+  src: ADMIN_MODE
+  event: QUERY_UNRETURNED
+  dst: ADMIN_MODE
+  guard: ''
+  action: showAdmin(unreturnedAmount)
+  usecase: UC-10
+  notes: ''
+- id: T-103
+  src: ADMIN_MODE
+  event: COLLECT_UNRETURNED_REQUEST
+  dst: ADMIN_MODE
+  guard: unreturnedAmount > 0 && canMakeChange(unreturnedAmount)
+  action: payout(unreturnedAmount); coins -= used; unreturnedAmount = 0
+  usecase: UC-10
+  notes: '[미규정 REQ-64] 회수 시 미반환 보관액 기록 감소 여부 미명시. 감소 가정 채택(발주자 확인 대상).'
+- id: T-104
+  src: ADMIN_MODE
+  event: COLLECT_UNRETURNED_REQUEST
+  dst: ADMIN_MODE
+  guard: unreturnedAmount == 0
+  action: notifyAdmin(NOTHING_TO_COLLECT)
+  usecase: UC-10
+  notes: ''
+- id: T-105
+  src: ADMIN_MODE
+  event: COLLECT_UNRETURNED_REQUEST
+  dst: ADMIN_MODE
+  guard: unreturnedAmount > 0 && !canMakeChange(unreturnedAmount)
+  action: notifyAdmin(REJECT_CANNOT_COMPOSE)
+  usecase: UC-10
+  notes: ''
+- id: T-130
+  src: ADMIN_MODE
+  event: QUERY_COIN_INVENTORY
+  dst: ADMIN_MODE
+  guard: holdingTotal() == initialAmount + refilledAmount - collectedAmount + soldAmount
+    + credit + unreturnedAmount
+  action: showAdmin(coins, holdingTotal(), expectedTotal())
+  usecase: UC-13
+  notes: ''
+- id: T-131
+  src: ADMIN_MODE
+  event: QUERY_COIN_INVENTORY
+  dst: ADMIN_MODE
+  guard: holdingTotal() != initialAmount + refilledAmount - collectedAmount + soldAmount
+    + credit + unreturnedAmount
+  action: showAdmin(coins, holdingTotal(), expectedTotal()); notifyAdmin(MISMATCH)
+  usecase: UC-13
+  notes: ''
+- id: T-120
+  src: SELLING
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: persist(credit, stock, coins, pending=none)
+  usecase: UC-12
+  notes: ''
+- id: T-121
+  src: SOLD_OUT
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: persist(credit=0, stock, coins, pending=none)
+  usecase: UC-12
+  notes: ''
+- id: T-122
+  src: AWAITING_DISPENSE
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: persist(credit, stock, coins, pending)
+  usecase: UC-12
+  notes: ''
+- id: T-123
+  src: ADMIN_MODE
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: persist(credit=0, stock, coins, pending=none)
+  usecase: UC-12
+  notes: ''
+- id: T-124
+  src: POWERED_OFF
+  event: POWER_RESTORED
+  dst: SELLING
+  guard: totalStockAfterRecovery() >= 1
+  action: 'if pending: stock[pending.drink] -= 1; soldAmount += price[pending.drink];
+    credit -= price[pending.drink]; if credit > 0: unreturnedAmount += credit; credit
+    = 0; display(0); clearPending(); updateButtons()'
+  usecase: UC-12
+  notes: ''
+- id: T-125
+  src: POWERED_OFF
+  event: POWER_RESTORED
+  dst: SOLD_OUT
+  guard: totalStockAfterRecovery() == 0
+  action: 'if pending: stock[pending.drink] -= 1; soldAmount += price[pending.drink];
+    credit -= price[pending.drink]; if credit > 0: unreturnedAmount += credit; credit
+    = 0; display(0); clearPending(); disableAllButtons()'
+  usecase: UC-12
+  notes: ''

@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>자판기 조작대</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --ground:#F3F6F8; --surface:#FFFFFF; --raise:#FAFCFD; --sunk:#EDF1F5;
+  --ink:#121820; --dim:#4E5A68; --faint:#7A8694;
+  --line:#DCE3EA; --line2:#EDF1F5;
+  --accent:#0C7A63; --unit:#2A56A8; --warn:#96560F; --bad:#A32020;
+  --sans:"IBM Plex Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0C1015; --surface:#141A22; --raise:#1A222C; --sunk:#0E141B;
+  --ink:#E2E9F1; --dim:#A2AFBD; --faint:#78848F;
+  --line:#263039; --line2:#1C242E;
+  --accent:#41C0A2; --unit:#7FA6EC; --warn:#DD9F5E; --bad:#E06B6B;
+}}
+:root[data-theme="dark"]{
+  --ground:#0C1015; --surface:#141A22; --raise:#1A222C; --sunk:#0E141B;
+  --ink:#E2E9F1; --dim:#A2AFBD; --faint:#78848F;
+  --line:#263039; --line2:#1C242E;
+  --accent:#41C0A2; --unit:#7FA6EC; --warn:#DD9F5E; --bad:#E06B6B;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:14px;
+  -webkit-font-smoothing:antialiased}
+code,.mono{font-family:var(--mono);font-variant-ligatures:none}
+button{font:inherit;cursor:pointer;color:inherit}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header{padding:14px 20px;border-bottom:1px solid var(--line);background:var(--surface);
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header h1{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
+header .meta{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+header .sp{flex:1}
+.btn{border:1px solid var(--line);background:var(--raise);border-radius:3px;padding:6px 12px;font-size:12.5px}
+.btn:hover{background:var(--sunk)}
+
+.wrap{display:grid;grid-template-columns:minmax(300px,360px) minmax(280px,1fr) minmax(340px,1.1fr);
+  gap:1px;background:var(--line);min-height:calc(100vh - 53px)}
+@media (max-width:1100px){.wrap{grid-template-columns:1fr}}
+.pane{background:var(--ground);padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.pane>h2{margin:0;font-size:11px;font-family:var(--mono);letter-spacing:.13em;text-transform:uppercase;
+  color:var(--faint)}
+
+/* --- 자판기 --- */
+.machine{background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.power{padding:11px 16px;border-bottom:1px solid var(--line);background:var(--raise)}
+.power button{width:100%;padding:10px;border:1px solid var(--line);border-radius:3px;
+  background:var(--surface);font-size:13px;font-weight:500}
+.power button:hover{background:var(--sunk)}
+.power button.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+.machine.off .slots,.machine.off .coinbar,.machine.off .tray{opacity:.45}
+.machine.off .screen .amt{color:var(--faint)}
+.screen{background:var(--sunk);border-bottom:1px solid var(--line);padding:14px 16px;
+  display:flex;flex-direction:column;gap:4px}
+.screen .st{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:600}
+.screen .amt{font-family:var(--mono);font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;
+  line-height:1}
+.screen .msg{font-size:11.5px;color:var(--faint);min-height:1.2em}
+.slots{display:flex;flex-direction:column;gap:1px;background:var(--line2)}
+.slot{background:var(--surface);border:0;padding:11px 16px;display:flex;align-items:center;gap:12px;
+  text-align:left;width:100%}
+.slot:disabled{opacity:.42;cursor:not-allowed}
+.slot:not(:disabled):hover{background:var(--raise)}
+.slot .nm{flex:1;font-weight:500}
+.slot .pr{font-family:var(--mono);font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+.slot .qt{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:34px;text-align:right}
+.slot .lamp{width:7px;height:7px;border-radius:50%;background:var(--line);flex-shrink:0}
+.slot.on .lamp{background:var(--accent)}
+.coinbar{display:flex;gap:6px;padding:12px 16px;border-top:1px solid var(--line);flex-wrap:wrap;
+  align-items:center}
+.coinbar input{width:78px;padding:5px 8px;border:1px solid var(--line);border-radius:3px;
+  background:var(--sunk);color:inherit;font-family:var(--mono);font-size:12.5px;text-align:right}
+.chip{border:1px solid var(--line);background:var(--raise);border-radius:99px;padding:4px 10px;
+  font-family:var(--mono);font-size:11.5px}
+.chip:hover{background:var(--sunk)}
+.tray{border-top:1px solid var(--line);padding:12px 16px;display:flex;flex-direction:column;gap:7px;
+  background:var(--sunk)}
+.tray .row{display:flex;gap:8px;font-size:12px;align-items:baseline}
+.tray .k{color:var(--faint);font-size:11px;font-family:var(--mono);min-width:52px}
+.tray .v{font-family:var(--mono);font-size:12px;word-break:break-all}
+.act{display:flex;gap:8px}
+.act button{flex:1;border:1px solid var(--line);background:var(--raise);border-radius:3px;padding:9px}
+.act button:hover{background:var(--sunk)}
+.act .primary{border-color:var(--accent);color:var(--accent);font-weight:600}
+
+/* --- 이벤트 --- */
+.group{background:var(--surface);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.group h3{margin:0;padding:9px 13px;font-size:11px;font-family:var(--mono);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--faint);background:var(--raise);border-bottom:1px solid var(--line)}
+.group .body{padding:11px 13px;display:flex;flex-direction:column;gap:9px}
+.ev{display:flex;flex-direction:column;gap:5px}
+.ev>button{border:1px solid var(--line);background:var(--raise);border-radius:3px;padding:7px 10px;
+  font-family:var(--mono);font-size:11.5px;text-align:left}
+.ev>button:hover{background:var(--sunk);border-color:var(--accent)}
+.ev{opacity:.42;transition:opacity .12s}
+.ev.live{opacity:1}
+.ev.live>button{border-color:var(--accent);color:var(--accent)}
+.args{display:flex;gap:5px;flex-wrap:wrap}
+.args input,.args select{padding:4px 7px;border:1px solid var(--line);border-radius:3px;
+  background:var(--sunk);color:inherit;font-family:var(--mono);font-size:11px;min-width:0;flex:1}
+.args label{font-family:var(--mono);font-size:10px;color:var(--faint);align-self:center}
+
+/* --- 전이 기록 --- */
+.log{background:var(--surface);border:1px solid var(--line);border-radius:4px;overflow:hidden;
+  display:flex;flex-direction:column;flex:1;min-height:0}
+.log .hd{padding:9px 13px;background:var(--raise);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:10px}
+.log .hd span{font-size:11px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint)}
+.log .list{overflow-y:auto;flex:1;min-height:240px}
+.entry{padding:9px 13px;border-bottom:1px solid var(--line2);display:flex;gap:10px;align-items:flex-start}
+.entry:last-child{border-bottom:0}
+.entry .n{font-family:var(--mono);font-size:10.5px;color:var(--faint);min-width:24px;padding-top:2px;
+  font-variant-numeric:tabular-nums}
+.entry .b{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.entry .ev{font-family:var(--mono);font-size:11.5px;word-break:break-all}
+.entry .mv{font-family:var(--mono);font-size:11px;color:var(--dim)}
+.entry .tid{font-family:var(--mono);font-size:10.5px;color:var(--unit);font-weight:600}
+.entry .ig{font-size:11px;color:var(--warn)}
+.entry .ef{font-size:11px;color:var(--accent)}
+.entry .er{font-size:11px;color:var(--bad);font-family:var(--mono);word-break:break-all}
+.entry.moved{border-left:2px solid var(--accent);padding-left:11px}
+.arrow{color:var(--faint)}
+.empty{padding:22px 14px;color:var(--faint);font-size:12.5px;text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>자판기 조작대</h1>
+  <span class="meta" id="meta">불러오는 중…</span>
+  <span class="sp"></span>
+  <button class="btn" id="reset">기계 초기화</button>
+</header>
+
+<div class="wrap">
+
+  <!-- ── 왼쪽: 자판기 ── -->
+  <section class="pane">
+    <h2>자판기</h2>
+    <div class="machine">
+      <div class="power" id="powerbar">
+        <button id="power"></button>
+      </div>
+      <div class="screen">
+        <div class="st" id="st">—</div>
+        <div class="amt" id="amt">0</div>
+        <div class="msg" id="msg"></div>
+      </div>
+      <div class="slots" id="slots"></div>
+      <div class="coinbar">
+        <input id="coin" type="number" step="100" value="1000" aria-label="투입 액수">
+        <button class="chip" data-coin="100">100</button>
+        <button class="chip" data-coin="500">500</button>
+        <button class="chip" data-coin="1000">1000</button>
+        <button class="chip" data-coin="300">300</button>
+      </div>
+      <div class="coinbar" style="border-top:0;padding-top:0">
+        <button class="btn" id="insert" style="flex:1">코인 넣기</button>
+        <button class="btn" id="insertBad" title="인식 실패로 투입">인식 실패</button>
+      </div>
+      <div class="tray" id="tray"></div>
+    </div>
+    <div class="act">
+      <button id="lever">반환 레버</button>
+      <button class="primary" id="dispense">배출 완료 신호</button>
+    </div>
+  </section>
+
+  <!-- ── 가운데: 그 외 이벤트 ── -->
+  <section class="pane">
+    <h2>그 외 이벤트</h2>
+    <div id="events"></div>
+  </section>
+
+  <!-- ── 오른쪽: 전이 기록 ── -->
+  <section class="pane">
+    <h2>FSM 전이 기록</h2>
+    <div class="log">
+      <div class="hd"><span id="logcount">0건</span><span class="sp" style="flex:1"></span>
+        <button class="btn" id="clear" style="padding:3px 9px;font-size:11px">지우기</button></div>
+      <div class="list" id="log"></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+// 각 상태에서 기계가 무엇을 기다리는지. 상태 이름만 보여주면 다음 수를 알 수 없다.
+const WAITING = {
+  AWAITING_DISPENSE_COMPLETE: "배출 중 — '배출 완료 신호' 를 누르거나, 안 오면 DISPENSE_TIMEOUT",
+  FAULTED: "고장 — INSERT_ADMIN_KEY 로 관리자가 들어가야 풀립니다",
+  OUT_OF_STOCK: "재고 없음 — INSERT_ADMIN_KEY → REFILL_STOCK 으로 채웁니다",
+  ADMIN_MODE: "관리 모드 — 보충·회수·조정 후 EXIT_ADMIN_MODE",
+};
+let META = null, SNAP = null, LOG = [];
+
+async function api(path, body){
+  const r = await fetch(path, body ? {method:"POST", headers:{"Content-Type":"application/json"},
+                                      body:JSON.stringify(body)} : {});
+  return r.json();
+}
+
+// 이 화면은 판단하지 않는다. 이벤트를 보내고 제품이 돌려준 관측값만 그린다.
+async function fire(event, payload){
+  const d = await api("/api/event", {event, payload: payload||{}});
+  if (d.error){ alert(d.error); return; }
+  SNAP = d.snapshot; LOG = d.log; render();
+}
+
+function render(){
+  const s = SNAP; if (!s) return;
+  const off = s.state === "POWERED_OFF";
+  $("#st").textContent = s.state;
+  $("#amt").textContent = off ? "—" : (s.credit||0).toLocaleString();
+  const notes = s.notifications || [];
+  $("#msg").textContent = off ? "전원이 꺼져 있습니다. 아래 전원 버튼을 먼저 누르세요."
+                              : (WAITING[s.state] || (notes.length ? notes[notes.length-1] : (s.display ?? "")));
+  document.querySelector(".machine").classList.toggle("off", off);
+  const pw = $("#power");
+  pw.textContent = off ? "⏻  전원 켜기 (POWER_ON)" : "⏻  전원 끄기 (POWER_OFF)";
+  pw.className = off ? "on" : "";
+
+  // 음료 슬롯 — 활성 여부는 제품의 enabled_buttons 를 그대로 쓴다
+  const slots = $("#slots"); slots.innerHTML = "";
+  for (const [name, price] of Object.entries(s.prices || {})){
+    const qty = (s.stock||{})[name] ?? 0;
+    const on = (s.buttons||[]).includes(name);
+    const b = document.createElement("button");
+    b.className = "slot" + (on ? " on" : "");
+    b.disabled = false;   // 눌러 보는 것 자체가 시험이므로 막지 않는다
+    b.innerHTML = `<span class="lamp"></span><span class="nm">${name}</span>`
+                + `<span class="pr">${price.toLocaleString()}원</span>`
+                + `<span class="qt">${qty}개</span>`;
+    b.onclick = () => fire("SELECT_DRINK", {drink:name});
+    slots.appendChild(b);
+  }
+
+  // 배출구·반환구·금고
+  const rows = [
+    ["배출", (s.dispensed||[]).join(", ") || "—"],
+    ["반환", (s.refunded||[]).map(v=>v.toLocaleString()).join(", ") || "—"],
+    ["되돌림", (s.ejected||[]).join(", ") || "—"],
+    ["동전통", Object.entries(s.coins||{}).sort((a,b)=>b[0]-a[0])
+                .map(([d,c])=>`${d}×${c}`).join("  ")],
+    ["보관액", (s.deposit||0).toLocaleString()],
+    ["매출", (s.sales||0).toLocaleString()],
+  ];
+  if (s.pending) rows.push(["배출중", `#${s.pending.serial} ${s.pending.drink}`]);
+  if (s.admin_reserved) rows.push(["예약", "관리 모드 진입 예약됨"]);
+  if (s.fault_pending) rows.push(["고장", "미확인"]);
+  if (s.late_log) rows.push(["지연배출", `${s.late_log}건`]);
+  $("#tray").innerHTML = rows.map(([k,v]) =>
+    `<div class="row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+
+  syncEvents();
+  renderLog();
+}
+
+function renderLog(){
+  const el = $("#log");
+  $("#logcount").textContent = LOG.length + "건";
+  if (!LOG.length){ el.innerHTML = `<div class="empty">아직 기록이 없습니다</div>`; return; }
+  el.innerHTML = LOG.slice().reverse().map(e => {
+    const moved = e.before !== e.after && e.before !== "-";
+    const tid = e.tid ? `<span class="tid">${e.tid}</span>` : "";
+    const mv = e.before === "-" ? "" :
+      `<div class="mv">${e.before} <span class="arrow">→</span> ${e.after} ${tid}</div>`;
+    const ig = (!e.tid && !e.error && e.before !== "-")
+      ? `<div class="ig">전이 없음${e.diag ? " — " + e.diag : ""}</div>` : "";
+    // 전이가 발동해도 관측값이 안 바뀌면 사실상 아무 일도 안 일어난 것이다.
+    const ef = e.tid ? (e.effect
+        ? `<div class="ef">${e.effect}</div>`
+        : `<div class="ig">전이는 발동했으나 바뀐 것이 없습니다 (거절 갈래)</div>`) : "";
+    const er = e.error ? `<div class="er">${e.error}</div>` : "";
+    return `<div class="entry${moved?" moved":""}"><span class="n">${e.n}</span>`
+         + `<span class="b"><span class="ev">${e.label}</span>${mv}${ef}${ig}${er}</span></div>`;
+  }).join("");
+  el.scrollTop = 0;
+}
+
+// 가운데 패널 — 이벤트 목록은 제품이 만든 명세 표에서 그대로 가져온다
+const LEFT_HANDLED = new Set(["INSERT_COIN","SELECT_DRINK","PULL_RETURN_LEVER","DISPENSE_COMPLETE"]);
+const GROUPS = [
+  ["전원",      ["POWER_ON","POWER_OFF"]],
+  ["시간 경과",  ["NO_ACTION_TIMEOUT","DISPENSE_TIMEOUT"]],
+  ["관리자",    ["INSERT_ADMIN_KEY","EXIT_ADMIN_MODE","RESERVED_ADMIN_ENTRY","CONFIRM_DISPENSE_FAILURE"]],
+  ["보충·회수", ["REFILL_STOCK","REFILL_COINS","ADJUST_STOCK","COLLECT_COINS"]],
+];
+
+function buildEvents(){
+  const host = $("#events"); host.innerHTML = "";
+  const known = new Set(GROUPS.flatMap(g=>g[1]));
+  const rest = Object.keys(META.events).filter(e => !known.has(e) && !LEFT_HANDLED.has(e));
+  const groups = rest.length ? [...GROUPS, ["그 밖", rest]] : GROUPS;
+
+  for (const [title, names] of groups){
+    const g = document.createElement("div"); g.className = "group";
+    g.innerHTML = `<h3>${title}</h3>`;
+    const body = document.createElement("div"); body.className = "body";
+    for (const ev of names){
+      const spec = META.events[ev]; if (spec === undefined) continue;
+      const row = document.createElement("div"); row.className = "ev";
+      const btn = document.createElement("button");
+      btn.textContent = ev; row.appendChild(btn);
+
+      const fields = Object.keys(spec);
+      const inputs = {};
+      if (fields.length){
+        const args = document.createElement("div"); args.className = "args";
+        for (const f of fields){
+          const lab = document.createElement("label"); lab.textContent = f;
+          const inp = document.createElement("input");
+          inp.value = defaultFor(ev, f); inp.title = `${f}: ${spec[f]}`;
+          inp.oninput = () => { inp.dataset.touched = "1"; };
+          inputs[f] = [inp, spec[f]];
+          args.appendChild(lab); args.appendChild(inp);
+        }
+        row.appendChild(args);
+      }
+      btn.onclick = () => {
+        const payload = {};
+        for (const [f,[inp,kind]] of Object.entries(inputs)) payload[f] = coerce(inp.value, kind);
+        fire(ev, payload);
+      };
+      row.dataset.event = ev;
+      INPUTS[ev] = inputs;
+      body.appendChild(row);
+    }
+    g.appendChild(body); host.appendChild(g);
+  }
+}
+
+const INPUTS = {};
+
+// 상태가 바뀌면 (1) 가능한 이벤트를 표시하고 (2) serial·drink 기본값을 지금 배출에 맞춘다.
+function syncEvents(){
+  const live = new Set(SNAP?.available || []);
+  document.querySelectorAll("[data-event]").forEach(row => {
+    row.classList.toggle("live", live.has(row.dataset.event));
+  });
+  for (const [ev, inputs] of Object.entries(INPUTS)){
+    for (const [f, [inp]] of Object.entries(inputs)){
+      if ((f === "serial" || f === "drink") && !inp.dataset.touched)
+        inp.value = defaultFor(ev, f);
+    }
+  }
+}
+
+function defaultFor(ev, f){
+  if (f === "serial")  return String(SNAP?.pending?.serial ?? SNAP?.serial ?? 1);
+  if (f === "drink")   return SNAP?.pending?.drink ?? Object.keys(SNAP?.prices||{})[0] ?? "cola";
+  if (f === "denom")   return "100";
+  if (f === "count")   return "1";
+  if (f === "value")   return "0";
+  if (f === "op")      return ev === "COLLECT_COINS" ? "collect" : "set";
+  if (f === "target")  return "coins";
+  if (f === "items")   return ev === "REFILL_COINS" ? '[{"denom":100,"count":5}]'
+                                                    : '[{"drink":"cola","count":2}]';
+  return "";
+}
+
+function coerce(v, kind){
+  if (kind === "int")  { const n = Number(v); return Number.isFinite(n) ? n : v; }
+  if (kind === "bool") return !/^(false|0|no|)$/i.test(String(v).trim());
+  if (kind === "list") { try { return JSON.parse(v); } catch { return v; } }
+  return v;
+}
+
+// 왼쪽 조작
+$("#insert").onclick    = () => fire("INSERT_COIN", {denom:Number($("#coin").value), recognized:true});
+$("#insertBad").onclick = () => fire("INSERT_COIN", {denom:Number($("#coin").value), recognized:false});
+$("#lever").onclick     = () => fire("PULL_RETURN_LEVER", {});
+$("#power").onclick     = () => fire(SNAP?.state === "POWERED_OFF" ? "POWER_ON" : "POWER_OFF", {});
+$("#dispense").onclick  = () => fire("DISPENSE_COMPLETE",
+                            {serial: SNAP?.pending?.serial ?? SNAP?.serial ?? 1,
+                             drink:  SNAP?.pending?.drink  ?? Object.keys(SNAP?.prices||{})[0] ?? "cola"});
+document.querySelectorAll("[data-coin]").forEach(b =>
+  b.onclick = () => { $("#coin").value = b.dataset.coin; });
+$("#reset").onclick = async () => {
+  const d = await api("/api/reset", {}); SNAP = d.snapshot; LOG = d.log; render();
+};
+$("#clear").onclick = () => { LOG = []; renderLog(); };
+
+(async function init(){
+  const d = await api("/api/meta");
+  META = d; SNAP = d.snapshot; LOG = d.log || [];
+  $("#meta").textContent =
+    `${d.project} · 상태 ${d.states.length} · 이벤트 ${Object.keys(d.events).length} · 전이 ${d.transitions}`;
+  buildEvents(); render();
+})();
+</script>
+</body>
+</html>

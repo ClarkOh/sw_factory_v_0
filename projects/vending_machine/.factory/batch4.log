@@ -1,0 +1,78 @@
+[13:58:08] -- MODEL --
+[13:58:08]   (이미 확정된 단계 -- 재생성하지 않고 건너뜀)
+[13:58:08] -- TICKETIZE --
+[13:58:11] 티켓: 신규 68 / 재작업 0 / 기존유지 0
+[13:58:11] -- SPEC_TESTS --
+[14:01:33] 테스트 생성 완료: 1개 수집 (현재 red — 정상)
+[14:01:33] -- WORK --
+[14:01:33] > SWF-9 [T-001] POWERED_OFF --POWER_ON--> IDLE
+[14:01:41]   SWF-9 → 서브태스크 1건
+[14:04:54]   [OK] DoD 통과 (시도 1)
+[14:04:54]   커밋 2f38e5a: SWF-9 [T-001] POWERED_OFF --POWER_ON--> IDLE
+[14:04:54] > SWF-10 [T-002] POWERED_OFF --POWER_ON--> SOLD_OUT
+[14:05:07]   SWF-10 → 서브태스크 2건
+[14:05:38]   [OK] DoD 통과 (시도 1)
+[14:05:39]   SWF-10: 변경 없음 → 커밋 생략
+[14:05:39] > SWF-11 [T-003] POWERED_OFF --POWER_ON--> IDLE
+[14:05:48]   SWF-11 → 서브태스크 2건
+[14:06:16]   [OK] DoD 통과 (시도 1)
+[14:06:16]   SWF-11: 변경 없음 → 커밋 생략
+[14:06:16] > SWF-12 [T-004] POWERED_OFF --POWER_ON--> SOLD_OUT
+[14:06:25]   SWF-12 → 서브태스크 2건
+[14:06:55]   [OK] DoD 통과 (시도 1)
+[14:06:56]   SWF-12: 변경 없음 → 커밋 생략
+[14:06:56] > SWF-13 [T-010] IDLE --INSERT_COIN--> HAS_CREDIT
+[14:07:08]   SWF-13 → 서브태스크 3건
+[14:07:40]   [OK] DoD 통과 (시도 1)
+[14:07:41]   SWF-13: 변경 없음 → 커밋 생략
+[14:07:41] > SWF-14 [T-011] IDLE --INSERT_COIN--> IDLE
+[14:07:50]   SWF-14 → 서브태스크 1건
+[14:08:15]   [OK] DoD 통과 (시도 1)
+[14:08:16]   SWF-14: 변경 없음 → 커밋 생략
+[14:08:16] > SWF-15 [T-012] IDLE --INSERT_COIN--> IDLE
+[14:08:24]   SWF-15 → 서브태스크 2건
+[14:08:54]   [OK] DoD 통과 (시도 1)
+[14:08:55]   SWF-15: 변경 없음 → 커밋 생략
+[14:08:55] > SWF-16 [T-013] IDLE --PRESS_BUTTON--> IDLE
+[14:09:02]   SWF-16 → 서브태스크 1건
+[14:09:26]   [OK] DoD 통과 (시도 1)
+[14:09:27]   SWF-16: 변경 없음 → 커밋 생략
+[14:09:27] > SWF-17 [T-014] IDLE --PULL_LEVER--> IDLE
+[14:09:34]   SWF-17 → 서브태스크 1건
+[14:09:59]   [OK] DoD 통과 (시도 1)
+[14:09:59]   SWF-17: 변경 없음 → 커밋 생략
+[14:10:00] > SWF-18 [T-015] IDLE --IDLE_TIMEOUT--> IDLE
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\work\sw_factory\factory\cli.py", line 173, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "C:\work\sw_factory\factory\cli.py", line 169, in main
+    return args.fn(build_ctx(cfg_path), args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\cli.py", line 52, in cmd_run
+    phase = orch.run()
+            ^^^^^^^^^^
+  File "C:\work\sw_factory\factory\orchestrator.py", line 118, in run
+    finished = self._execute(phase)
+               ^^^^^^^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\orchestrator.py", line 162, in _execute
+    return self._work_loop()     # 상한에 걸리면 False
+           ^^^^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\orchestrator.py", line 198, in _work_loop
+    self._work_one(story)
+  File "C:\work\sw_factory\factory\orchestrator.py", line 293, in _work_one
+    subs = planning.decompose(ctx, story)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\stages\planning.py", line 116, in decompose
+    subs = extract_yaml(res.text).get("subtasks", []) or []
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\artifacts.py", line 113, in extract_yaml
+    raise ValueError("응답에서 YAML을 찾지 못했습니다:\n" + raw[:800])
+ValueError: 응답에서 YAML을 찾지 못했습니다:
+```yaml
+subtasks:
+  - title: IDLE 상태에서 IDLE_TIMEOUT 이벤트를 무시하는 전이를 추가한다
+    description: app/vending_machine.py의 VendingMachine.handle 전이 테이블에 (IDLE, IDLE_TIMEOUT) -> IDLE 자기 전이를 추가하고, guard/action 없이 상태·누적 금액·동전 보유량·재고·화면 표시 등 어떤 내부 상태도 변경하지 않도록 구현한다 (유스케이스 1b: 누적 투입 금액 0이면 아무 동작 없음).
+```

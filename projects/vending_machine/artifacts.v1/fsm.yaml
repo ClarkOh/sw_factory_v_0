@@ -1,0 +1,327 @@
+project: vending_machine
+states:
+- id: IDLE
+  desc: 판매 상태이며 누적 투입 금액이 0이다. 고객의 첫 코인 투입, 반환 레버 조작, 관리자 키 입력을 기다린다.
+  initial: true
+  final: false
+- id: HAS_CREDIT
+  desc: 판매 상태이며 누적 투입 금액이 0보다 크다. 추가 코인 투입, 음료 선택 버튼 입력, 반환 레버 조작을 기다린다.
+  initial: false
+  final: false
+- id: OUT_OF_SERVICE
+  desc: 3종류 음료의 재고가 모두 0인 판매 중지 상태이다. 모든 선택 버튼이 비활성이며 코인을 받지 않고, 관리자 키 입력을 기다린다.
+  initial: false
+  final: false
+- id: ADMIN_MODE
+  desc: 관리자 키 검증이 끝난 관리 모드이다. 재고 보충, 동전 보충, 보충 종료 지시를 기다린다.
+  initial: false
+  final: false
+- id: POWERED_OFF
+  desc: 전원이 차단되어 동작하지 않는다. 전원 재공급을 기다린다.
+  initial: false
+  final: false
+events:
+- id: INSERT_COIN
+  desc: 고객이 코인 투입구에 코인 1개를 투입했을 때 발생한다. recognized는 액면가 판별 성공 여부이다.
+  payload:
+    amount: int
+    recognized: bool
+- id: SELECT_DRINK
+  desc: 고객이 음료 선택 버튼을 눌렀을 때 발생한다. 버튼 활성/비활성과 무관하게 입력 자체로 발생한다.
+  payload:
+    drink: id
+- id: RETURN_LEVER
+  desc: 고객이 반환 레버를 조작했을 때 발생한다.
+  payload: {}
+- id: ADMIN_KEY_ENTERED
+  desc: 관리자가 키를 입력했을 때 발생한다. valid는 관리자 전용 키 검증 결과이다.
+  payload:
+    valid: bool
+- id: REFILL_STOCK
+  desc: 관리 모드에서 관리자가 특정 음료 종류의 재고를 보충했을 때 발생한다.
+  payload:
+    drink: id
+    qty: int
+- id: REFILL_COINS
+  desc: 관리 모드에서 관리자가 특정 액면가의 거스름돈용 동전을 보충했을 때 발생한다.
+  payload:
+    denom: int
+    qty: int
+- id: REFILL_DONE
+  desc: 관리 모드에서 관리자가 보충 종료를 지시했을 때 발생한다.
+  payload: {}
+- id: POWER_LOST
+  desc: 정전 등으로 전원이 차단되었을 때 발생한다.
+  payload: {}
+- id: POWER_RESTORED
+  desc: 전원이 재공급되어 기동이 시작될 때 발생한다.
+  payload: {}
+transitions:
+- id: T-001
+  src: IDLE
+  event: INSERT_COIN
+  dst: HAS_CREDIT
+  guard: recognized && amount in [100, 500, 1000]
+  action: credit += amount; display(credit); refresh_buttons()
+  usecase: UC-01
+  notes: ''
+- id: T-002
+  src: IDLE
+  event: INSERT_COIN
+  dst: IDLE
+  guard: recognized && amount not in [100, 500, 1000]
+  action: eject_coin(amount); display(credit)
+  usecase: UC-01
+  notes: ''
+- id: T-003
+  src: IDLE
+  event: INSERT_COIN
+  dst: IDLE
+  guard: '!recognized'
+  action: eject_coin(unknown); display(credit)
+  usecase: UC-01
+  notes: ''
+- id: T-004
+  src: IDLE
+  event: RETURN_LEVER
+  dst: IDLE
+  guard: credit == 0
+  action: refund(0); display(0); disable_all_buttons()
+  usecase: UC-03
+  notes: ''
+- id: T-005
+  src: IDLE
+  event: SELECT_DRINK
+  dst: IDLE
+  guard: credit < price(drink)
+  action: no_dispense(); display(credit)
+  usecase: UC-02
+  notes: ''
+- id: T-006
+  src: IDLE
+  event: ADMIN_KEY_ENTERED
+  dst: ADMIN_MODE
+  guard: valid
+  action: display(admin_mode)
+  usecase: UC-05
+  notes: ''
+- id: T-007
+  src: IDLE
+  event: ADMIN_KEY_ENTERED
+  dst: IDLE
+  guard: '!valid'
+  action: reject_key()
+  usecase: UC-05
+  notes: ''
+- id: T-008
+  src: IDLE
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: halt()
+  usecase: UC-06
+  notes: ''
+- id: T-009
+  src: HAS_CREDIT
+  event: INSERT_COIN
+  dst: HAS_CREDIT
+  guard: recognized && amount in [100, 500, 1000]
+  action: credit += amount; display(credit); refresh_buttons()
+  usecase: UC-01
+  notes: ''
+- id: T-010
+  src: HAS_CREDIT
+  event: INSERT_COIN
+  dst: HAS_CREDIT
+  guard: recognized && amount not in [100, 500, 1000]
+  action: eject_coin(amount); display(credit)
+  usecase: UC-01
+  notes: ''
+- id: T-011
+  src: HAS_CREDIT
+  event: INSERT_COIN
+  dst: HAS_CREDIT
+  guard: '!recognized'
+  action: eject_coin(unknown); display(credit)
+  usecase: UC-01
+  notes: ''
+- id: T-012
+  src: HAS_CREDIT
+  event: SELECT_DRINK
+  dst: IDLE
+  guard: credit >= price(drink) && stock(drink) > 0 && can_make_change(credit - price(drink))
+    && total_stock > 1
+  action: dispense(drink); stock(drink) -= 1; refund(credit - price(drink)); credit
+    = 0; display(0); refresh_buttons()
+  usecase: UC-02
+  notes: ''
+- id: T-013
+  src: HAS_CREDIT
+  event: SELECT_DRINK
+  dst: OUT_OF_SERVICE
+  guard: credit >= price(drink) && stock(drink) > 0 && can_make_change(credit - price(drink))
+    && total_stock == 1
+  action: dispense(drink); stock(drink) -= 1; refund(credit - price(drink)); credit
+    = 0; display(sold_out); disable_all_buttons()
+  usecase: UC-02
+  notes: ''
+- id: T-014
+  src: HAS_CREDIT
+  event: SELECT_DRINK
+  dst: IDLE
+  guard: credit >= price(drink) && stock(drink) > 0 && !can_make_change(credit - price(drink))
+  action: no_dispense(); refund(credit); credit = 0; display(0); refresh_buttons()
+  usecase: UC-02
+  notes: ''
+- id: T-015
+  src: HAS_CREDIT
+  event: SELECT_DRINK
+  dst: HAS_CREDIT
+  guard: credit < price(drink) || stock(drink) == 0
+  action: no_dispense(); display(credit)
+  usecase: UC-02
+  notes: ''
+- id: T-016
+  src: HAS_CREDIT
+  event: RETURN_LEVER
+  dst: IDLE
+  guard: credit > 0
+  action: refund(credit); credit = 0; display(0); disable_all_buttons()
+  usecase: UC-03
+  notes: ''
+- id: T-017
+  src: HAS_CREDIT
+  event: ADMIN_KEY_ENTERED
+  dst: HAS_CREDIT
+  guard: '!valid'
+  action: reject_key()
+  usecase: UC-05
+  notes: ''
+- id: T-018
+  src: HAS_CREDIT
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: halt()
+  usecase: UC-06
+  notes: ''
+- id: T-019
+  src: OUT_OF_SERVICE
+  event: INSERT_COIN
+  dst: OUT_OF_SERVICE
+  guard: ''
+  action: eject_coin(amount); display(sold_out)
+  usecase: UC-04
+  notes: ''
+- id: T-020
+  src: OUT_OF_SERVICE
+  event: RETURN_LEVER
+  dst: OUT_OF_SERVICE
+  guard: ''
+  action: refund(credit); credit = 0; display(sold_out); disable_all_buttons()
+  usecase: UC-04
+  notes: ''
+- id: T-021
+  src: OUT_OF_SERVICE
+  event: SELECT_DRINK
+  dst: OUT_OF_SERVICE
+  guard: ''
+  action: no_dispense()
+  usecase: UC-04
+  notes: ''
+- id: T-022
+  src: OUT_OF_SERVICE
+  event: ADMIN_KEY_ENTERED
+  dst: ADMIN_MODE
+  guard: valid
+  action: display(admin_mode)
+  usecase: UC-05
+  notes: ''
+- id: T-023
+  src: OUT_OF_SERVICE
+  event: ADMIN_KEY_ENTERED
+  dst: OUT_OF_SERVICE
+  guard: '!valid'
+  action: reject_key()
+  usecase: UC-05
+  notes: ''
+- id: T-024
+  src: OUT_OF_SERVICE
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: halt()
+  usecase: UC-06
+  notes: ''
+- id: T-025
+  src: ADMIN_MODE
+  event: REFILL_STOCK
+  dst: ADMIN_MODE
+  guard: qty > 0
+  action: stock(drink) += qty; display(stock_by_drink)
+  usecase: UC-05
+  notes: ''
+- id: T-026
+  src: ADMIN_MODE
+  event: REFILL_COINS
+  dst: ADMIN_MODE
+  guard: qty > 0
+  action: coins(denom) += qty; display(coins_by_denom)
+  usecase: UC-05
+  notes: ''
+- id: T-027
+  src: ADMIN_MODE
+  event: REFILL_DONE
+  dst: IDLE
+  guard: total_stock > 0
+  action: credit = 0; display(0); refresh_buttons()
+  usecase: UC-05
+  notes: ''
+- id: T-028
+  src: ADMIN_MODE
+  event: REFILL_DONE
+  dst: OUT_OF_SERVICE
+  guard: total_stock == 0
+  action: credit = 0; display(sold_out); disable_all_buttons()
+  usecase: UC-05
+  notes: ''
+- id: T-029
+  src: ADMIN_MODE
+  event: INSERT_COIN
+  dst: ADMIN_MODE
+  guard: ''
+  action: eject_coin(amount); display(admin_mode)
+  usecase: UC-01
+  notes: ''
+- id: T-030
+  src: ADMIN_MODE
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: halt()
+  usecase: UC-06
+  notes: ''
+- id: T-031
+  src: POWERED_OFF
+  event: POWER_RESTORED
+  dst: IDLE
+  guard: total_stock > 0
+  action: credit = 0; display(0); refresh_buttons()
+  usecase: UC-06
+  notes: ''
+- id: T-032
+  src: POWERED_OFF
+  event: POWER_RESTORED
+  dst: OUT_OF_SERVICE
+  guard: total_stock == 0
+  action: credit = 0; display(sold_out); disable_all_buttons()
+  usecase: UC-06
+  notes: ''
+- id: T-033
+  src: POWERED_OFF
+  event: POWER_LOST
+  dst: POWERED_OFF
+  guard: ''
+  action: halt()
+  usecase: UC-06
+  notes: ''

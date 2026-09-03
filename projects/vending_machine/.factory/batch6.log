@@ -1,0 +1,140 @@
+[18:03:25] -- WORK --
+[18:03:25] 중단된 티켓 1건을 대기열로 되돌림: SWF-64
+[18:03:25] > SWF-63 [T-080] ADMIN_MODE --COLLECT_COINS--> ADMIN_MODE
+[18:04:07]   [OK] DoD 통과 (시도 1)
+[18:04:08]   커밋 14c29fa: SWF-63 [T-080] ADMIN_MODE --COLLECT_COINS--> ADMIN_MODE
+[18:04:08] > SWF-64 [T-081] ADMIN_MODE --COLLECT_HELD--> ADMIN_MODE
+[18:04:15]   SWF-64 → 서브태스크 1건
+[18:04:47]   [OK] DoD 통과 (시도 1)
+[18:04:47]   SWF-64: 변경 없음 → 커밋 생략
+[18:04:48] > SWF-65 [T-082] ADMIN_MODE --COLLECT_HELD--> ADMIN_MODE
+[18:04:58]   SWF-65 → 서브태스크 2건
+[18:05:26]   [OK] DoD 통과 (시도 1)
+[18:05:27]   SWF-65: 변경 없음 → 커밋 생략
+[18:05:27] > SWF-66 [T-083] ADMIN_MODE --COLLECT_HELD--> ADMIN_MODE
+[18:05:36]   SWF-66 → 서브태스크 2건
+[18:06:00]   [OK] DoD 통과 (시도 1)
+[18:06:01]   SWF-66: 변경 없음 → 커밋 생략
+[18:06:02]   [EPIC] SWF-7 완료
+[18:06:02] > SWF-67 [T-084] ADMIN_MODE --REQUEST_ADMIN--> ADMIN_MODE
+[18:06:09]   SWF-67 → 서브태스크 1건
+[18:06:46]   [OK] DoD 통과 (시도 1)
+[18:06:47]   SWF-67: 변경 없음 → 커밋 생략
+[18:06:47]   [EPIC] SWF-5 완료
+[18:06:47] > SWF-68 [T-085] ADMIN_MODE --POWER_LOSS--> POWERED_OFF
+[18:06:57]   SWF-68 → 서브태스크 2건
+[18:07:31]   [OK] DoD 통과 (시도 1)
+[18:07:32]   SWF-68: 변경 없음 → 커밋 생략
+[18:07:33]   [EPIC] SWF-8 완료
+[18:07:33] 처리할 스토리 없음 -> 작업 루프 종료
+[18:07:33] -- DRIVER --
+[18:07:33]   FSM 명세 표 갱신: app/_fsm_spec.py (전이 60개)
+[18:09:08] 진입점 생성 완료: `python -m app` 실행 확인
+[18:09:08] -- E2E_SPEC --
+[18:15:54] E2E 시나리오 생성: 44개
+[18:15:54] -- E2E --
+[18:15:55] [OK] E2E 통과
+[18:15:55] push 게이트가 manual -> `python -m factory.cli push` 로 직접 내보내세요
+[18:15:55] -- REVIEW --
+[18:15:55]   [검토 1/3]
+[18:20:17]   확인함: REQ-01~60 각각을 UC → T-xxx → tests/test_fsm.py / tests/e2e/test_scenarios.py 로 추적함. 제약(REQ-54~58)은 app/ 에 socket/urllib/http/threading import 가 없음을 grep 으로 확인 (REQ-55/56 소극적 충족)
+[18:20:17]   확인함: FSM 가드 완전성: INSERT_COIN(recognized×denom 3분기), REQUEST_ADMIN(valid_key 2분기), PRESS_BUTTON(T-023/024/025), DISPENSE_DONE(T-050/051/052), DISPENSE_TIMEOUT, COLLECT_COINS, COLLECT_HELD, END_REFILL, REFILL 은 정상 도메인 안에서 빈틈 없음
+[18:20:17]   확인함: T-050 의 '[미규정 REQ-27] 배출 중 추가 수납으로 잔액 구성 불가' 는 도달 불가임을 확인 — T-024 에서 can_pay 를 통과한 잔액에 배출 중 투입된 동전이 그대로 보유량에 더해지므로 항상 구성 가능. pay_out 전액 반환(T-025/026/027/028/053/054)도 같은 이유로 RuntimeError 도달 불가
+[18:20:17]   확인함: _compose_payout 의 큰 액면가 우선 탐욕법은 100|500|1000 이 서로 나누어떨어지고 개수 제한이 있어도 최적임을 확인
+[18:20:17]   확인함: 동전 보존 등식(REQ-19)은 e2e check_invariants 가 매 스텝 단언하고, held 는 POWER_LOSS/COLLECT_HELD 에서만 변함을 test_invariant_held_only_changes_at_power_loss_and_collect_held 가 확인
+[18:20:17]   확인함: REQ-59 [모호] 인식 실패 판정 기준은 payload recognized 플래그로 하드웨어에 위임되어 추측으로 메워지지 않음. REQ-60 은 T-070 으로 원문 그대로 모델링됨
+[18:20:17]   확인함: 관리자 지시 이벤트(REFILL/COLLECT_*/QUERY_HELD)가 관리 모드 밖에서 조용히 무시되는 것은 UC-07 acceptance 와 일치하며 e2e 로 확인됨
+[18:20:17] 검토: 8건 (high 2 / medium 2 / low 4)
+[18:20:18]   [high] 배출 중 투입된 코인이 '다음 구매'에 남지 않고 즉시 거스름돈으로 반환된다 — REQ-12 가 어떤 테스트로도 검 -> SWF-148
+[18:20:18]   [high] 보충·회수 수량이 양수여야 한다는 규칙이 없어 음수 지시로 동전·재고가 무에서 생기거나 음수가 된다 -> SWF-149
+[18:20:18]   [medium] 배출 중 정전 시 '미반환 보관액'에 음료 가격까지 들어가 판매 대금과 고객 채무가 섞인다 -> SWF-150
+[18:20:18]   [medium] 30초/10초 타이머는 '만료 이벤트에 대한 반응'만 구현·검증되고, 타이머의 생성·재장전·취소 자체는 어디에도 없 -> SWF-151
+[18:20:18]   [low] 무효 코인 투입·비활성 버튼 누름이 30초 계시를 재시작하지 않는다는 결정이 추측으로 고정됨 -> SWF-152
+[18:20:18]   [low] POWER_ON 가드가 `dispense_pending && total_stock == 0` 을 덮지 않아 그 경우 -> SWF-153
+[18:20:18]   [low] REQ-45(버튼→배출 개시 2초)를 검증한다는 테스트가 실패할 수 없다 -> SWF-154
+[18:20:19]   [low] REQ-14 의 '보유량이 변하는 규칙' 참조 목록이 잘못되어 추적표가 틀린 요구사항을 가리킨다 -> SWF-155
+[18:20:19]   > SWF-148 [검토/high] 배출 중 투입된 코인이 '다음 구매'에 남지 않고 즉시 거스름돈으로 반환된다 — REQ-12 가 
+[18:20:54]     [OK] 전체 통과 (시도 1)
+[18:20:54]   커밋 f89ae27: SWF-148 [검토/high] 배출 중 투입된 코인이 '다음 구매'에 남지 않고 즉시 거스름돈으로 반환된다 — REQ-12 가 
+[18:20:54]   > SWF-151 [검토/medium] 30초/10초 타이머는 '만료 이벤트에 대한 반응'만 구현·검증되고, 타이머의 생성·재장전·취
+[18:24:06]     [OK] 전체 통과 (시도 1)
+[18:24:07]   커밋 a01166a: SWF-151 [검토/medium] 30초/10초 타이머는 '만료 이벤트에 대한 반응'만 구현·검증되고, 타이머의 생성·재장전·취
+[18:24:07]   > SWF-153 [검토/low] POWER_ON 가드가 `dispense_pending && total_stock == 0` 을 덮
+[18:24:43]     시도 1 실패: POWERED_OFF 에서 `dispense_pending && total_stock == 0` 일 때의 POWER_ON 전이(목적지 상태, 재고·held 처리)가 T-001~T-004 어느 가드에도 규정되어 있지 않음
+[18:25:28]     시도 2 실패: POWERED_OFF에서 POWER_ON 시 `dispense_pending && total_stock == 0`(보존 데이터 불일치)일 때의 대상 상태·action(재고 보정 여부, dispense_pending 해제 여부)이 INTERFACE.md/_fsm_spec.py 어디에도 규
+[18:26:25]     시도 3 실패: POWERED_OFF 에서 `dispense_pending && total_stock == 0`(및 `stock[selected] == 0`) 인 불일치 보존 데이터로 `POWER_ON` 이 들어올 때의 target 상태와 action(재고 보정 여부·`dispense_pending` 
+[18:26:25]   > SWF-154 [검토/low] REQ-45(버튼→배출 개시 2초)를 검증한다는 테스트가 실패할 수 없다
+[18:27:37]     [OK] 전체 통과 (시도 1)
+[18:27:38]   커밋 af0ed1e: SWF-154 [검토/low] REQ-45(버튼→배출 개시 2초)를 검증한다는 테스트가 실패할 수 없다
+[18:27:38]   > SWF-155 [검토/low] REQ-14 의 '보유량이 변하는 규칙' 참조 목록이 잘못되어 추적표가 틀린 요구사항을 가리킨다
+[18:28:08]     [OK] 전체 통과 (시도 1)
+[18:28:09]   SWF-155: 변경 없음 → 커밋 생략
+[18:28:09]   [검토 2/3]
+[18:31:46]   critic: YAML 파싱 실패 -> 재질의 (원문은 .factory/raw/ 에 보존)
+[18:35:27]   확인함: REQ-01~REQ-60 각각을 UC-01~08 → T-001~T-085 → tests/test_fsm.py / tests/e2e/test_scenarios.py 로 수작업 추적 (구현 app/vending_machine.py 의 _TRANSITIONS 표와 대조)
+[18:35:27]   확인함: 동전 보존(REQ-14/15/16/19): _accept_coin/_pay_out/_deduct/_collect/_refill/_collect_coins 가 모두 coins 를 갱신하고, e2e Machine 장부(expected_coin_value)가 구현 내부값이 아닌 이벤트·관측값으로 등식을 외부 계산함을 확인
+[18:35:27]   확인함: 재고 보존(REQ-07/26/52): check_invariants (2) 가 초기+보충 == 잔여+배출 을 매 스텝 단언하며, DISPENSE_TIMEOUT 경로에서 재고 불변(test_t_053, test_uc02_dispense_timeout_refunds_all_keeps_stock_then_recovers)을 확인
+[18:35:27]   확인함: 전액 반환의 구성 가능성: 세션 중 수납된 코인이 항상 coins 에 실재하고 액면가 100/500/1000 은 canonical 이라 greedy(_compose_payout)가 최적 → T-025/T-026/T-027/T-028/T-053 의 pay_out(credit) 및 T-050 의 배출 중 추가 수납 후 잔액 지급에서 _deduct 의 RuntimeError 도달 경로 없음을 확인
+[18:35:27]   확인함: 가드 완전성: INSERT_COIN(recognized × amount), REQUEST_ADMIN(valid_key), PRESS_BUTTON(enabled × can_pay), DISPENSE_DONE(admin_requested × total_stock), COLLECT_HELD(held==0 / can_pay), END_REFILL(total_stock) 는 모든 경우를 덮음
+[18:35:27]   확인함: REQ-45(2초): SWF-154 이후 test_uc02_purchase_with_change 가 배출 개시가 T-024 전이 자체의 효과임을 last_transition/dispensed/trace 로 단언 — 벽시계 검증은 통합시험 항목으로 명시됨
+[18:35:27]   확인함: REQ-23 재장전 의미: 무효 코인/비활성 버튼이 타이머를 재시작하지 않는 모델링(T-021/T-023 notes)은 문서와 모순되지 않음
+[18:35:27]   확인함: [모호] REQ-59/REQ-60: 인식 실패는 하드웨어 payload(recognized)에 위임, 관리 모드 코인은 원문 그대로 반환(T-070) — 추측으로 규칙을 만들지 않음
+[18:35:27]   확인함: 정전 경로(REQ-46~52): T-018/030/055/065/085 → T-001~004 를 test_uc08_* 와 test_invariant_held_only_changes_at_power_loss_and_collect_held 가 덮음
+[18:35:27]   확인함: app/ 에 네트워크 관련 import 없음(argparse, sys, typing 만)
+[18:35:27] 검토: 7건 (high 0 / medium 3 / low 4)
+[18:35:27]   [medium] 배출 실패 처리(10초 타임아웃·전액 반환) 뒤 늦게 도착한 배출 완료 신호를 어떻게 다룰지 문서에 없고, FSM· -> SWF-156
+[18:35:27]   [medium] REFILL 과 COLLECT_COINS 의 가드가 수량의 부호를 보지 않아, 음수 수량이 재고·보유량을 거꾸로 움 -> SWF-157
+[18:35:27]   [medium] 30초 타이머 '재장전'(REQ-23)은 FSM 관측값으로 구별할 수 없어, 구현이 T-020 에서 재장전을 빼도  -> SWF-158
+[18:35:27]   [low] 배출 중 정전 시 투입 금액 전액을 '미반환 보관액'으로 잡고 '판매된 음료 가격'에는 넣지 않는 회계 해석은 문서 -> SWF-159
+[18:35:27]   [low] 거스름돈·반환의 동전 구성 방식(큰 액면가 우선)이 문서에 없는데 테스트가 그 구성을 액면가별 개수로 고정 단언한다 -> SWF-160
+[18:35:28]   [low] 외부 통신 금지·외부 재고 정보 미수신(REQ-54/55/56)은 어떤 테스트도 확인하지 않는다 -> SWF-161
+[18:35:28]   [low] 동전 보유량에 상한(호퍼 용량)이 없어 받아들인 모든 코인이 무한히 거스름돈 통에 쌓인다 -> SWF-162
+[18:35:28]   > SWF-157 [검토/medium] REFILL 과 COLLECT_COINS 의 가드가 수량의 부호를 보지 않아, 음수 수량이 재
+[18:36:14]     시도 1 실패: REFILL 의 drinks/coins 수량과 COLLECT_COINS 의 count 가 음수(또는 비정수)일 때의 처리(거부하여 T-074/T-079 로 보낼지, 0 으로 보정할지, 무시할지)가 INTERFACE.md T-073/T-078 guard 및 payload 정의에 규정되어 
+[18:37:29]     시도 2 실패: REFILL 의 drinks/coins 값과 COLLECT_COINS 의 count 가 음수(또는 비정수)일 때의 동작이 규정되어 있지 않다 — 현재 guard 테이블(T-073/T-078)은 이를 수용·산술 적용하도록 배정하고 있어 테스트 불변식(재고·보유량 ≥ 0)과 충돌하며, 거부
+[18:38:22]     시도 3 실패: REFILL의 drinks/coins 값 및 COLLECT_COINS의 count가 음수(또는 비정수)일 때의 처리 — INTERFACE.md/_fsm_spec.py의 T-073/T-074, T-078/T-079 가드는 키·상한만 검사하도록 정의되어 음수 수량이 T-073/T-078(적
+[18:38:22]   > SWF-158 [검토/medium] 30초 타이머 '재장전'(REQ-23)은 FSM 관측값으로 구별할 수 없어, 구현이 T-020
+[18:43:46]     [OK] 전체 통과 (시도 1)
+[18:43:47]   커밋 db3e2fa: SWF-158 [검토/medium] 30초 타이머 '재장전'(REQ-23)은 FSM 관측값으로 구별할 수 없어, 구현이 T-020
+[18:43:47]   > SWF-161 [검토/low] 외부 통신 금지·외부 재고 정보 미수신(REQ-54/55/56)은 어떤 테스트도 확인하지 않는다
+[18:45:17]     [OK] 전체 통과 (시도 1)
+[18:45:18]   커밋 7605a6a: SWF-161 [검토/low] 외부 통신 금지·외부 재고 정보 미수신(REQ-54/55/56)은 어떤 테스트도 확인하지 않는다
+[18:45:18]   [검토 3/3]
+[18:50:04]   critic: YAML 파싱 실패 -> 재질의 (원문은 .factory/raw/ 에 보존)
+[18:54:03]   확인함: REQ-01~60 각각을 UC → FSM(app/vending_machine.py 전이표) → tests/test_fsm.py / tests/e2e/test_scenarios.py 로 추적
+[18:54:03]   확인함: 제약 REQ-14/19: e2e check_invariants (1)(2) 가 이벤트 기반 외부 장부로 동전·재고 보존식을 매 스텝 검사함을 확인
+[18:54:03]   확인함: 제약 REQ-54/55/56: test_req54_* (격리 인터프리터 import 검사 + AST 검사) 와 test_req55_* 로 검증됨 (SWF-161 반영)
+[18:54:03]   확인함: 제약 REQ-57/58: 단일 FSM 인스턴스·이벤트 주입 모델이므로 별도 검증 불필요
+[18:54:03]   확인함: REQ-05/06 (3종·가격 상이): 구현에 검증 없음, 테스트는 자기 상수만 확인 (SWF-143 에서 이미 지적, 구성 문제로 판단해 재보고 안 함)
+[18:54:03]   확인함: REQ-15/16 동전 증감: T-010/020/040 의 coins[amount]+=1, pay_out 의 _deduct 가 unit·e2e 양쪽에서 액면가별로 단언됨
+[18:54:03]   확인함: REQ-07/26/52 재고 증감: T-050/051/052 stock-=1, T-053/054 불변, T-003/004 재기동 차감 모두 단언됨
+[18:54:03]   확인함: REQ-20/21 거스름돈 구성 불가: T-025 가드와 test_t_025 / test_uc02_cannot_make_change_* 로 확인
+[18:54:03]   확인함: can_pay 의 큰 액면가 우선 구성: 100|500|1000 사슬 분할 구조에서는 유한 동전에서도 완전함을 확인 (T-026/027/028/053 의 무가드 pay_out 이 RuntimeError 를 내는 도달 가능한 경로 없음)
+[18:54:03]   확인함: REQ-23 재장전·REQ-25 10초 타이머: TimerProbeMachine + TimedMachine 가상 시계로 명령·만료 시각을 실제로 확인 (SWF-151/158 반영)
+[18:54:03]   확인함: 동일 (상태, 이벤트) 다중 가드: POWER_ON, INSERT_COIN, PRESS_BUTTON, REQUEST_ADMIN, DISPENSE_DONE/TIMEOUT, REFILL, END_REFILL, COLLECT_COINS, COLLECT_HELD 의 갈래 합집합을 검토
+[18:54:03]   확인함: [모호] REQ-59/60: 인식 실패 판정은 payload recognized 로 하드웨어에 위임, 관리 모드 코인은 eject — 추측 없이 원문대로 모델링됨
+[18:54:03] 검토: 7건 (high 0 / medium 2 / low 5)
+[18:54:03]   [medium] REQ-12(배출 중 수납액은 다음 구매에 사용)가 구현·테스트에서는 '즉시 거스름돈으로 반환'으로 뒤집혀 있고,  -> SWF-163
+[18:54:03]   [medium] REFILL / COLLECT_COINS 가 음수 수량을 거부하지 않아 관리자 지시로 동전·재고가 규칙 밖에서 증감 -> SWF-164
+[18:54:04]   [low] POWER_ON 이 dispense_pending 이면서 total_stock == 0 인 보존 상태를 어느 가드로 -> SWF-165
+[18:54:04]   [low] 미반환 보관액을 이루는 동전이 COLLECT_COINS 로 먼저 회수될 수 있어 보관액이 실물 없는 장부 숫자로 남 -> SWF-166
+[18:54:04]   [low] 배출 중 정전 시 실물은 나간 것으로 재고를 차감하면서 그 대금 전액(음료 가격 포함)을 '미반환 보관액' 으로 기 -> SWF-167
+[18:54:04]   [low] 무효 코인·비활성 버튼이 30초 계시를 재시작하지 않는다는 결정이 테스트로 굳어졌다 -> SWF-168
+[18:54:04]   [low] REQ-45(2초) 단언은 여전히 실패할 수 없다 — 가상 시계는 send() 안에서 흐르지 않는다 -> SWF-169
+[18:54:04]   > SWF-164 [검토/medium] REFILL / COLLECT_COINS 가 음수 수량을 거부하지 않아 관리자 지시로 동전·재
+[18:54:07]     시도 1 실패: exit 1: 
+[18:54:10]     시도 2 실패: exit 1: 
+[18:54:13]     시도 3 실패: exit 1: 
+[18:54:13]   > SWF-165 [검토/low] POWER_ON 이 dispense_pending 이면서 total_stock == 0 인 보존 상
+[18:54:16]     시도 1 실패: exit 1: 
+[18:54:19]     시도 2 실패: exit 1: 
+[18:54:22]     시도 3 실패: exit 1: 
+[18:54:23]   > SWF-169 [검토/low] REQ-45(2초) 단언은 여전히 실패할 수 없다 — 가상 시계는 send() 안에서 흐르지 않는다
+[18:54:26]     시도 1 실패: exit 1: 
+[18:54:28]     시도 2 실패: exit 1: 
+[18:54:32]     시도 3 실패: exit 1: 
+[18:54:32]   사이클 상한(3) 도달
+[18:54:34]   사람 판단 필요 11건: SWF-149, SWF-150, SWF-152, SWF-156, SWF-159, SWF-160, SWF-162, SWF-163, SWF-166, SWF-167, SWF-168
+[18:54:34] 검토 종료 -- 열린 지적 0건
+[18:54:34] 파이프라인 완료
+[18:54:34] 정지 지점: COMPLETE | 통계: {'done': 60, 'blocked': 1, 'critic_fixed': 6, 'critic_blocked': 5, 'needs_human': 11}

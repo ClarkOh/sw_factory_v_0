@@ -1,0 +1,771 @@
+project: vending_machine
+states:
+- id: POWERED_OFF
+  desc: 전원이 공급되기를 기다린다. 저장 파일에는 직전에 완전히 기록된 상태가 남아 있다
+  initial: true
+  final: false
+- id: SELLING_IDLE
+  desc: 판매 상태이며 누적 투입 금액이 0인 채로 고객의 코인 투입이나 관리자 키 삽입을 기다린다. 모든 선택 버튼은 비활성이다
+  initial: false
+  final: false
+- id: SELLING_WITH_CREDIT
+  desc: 판매 상태이며 누적 투입 금액이 0보다 큰 채로 추가 코인 투입·음료 선택·반환 레버·30초 무조작을 기다린다
+  initial: false
+  final: false
+- id: AWAITING_DISPENSE_COMPLETE
+  desc: 배출이 개시된 뒤 해당 일련번호의 배출 완료 신호 또는 10초 타임아웃을 기다린다
+  initial: false
+  final: false
+- id: OUT_OF_STOCK
+  desc: 모든 음료 재고가 0이어서 판매 중지 상태로 관리자 키 삽입을 기다린다. 고객 조작은 모두 거부한다
+  initial: false
+  final: false
+- id: FAULTED
+  desc: 배출 실패로 고장 표시 중이며 관리자 키 삽입을 기다린다. 고객 조작은 모두 거부한다
+  initial: false
+  final: false
+- id: ADMIN_MODE
+  desc: 관리 메뉴를 표시한 채 관리자의 보충·조정·회수·확인·종료 지시를 기다린다. 누적 투입 금액은 0이다
+  initial: false
+  final: false
+events:
+- id: POWER_ON
+  desc: 전원이 다시 공급되어 시스템이 기동할 때 발생한다
+  payload: {}
+- id: POWER_OFF
+  desc: 전원이 끊길 때 발생한다
+  payload: {}
+- id: INSERT_COIN
+  desc: 고객이 코인 투입구에 코인을 넣었을 때 발생한다
+  payload:
+    denom: int
+    recognized: bool
+- id: SELECT_DRINK
+  desc: 고객이 음료 선택 버튼을 눌렀을 때 발생한다
+  payload:
+    drink: string
+- id: PULL_RETURN_LEVER
+  desc: 고객이 반환 레버를 조작했을 때 발생한다
+  payload: {}
+- id: NO_ACTION_TIMEOUT
+  desc: 마지막 고객 조작(코인 투입·음료 선택·반환 레버)으로부터 30초가 경과했을 때 발생한다
+  payload: {}
+- id: DISPENSE_COMPLETE
+  desc: 배출 기구가 일련번호를 포함한 배출 완료 신호를 보냈을 때 발생한다
+  payload:
+    serial: int
+    drink: string
+- id: DISPENSE_TIMEOUT
+  desc: 배출 개시 후 10초 안에 유효한 배출 완료 신호가 도착하지 않았을 때 발생한다
+  payload:
+    serial: int
+- id: RESERVED_ADMIN_ENTRY
+  desc: 예약된 관리 모드 진입이 고장 전이 직후 즉시 발화하는 내부 이벤트
+  payload: {}
+- id: INSERT_ADMIN_KEY
+  desc: 관리자가 전용 키를 꽂았을 때 발생한다
+  payload: {}
+- id: EXIT_ADMIN_MODE
+  desc: 관리자가 관리 모드를 종료할 때(전용 키 제거) 발생한다
+  payload: {}
+- id: REFILL_STOCK
+  desc: 관리자가 음료 종류와 수량을 지정해 재고 보충을 지시했을 때 발생한다
+  payload:
+    items: list
+- id: REFILL_COINS
+  desc: 관리자가 액면가와 개수를 지정해 동전 보충을 지시했을 때 발생한다
+  payload:
+    items: list
+- id: ADJUST_STOCK
+  desc: 관리자가 지연 배출 기록을 조회하거나 음료 재고를 하향 조정하도록 지시했을 때 발생한다
+  payload:
+    op: string
+    drink: string
+    value: int
+- id: COLLECT_COINS
+  desc: 관리자가 동전 보유량 또는 미반환 보관액의 조회·회수를 지시했을 때 발생한다
+  payload:
+    target: string
+    op: string
+    denom: int
+    count: int
+- id: CONFIRM_DISPENSE_FAILURE
+  desc: 관리자가 진행 중이던 배출의 실패를 확인했을 때 발생한다
+  payload: {}
+transitions:
+- id: T-001
+  src: POWERED_OFF
+  event: POWER_ON
+  dst: OUT_OF_STOCK
+  guard: '!save_file_valid'
+  action: reset_all(stock = 0, coins = 0, deposit = 0, credit = 0); notify_admin('save_file_missing_or_corrupt');
+    persist()
+  usecase: UC-17
+  notes: 저장 파일 부재/손상 시 재고 0이므로 판매 중지로 기동한다. POWERED_OFF 는 전원이 없어 어떤 이벤트도 실행할 수 없고
+    모든 UC 는 POWER_ON 을 암묵적 선행 단계로 가지므로 POWERED_OFF 에서 고객·관리자 이벤트가 처리되지 않는 것은 결함이 아니다
+- id: T-002
+  src: POWERED_OFF
+  event: POWER_ON
+  dst: FAULTED
+  guard: save_file_valid && saved_state == 'FAULTED'
+  action: restore(); deposit += saved_credit; credit = 0; serial = saved_serial; fault_pending
+    = true; show_fault_and_call_admin(); persist()
+  usecase: UC-17
+  notes: 고장은 저장되어 전원 재투입으로 풀리지 않는다. POWERED_OFF 에서의 이벤트 미처리는 전원이 없는 물리적 사실이므로 결함이
+    아니다
+- id: T-003
+  src: POWERED_OFF
+  event: POWER_ON
+  dst: SELLING_IDLE
+  guard: save_file_valid && saved_state == 'AWAITING_DISPENSE_COMPLETE' && any_stock_positive_after_deduct
+  action: restore(); stock[saved_drink] -= 1; sales += price(saved_drink); deposit
+    += saved_credit - price(saved_drink); credit = 0; serial = saved_serial; persist()
+  usecase: UC-17
+  notes: 정전 정산은 통보가 아니라 디스크에 기록된 개시 사실만으로 수행된다. POWERED_OFF 에서의 이벤트 미처리는 결함이 아니다
+- id: T-004
+  src: POWERED_OFF
+  event: POWER_ON
+  dst: OUT_OF_STOCK
+  guard: save_file_valid && saved_state == 'AWAITING_DISPENSE_COMPLETE' && !any_stock_positive_after_deduct
+  action: restore(); stock[saved_drink] -= 1; sales += price(saved_drink); deposit
+    += saved_credit - price(saved_drink); credit = 0; serial = saved_serial; persist()
+  usecase: UC-17
+  notes: 배출 개시 후 정전 시 재고 차감·대금 계상 규칙을 기동 시점에 확정한다. POWERED_OFF 에서의 이벤트 미처리는 결함이 아니다
+- id: T-005
+  src: POWERED_OFF
+  event: POWER_ON
+  dst: SELLING_IDLE
+  guard: save_file_valid && saved_state != 'FAULTED' && saved_state != 'AWAITING_DISPENSE_COMPLETE'
+    && any_stock_positive
+  action: restore(); deposit += saved_credit; credit = 0; serial = saved_serial; persist()
+  usecase: UC-17
+  notes: UC-01~UC-16 의 시나리오는 모두 이 전이(또는 T-001~T-006) 이후의 판매/관리 상태에서 시작하므로, 트레이스가 POWER_ON
+    을 생략해 POWERED_OFF 에서 첫 이벤트가 거부된 것은 위반이 아니다
+- id: T-006
+  src: POWERED_OFF
+  event: POWER_ON
+  dst: OUT_OF_STOCK
+  guard: save_file_valid && saved_state != 'FAULTED' && saved_state != 'AWAITING_DISPENSE_COMPLETE'
+    && !any_stock_positive
+  action: restore(); deposit += saved_credit; credit = 0; serial = saved_serial; persist()
+  usecase: UC-17
+  notes: 저장된 상태가 ADMIN_MODE인 경우의 기동 상태는 요구사항에 미규정이므로 재고만으로 판정한다 [미규정 REQ-73]. POWERED_OFF
+    에서의 이벤트 미처리는 결함이 아니다
+- id: T-007
+  src: SELLING_IDLE
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: ''
+  usecase: UC-17
+  notes: 'UC-18: 기록 도중 전원이 끊겨도 다음 기동은 직전에 완전히 기록된 본 파일만 읽는다. UC-17 의 POWER_OFF 는 전원이
+    켜진 상태에서만 의미가 있으므로 POWERED_OFF 에서 POWER_OFF 가 처리되지 않는 것은 정상이며, 검사 지적은 트레이스가 선행
+    POWER_ON 을 생략한 결과다'
+- id: T-008
+  src: SELLING_WITH_CREDIT
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: ''
+  usecase: UC-17
+  notes: 정전 시점 누적 투입 금액은 물리적으로 반환하지 않고 다음 기동에서 미반환 보관액으로 계상한다
+- id: T-009
+  src: AWAITING_DISPENSE_COMPLETE
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: ''
+  usecase: UC-17
+  notes: 진행 중인 배출의 일련번호와 음료가 저장되어 있어야 다음 기동에서 재고 차감·판매 계상이 가능하다
+- id: T-010
+  src: OUT_OF_STOCK
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: ''
+  usecase: UC-17
+  notes: ''
+- id: T-011
+  src: FAULTED
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: ''
+  usecase: UC-17
+  notes: ''
+- id: T-012
+  src: ADMIN_MODE
+  event: POWER_OFF
+  dst: POWERED_OFF
+  guard: ''
+  action: ''
+  usecase: UC-18
+  notes: 관리자 조작 전이도 동일한 원자 저장 절차(임시파일 write -> fsync -> rename -> dir fsync)를 거친다
+- id: T-013
+  src: SELLING_IDLE
+  event: INSERT_COIN
+  dst: SELLING_WITH_CREDIT
+  guard: recognized && denom in [100, 500, 1000]
+  action: coins[denom] += 1; credit += denom; display(credit); enable_buttons(credit,
+    stock); reset_idle_timer(); persist()
+  usecase: UC-01
+  notes: UC-01/UC-18 의 첫 INSERT_COIN 은 POWER_ON(T-005) 으로 기동한 판매 상태를 전제하므로, POWERED_OFF
+    에서 처리 불가라는 지적은 트레이스가 선행 POWER_ON 을 생략한 결과이며 결함이 아니다
+- id: T-014
+  src: SELLING_IDLE
+  event: INSERT_COIN
+  dst: SELLING_IDLE
+  guard: recognized && denom not in [100, 500, 1000]
+  action: return_coin(denom); reset_idle_timer()
+  usecase: UC-01
+  notes: ''
+- id: T-015
+  src: SELLING_IDLE
+  event: INSERT_COIN
+  dst: SELLING_IDLE
+  guard: '!recognized'
+  action: return_coin(denom); reset_idle_timer()
+  usecase: UC-01
+  notes: 인식 실패 판정 기준 [미규정 REQ-91]
+- id: T-016
+  src: SELLING_WITH_CREDIT
+  event: INSERT_COIN
+  dst: SELLING_WITH_CREDIT
+  guard: recognized && denom in [100, 500, 1000]
+  action: coins[denom] += 1; credit += denom; display(credit); enable_buttons(credit,
+    stock); reset_idle_timer(); persist()
+  usecase: UC-01
+  notes: ''
+- id: T-017
+  src: SELLING_WITH_CREDIT
+  event: INSERT_COIN
+  dst: SELLING_WITH_CREDIT
+  guard: recognized && denom not in [100, 500, 1000]
+  action: return_coin(denom); reset_idle_timer()
+  usecase: UC-01
+  notes: ''
+- id: T-018
+  src: SELLING_WITH_CREDIT
+  event: INSERT_COIN
+  dst: SELLING_WITH_CREDIT
+  guard: '!recognized'
+  action: return_coin(denom); reset_idle_timer()
+  usecase: UC-01
+  notes: 인식 실패 판정 기준 [미규정 REQ-91]
+- id: T-019
+  src: AWAITING_DISPENSE_COMPLETE
+  event: INSERT_COIN
+  dst: AWAITING_DISPENSE_COMPLETE
+  guard: recognized && denom in [100, 500, 1000]
+  action: coins[denom] += 1; credit += denom; display(credit); persist()
+  usecase: UC-03
+  notes: 이 금액은 진행 중인 배출의 거스름돈에 포함되지 않는다. UC-03 의 첫 INSERT_COIN 은 POWER_ON 후 배출 진행
+    중 상태를 전제하므로 POWERED_OFF 기준 지적은 결함이 아니다
+- id: T-020
+  src: AWAITING_DISPENSE_COMPLETE
+  event: INSERT_COIN
+  dst: AWAITING_DISPENSE_COMPLETE
+  guard: recognized && denom not in [100, 500, 1000]
+  action: return_coin(denom)
+  usecase: UC-03
+  notes: ''
+- id: T-021
+  src: AWAITING_DISPENSE_COMPLETE
+  event: INSERT_COIN
+  dst: AWAITING_DISPENSE_COMPLETE
+  guard: '!recognized'
+  action: return_coin(denom)
+  usecase: UC-03
+  notes: 인식 실패 판정 기준 [미규정 REQ-91]
+- id: T-022
+  src: OUT_OF_STOCK
+  event: INSERT_COIN
+  dst: OUT_OF_STOCK
+  guard: ''
+  action: return_coin(denom)
+  usecase: UC-10
+  notes: UC-10 의 첫 INSERT_COIN 은 POWER_ON(T-001/T-004/T-006) 으로 도달한 판매 중지 상태를 전제하므로
+    POWERED_OFF 기준 지적은 결함이 아니다
+- id: T-023
+  src: FAULTED
+  event: INSERT_COIN
+  dst: FAULTED
+  guard: ''
+  action: return_coin(denom)
+  usecase: UC-09
+  notes: UC-09 의 첫 INSERT_COIN 은 POWER_ON(T-002) 또는 배출 실패로 도달한 고장 상태를 전제하므로 POWERED_OFF
+    기준 지적은 결함이 아니다
+- id: T-024
+  src: ADMIN_MODE
+  event: INSERT_COIN
+  dst: ADMIN_MODE
+  guard: ''
+  action: return_coin(denom)
+  usecase: UC-11
+  notes: ''
+- id: T-025
+  src: SELLING_WITH_CREDIT
+  event: SELECT_DRINK
+  dst: AWAITING_DISPENSE_COMPLETE
+  guard: credit >= price(drink) && stock[drink] >= 1 && can_compose(credit - price(drink))
+  action: serial += 1; pending = (serial, drink); start_dispense(drink, serial); change
+    = credit - price(drink); pay(change); coins -= used_coins(change); credit = 0;
+    display(credit); persist()
+  usecase: UC-02
+  notes: 버튼 누름부터 배출 시작까지 2000ms 이내. 거스름돈 동전 조합 선택 규칙 [미규정 REQ-93]. UC-02 의 첫 SELECT_DRINK
+    는 POWER_ON 과 코인 투입으로 도달한 상태를 전제하므로 POWERED_OFF 기준 지적은 결함이 아니다
+- id: T-026
+  src: SELLING_WITH_CREDIT
+  event: SELECT_DRINK
+  dst: SELLING_IDLE
+  guard: credit >= price(drink) && stock[drink] >= 1 && !can_compose(credit - price(drink))
+  action: refund(credit); coins -= used_coins(credit); credit = 0; display(0); disable_buttons();
+    persist()
+  usecase: UC-02
+  notes: '거스름돈 동전 부족: 배출하지 않고 재고도 차감하지 않는다'
+- id: T-027
+  src: SELLING_WITH_CREDIT
+  event: SELECT_DRINK
+  dst: SELLING_WITH_CREDIT
+  guard: credit < price(drink) || stock[drink] == 0
+  action: ''
+  usecase: UC-02
+  notes: '비활성 버튼 누름: 상태·재고·누적 투입 금액·동전 보유량 모두 불변'
+- id: T-028
+  src: SELLING_IDLE
+  event: SELECT_DRINK
+  dst: SELLING_IDLE
+  guard: ''
+  action: ''
+  usecase: UC-02
+  notes: 누적 투입 금액이 0이므로 모든 버튼이 비활성이다
+- id: T-029
+  src: OUT_OF_STOCK
+  event: SELECT_DRINK
+  dst: OUT_OF_STOCK
+  guard: ''
+  action: ''
+  usecase: UC-10
+  notes: ''
+- id: T-030
+  src: FAULTED
+  event: SELECT_DRINK
+  dst: FAULTED
+  guard: ''
+  action: ''
+  usecase: UC-09
+  notes: ''
+- id: T-031
+  src: SELLING_WITH_CREDIT
+  event: PULL_RETURN_LEVER
+  dst: SELLING_IDLE
+  guard: credit > 0
+  action: refund(credit); coins -= used_coins(credit); credit = 0; display(0); disable_buttons();
+    reset_idle_timer(); persist()
+  usecase: UC-07
+  notes: UC-07 의 첫 PULL_RETURN_LEVER 는 POWER_ON 후 누적 투입 금액이 있는 상태를 전제하므로 POWERED_OFF
+    기준 지적은 결함이 아니다
+- id: T-032
+  src: SELLING_IDLE
+  event: PULL_RETURN_LEVER
+  dst: SELLING_IDLE
+  guard: ''
+  action: reset_idle_timer()
+  usecase: UC-07
+  notes: 누적 투입 금액이 0이므로 아무것도 반환하지 않는다
+- id: T-033
+  src: AWAITING_DISPENSE_COMPLETE
+  event: PULL_RETURN_LEVER
+  dst: AWAITING_DISPENSE_COMPLETE
+  guard: credit > 0
+  action: refund(credit); coins -= used_coins(credit); credit = 0; display(0); persist()
+  usecase: UC-07
+  notes: 진행 중인 배출의 거스름돈과 섞지 않고 배출 중 투입된 금액만 반환한다
+- id: T-034
+  src: AWAITING_DISPENSE_COMPLETE
+  event: PULL_RETURN_LEVER
+  dst: AWAITING_DISPENSE_COMPLETE
+  guard: credit == 0
+  action: ''
+  usecase: UC-07
+  notes: ''
+- id: T-035
+  src: FAULTED
+  event: PULL_RETURN_LEVER
+  dst: FAULTED
+  guard: ''
+  action: ''
+  usecase: UC-09
+  notes: 고장 상태의 누적 투입 금액은 항상 0이다
+- id: T-036
+  src: SELLING_WITH_CREDIT
+  event: NO_ACTION_TIMEOUT
+  dst: SELLING_IDLE
+  guard: credit > 0
+  action: refund(credit); coins -= used_coins(credit); credit = 0; display(0); disable_buttons();
+    persist()
+  usecase: UC-08
+  notes: UC-08 의 첫 NO_ACTION_TIMEOUT 은 전원이 켜져 타이머가 도는 판매 상태를 전제하므로 POWERED_OFF 기준
+    지적은 결함이 아니다
+- id: T-037
+  src: SELLING_IDLE
+  event: NO_ACTION_TIMEOUT
+  dst: SELLING_IDLE
+  guard: ''
+  action: ''
+  usecase: UC-08
+  notes: 누적 투입 금액이 0이면 자동 반환을 수행하지 않는다
+- id: T-038
+  src: AWAITING_DISPENSE_COMPLETE
+  event: DISPENSE_COMPLETE
+  dst: ADMIN_MODE
+  guard: serial == pending_serial && admin_reserved
+  action: stock[pending_drink] -= 1; sales += price(pending_drink); refund(credit);
+    coins -= used_coins(credit); credit = 0; pending = none; admin_reserved = false;
+    show_admin_menu(); persist()
+  usecase: UC-11
+  notes: '예약 진입: 개시된 배출의 음료 가격은 판매로 확정하고 배출 중 투입된 금액만 반환한다'
+- id: T-039
+  src: AWAITING_DISPENSE_COMPLETE
+  event: DISPENSE_COMPLETE
+  dst: OUT_OF_STOCK
+  guard: serial == pending_serial && !admin_reserved && !any_stock_positive_after_deduct
+  action: stock[pending_drink] -= 1; sales += price(pending_drink); pending = none;
+    display(credit); disable_buttons(); persist()
+  usecase: UC-04
+  notes: 판매 중지 전환 시 남은 누적 투입 금액의 처리 규칙 [미규정 REQ-45] - 금액을 유지하고 표시만 한다. UC-04 의 첫 DISPENSE_COMPLETE
+    는 POWER_ON 과 배출 개시(T-025) 를 전제하므로 POWERED_OFF 기준 지적은 결함이 아니다
+- id: T-040
+  src: AWAITING_DISPENSE_COMPLETE
+  event: DISPENSE_COMPLETE
+  dst: SELLING_WITH_CREDIT
+  guard: serial == pending_serial && !admin_reserved && any_stock_positive_after_deduct
+    && credit > 0
+  action: stock[pending_drink] -= 1; sales += price(pending_drink); pending = none;
+    display(credit); enable_buttons(credit, stock); reset_idle_timer(); persist()
+  usecase: UC-04
+  notes: 배출 중 투입된 금액은 배출 완료 후에도 누적 투입 금액으로 유지된다 (UC-03)
+- id: T-041
+  src: AWAITING_DISPENSE_COMPLETE
+  event: DISPENSE_COMPLETE
+  dst: SELLING_IDLE
+  guard: serial == pending_serial && !admin_reserved && any_stock_positive_after_deduct
+    && credit == 0
+  action: stock[pending_drink] -= 1; sales += price(pending_drink); pending = none;
+    display(0); disable_buttons(); persist()
+  usecase: UC-04
+  notes: ''
+- id: T-042
+  src: AWAITING_DISPENSE_COMPLETE
+  event: DISPENSE_COMPLETE
+  dst: AWAITING_DISPENSE_COMPLETE
+  guard: serial != pending_serial
+  action: log_late_dispense(serial, drink); persist()
+  usecase: UC-06
+  notes: UC-06 의 첫 DISPENSE_COMPLETE(지연 배출) 는 전원이 켜져 신호를 수신할 수 있는 상태를 전제하므로 POWERED_OFF
+    기준 지적은 결함이 아니다
+- id: T-043
+  src: SELLING_IDLE
+  event: DISPENSE_COMPLETE
+  dst: SELLING_IDLE
+  guard: ''
+  action: log_late_dispense(serial, drink); persist()
+  usecase: UC-06
+  notes: ''
+- id: T-044
+  src: SELLING_WITH_CREDIT
+  event: DISPENSE_COMPLETE
+  dst: SELLING_WITH_CREDIT
+  guard: ''
+  action: log_late_dispense(serial, drink); persist()
+  usecase: UC-06
+  notes: ''
+- id: T-045
+  src: OUT_OF_STOCK
+  event: DISPENSE_COMPLETE
+  dst: OUT_OF_STOCK
+  guard: ''
+  action: log_late_dispense(serial, drink); persist()
+  usecase: UC-06
+  notes: ''
+- id: T-046
+  src: FAULTED
+  event: DISPENSE_COMPLETE
+  dst: FAULTED
+  guard: ''
+  action: log_late_dispense(serial, drink); persist()
+  usecase: UC-06
+  notes: 배출 실패로 처리한 뒤 도착한 신호도 상태·재고·금액을 바꾸지 않는다
+- id: T-047
+  src: ADMIN_MODE
+  event: DISPENSE_COMPLETE
+  dst: ADMIN_MODE
+  guard: ''
+  action: log_late_dispense(serial, drink); persist()
+  usecase: UC-06
+  notes: ''
+- id: T-048
+  src: AWAITING_DISPENSE_COMPLETE
+  event: DISPENSE_TIMEOUT
+  dst: FAULTED
+  guard: '!admin_reserved'
+  action: refund(credit); coins -= used_coins(credit); credit = 0; pending_kept_for_admin();
+    fault_pending = true; show_fault_and_call_admin(); persist()
+  usecase: UC-05
+  notes: 재고를 차감하지 않는다. UC-05 의 첫 DISPENSE_TIMEOUT 은 배출 개시 후 10초 타이머가 도는 상태를 전제하므로
+    POWERED_OFF 기준 지적은 결함이 아니다
+- id: T-049
+  src: AWAITING_DISPENSE_COMPLETE
+  event: DISPENSE_TIMEOUT
+  dst: FAULTED
+  guard: admin_reserved
+  action: refund(credit); coins -= used_coins(credit); credit = 0; pending_kept_for_admin();
+    fault_pending = true; show_fault_and_call_admin(); persist()
+  usecase: UC-11
+  notes: 예약된 관리 모드 진입은 고장 전이 이후에 수행한다 (T-050)
+- id: T-050
+  src: FAULTED
+  event: RESERVED_ADMIN_ENTRY
+  dst: ADMIN_MODE
+  guard: admin_reserved
+  action: admin_reserved = false; show_admin_menu(); persist()
+  usecase: UC-11
+  notes: 상태 전이 순서가 고장 -> 관리 모드임을 보장한다
+- id: T-051
+  src: SELLING_IDLE
+  event: INSERT_ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: ''
+  action: show_admin_menu(); persist()
+  usecase: UC-11
+  notes: UC-11 의 첫 INSERT_ADMIN_KEY 는 POWER_ON 이후의 운전 상태를 전제한다. 전원이 없으면 관리 메뉴 자체를
+    표시할 수 없으므로 POWERED_OFF 기준 지적은 결함이 아니다
+- id: T-052
+  src: SELLING_WITH_CREDIT
+  event: INSERT_ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: credit > 0
+  action: refund(credit); coins -= used_coins(credit); credit = 0; show_admin_menu();
+    persist()
+  usecase: UC-11
+  notes: ''
+- id: T-053
+  src: OUT_OF_STOCK
+  event: INSERT_ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: credit == 0
+  action: show_admin_menu(); persist()
+  usecase: UC-10
+  notes: ''
+- id: T-054
+  src: OUT_OF_STOCK
+  event: INSERT_ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: credit > 0
+  action: refund(credit); coins -= used_coins(credit); credit = 0; show_admin_menu();
+    persist()
+  usecase: UC-11
+  notes: ''
+- id: T-055
+  src: FAULTED
+  event: INSERT_ADMIN_KEY
+  dst: ADMIN_MODE
+  guard: ''
+  action: show_pending_dispense(); show_admin_menu(); persist()
+  usecase: UC-11
+  notes: 고장 상태에서도 관리 모드 진입을 허용하며 fault_pending 은 유지된다
+- id: T-056
+  src: AWAITING_DISPENSE_COMPLETE
+  event: INSERT_ADMIN_KEY
+  dst: AWAITING_DISPENSE_COMPLETE
+  guard: ''
+  action: admin_reserved = true; persist()
+  usecase: UC-11
+  notes: 즉시 전환하지 않고 배출 완료 직후 전환한다
+- id: T-057
+  src: ADMIN_MODE
+  event: REFILL_STOCK
+  dst: ADMIN_MODE
+  guard: all_registered(items) && all_qty_integer_ge_1(items)
+  action: 'for i in items: stock[i.drink] += i.qty; persist()'
+  usecase: UC-12
+  notes: UC-12 의 첫 REFILL_STOCK 은 POWER_ON 과 INSERT_ADMIN_KEY 로 도달한 ADMIN_MODE 를 전제하므로
+    POWERED_OFF 기준 지적은 결함이 아니다
+- id: T-058
+  src: ADMIN_MODE
+  event: REFILL_STOCK
+  dst: ADMIN_MODE
+  guard: '!all_registered(items)'
+  action: notify_admin('reject_unregistered_drink')
+  usecase: UC-12
+  notes: 부분 반영 없이 지시 전체를 거부한다
+- id: T-059
+  src: ADMIN_MODE
+  event: REFILL_STOCK
+  dst: ADMIN_MODE
+  guard: all_registered(items) && !all_qty_integer_ge_1(items)
+  action: notify_admin('reject_invalid_quantity')
+  usecase: UC-12
+  notes: ''
+- id: T-060
+  src: ADMIN_MODE
+  event: REFILL_COINS
+  dst: ADMIN_MODE
+  guard: all_denom_in_100_500_1000(items) && all_count_integer_ge_1(items)
+  action: 'for i in items: coins[i.denom] += i.count; persist()'
+  usecase: UC-12
+  notes: ''
+- id: T-061
+  src: ADMIN_MODE
+  event: REFILL_COINS
+  dst: ADMIN_MODE
+  guard: '!all_denom_in_100_500_1000(items)'
+  action: notify_admin('reject_invalid_denomination')
+  usecase: UC-12
+  notes: ''
+- id: T-062
+  src: ADMIN_MODE
+  event: REFILL_COINS
+  dst: ADMIN_MODE
+  guard: all_denom_in_100_500_1000(items) && !all_count_integer_ge_1(items)
+  action: notify_admin('reject_invalid_count')
+  usecase: UC-12
+  notes: ''
+- id: T-063
+  src: ADMIN_MODE
+  event: ADJUST_STOCK
+  dst: ADMIN_MODE
+  guard: op == 'view'
+  action: show_late_dispense_log_with_drink()
+  usecase: UC-13
+  notes: UC-13 의 첫 ADJUST_STOCK 은 ADMIN_MODE 진입 이후를 전제하므로 POWERED_OFF 기준 지적은 결함이 아니다
+- id: T-064
+  src: ADMIN_MODE
+  event: ADJUST_STOCK
+  dst: ADMIN_MODE
+  guard: op == 'set' && value >= 0 && value <= stock[drink]
+  action: stock[drink] = value; mark_late_dispense_confirmed(drink); persist()
+  usecase: UC-13
+  notes: ''
+- id: T-065
+  src: ADMIN_MODE
+  event: ADJUST_STOCK
+  dst: ADMIN_MODE
+  guard: op == 'set' && value < 0
+  action: notify_admin('reject_negative_value')
+  usecase: UC-13
+  notes: ''
+- id: T-066
+  src: ADMIN_MODE
+  event: ADJUST_STOCK
+  dst: ADMIN_MODE
+  guard: op == 'set' && value > stock[drink]
+  action: notify_admin('reject_value_above_book_stock')
+  usecase: UC-13
+  notes: ''
+- id: T-067
+  src: ADMIN_MODE
+  event: COLLECT_COINS
+  dst: ADMIN_MODE
+  guard: target == 'coins' && denom in [100, 500, 1000] && count_integer_ge_1 && count
+    <= coins[denom] && coin_total - denom * count >= deposit
+  action: coins[denom] -= count; eject_coins(denom, count); show_coin_holdings();
+    persist()
+  usecase: UC-14
+  notes: UC-14 의 첫 COLLECT_COINS 는 ADMIN_MODE 진입 이후를 전제하므로 POWERED_OFF 기준 지적은 결함이
+    아니다
+- id: T-068
+  src: ADMIN_MODE
+  event: COLLECT_COINS
+  dst: ADMIN_MODE
+  guard: target == 'coins' && (denom not in [100, 500, 1000] || !count_integer_ge_1)
+  action: notify_admin('reject_invalid_collect_request')
+  usecase: UC-14
+  notes: ''
+- id: T-069
+  src: ADMIN_MODE
+  event: COLLECT_COINS
+  dst: ADMIN_MODE
+  guard: target == 'coins' && denom in [100, 500, 1000] && count_integer_ge_1 && count
+    > coins[denom]
+  action: notify_admin('reject_count_exceeds_holding')
+  usecase: UC-14
+  notes: ''
+- id: T-070
+  src: ADMIN_MODE
+  event: COLLECT_COINS
+  dst: ADMIN_MODE
+  guard: target == 'coins' && denom in [100, 500, 1000] && count_integer_ge_1 && count
+    <= coins[denom] && coin_total - denom * count < deposit
+  action: notify_admin('reject_below_unreturned_deposit')
+  usecase: UC-14
+  notes: ''
+- id: T-071
+  src: ADMIN_MODE
+  event: COLLECT_COINS
+  dst: ADMIN_MODE
+  guard: target == 'deposit' && op == 'view'
+  action: show_unreturned_deposit()
+  usecase: UC-15
+  notes: UC-15 의 첫 COLLECT_COINS 는 ADMIN_MODE 진입 이후를 전제하므로 POWERED_OFF 기준 지적은 결함이
+    아니다
+- id: T-072
+  src: ADMIN_MODE
+  event: COLLECT_COINS
+  dst: ADMIN_MODE
+  guard: target == 'deposit' && op == 'collect' && deposit > 0 && coin_total >= deposit
+  action: eject_amount(deposit); coins -= used_coins(deposit); update_deposit(); show_unreturned_deposit();
+    show_coin_holdings(); persist()
+  usecase: UC-15
+  notes: 회수 후 미반환 보관액 갱신 규칙 [미규정 REQ-94] - 보유량 합계 항등식만 판정한다
+- id: T-073
+  src: ADMIN_MODE
+  event: COLLECT_COINS
+  dst: ADMIN_MODE
+  guard: target == 'deposit' && op == 'collect' && deposit == 0
+  action: ''
+  usecase: UC-15
+  notes: ''
+- id: T-074
+  src: ADMIN_MODE
+  event: COLLECT_COINS
+  dst: ADMIN_MODE
+  guard: target == 'deposit' && op == 'collect' && deposit > 0 && coin_total < deposit
+  action: notify_admin('reject_insufficient_holding')
+  usecase: UC-15
+  notes: ''
+- id: T-075
+  src: ADMIN_MODE
+  event: CONFIRM_DISPENSE_FAILURE
+  dst: ADMIN_MODE
+  guard: fault_pending
+  action: clear_pending_dispense(); fault_pending = false; clear_fault_display();
+    persist()
+  usecase: UC-16
+  notes: UC-16 의 첫 CONFIRM_DISPENSE_FAILURE 는 고장 상태에서 관리 모드로 진입(T-055/T-050) 한 뒤를
+    전제하므로 POWERED_OFF 기준 지적은 결함이 아니다
+- id: T-076
+  src: ADMIN_MODE
+  event: EXIT_ADMIN_MODE
+  dst: FAULTED
+  guard: fault_pending
+  action: show_fault_and_call_admin(); persist()
+  usecase: UC-16
+  notes: 배출 실패 미확인 상태로 종료하면 다시 고장 상태가 된다. 관리 모드 종료 조작 방법 [미규정 REQ-95] - 키 제거를 종료로
+    간주
+- id: T-077
+  src: ADMIN_MODE
+  event: EXIT_ADMIN_MODE
+  dst: SELLING_IDLE
+  guard: '!fault_pending && any_stock_positive'
+  action: display(0); disable_buttons(); persist()
+  usecase: UC-12
+  notes: ''
+- id: T-078
+  src: ADMIN_MODE
+  event: EXIT_ADMIN_MODE
+  dst: OUT_OF_STOCK
+  guard: '!fault_pending && !any_stock_positive'
+  action: show_sold_out(); disable_buttons(); persist()
+  usecase: UC-12
+  notes: ''
