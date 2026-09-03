@@ -617,6 +617,15 @@ def make_handler(store: Store, tel: Telemetry):
 
 
 def main() -> int:
+    # pythonw(시작프로그램 자동 실행)에는 콘솔이 없어 stdout 이 None 이다.
+    # 그 상태의 print 는 AttributeError 로 서버를 조용히 죽인다 -- 실제로 그랬다.
+    # 콘솔이 없으면 로그 파일로 보낸다. 자동 시작이 실패해도 흔적이 남는다.
+    if sys.stdout is None or sys.stderr is None:
+        log = (Path(__file__).with_name(".usage_server.log")
+               .open("a", encoding="utf-8", buffering=1))
+        sys.stdout = sys.stderr = log
+        print(f"\n--- 시작 {datetime.now(timezone.utc).isoformat(timespec='seconds')} ---")
+
     ap = argparse.ArgumentParser(description="Claude Code 사용량 실시간 대시보드")
     ap.add_argument("--port", type=int, default=8770)
     ap.add_argument("--no-open", action="store_true")
