@@ -17,3 +17,16 @@
 [12:05:03] [PAUSE] 게이트 'fsm' 승인 대기 중 (phase=MODEL)
    산출물을 검토한 뒤 `python -m factory.cli approve fsm` 하고 재개하세요.
 [12:05:03] 정지 지점: MODEL | 통계: {}
+[11:11:49] 공장 84c068f (수정본) · 요구사항 72bc8602548a
+[11:11:49] -- MODEL --
+[11:11:49]   (이미 확정된 단계 -- 재생성하지 않고 건너뜀)
+[11:11:49] [PAUSE] 게이트 'fsm' 승인 대기 중 (phase=MODEL)
+   산출물을 검토한 뒤 `python -m factory.cli approve fsm` 하고 재개하세요.
+[11:11:49] 정지 지점: MODEL | 통계: {}
+[11:12:19] 공장 84c068f (수정본) · 요구사항 72bc8602548a
+[11:12:19] -- MODEL --
+[11:16:15]     - 원칙에 적은 `read_lines = event_count + dropped` 에서 event_count 은(는) 어떤 전이에도 나오지 않는다 — 이름이 FSM 과 다르거나 모델이 그 양을 아예 안 만들었다
+[11:16:15] 결정표: 규칙 48개 → C:\work\sw_factory\projects\log_report\artifacts\rules.yaml
+[11:16:15] [PAUSE] 게이트 'fsm' 승인 대기 중 (phase=MODEL)
+   산출물을 검토한 뒤 `python -m factory.cli approve fsm` 하고 재개하세요.
+[11:16:15] 정지 지점: MODEL | 통계: {}

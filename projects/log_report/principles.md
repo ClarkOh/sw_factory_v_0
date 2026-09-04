@@ -16,7 +16,7 @@
 이 등식들은 기계가 읽는다. 이름은 FSM 의 action 에서 쓰는 것과 같아야 한다.
 
 ```보존
-등식: read_lines = event_count + dropped
+등식: read_lines = events + dropped
 ```
 
 **P3. 같은 입력은 같은 출력을 낸다.**

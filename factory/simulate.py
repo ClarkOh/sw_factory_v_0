@@ -495,9 +495,18 @@ def _guard_pins_zero(guard: str, name: str) -> bool:
     return False
 
 
-def _moves(action: str, name: str) -> bool:
-    """이 전이가 그 양을 건드리는가. 배열 첨자와 점 표기까지 같이 본다."""
-    pat = rf"\b{re.escape(name)}\b\s*(?:\[[^\]]*\]|\.\w+)?\s*(?:\+=|-=|{_ASSIGN})"
+def _moves(action: str, name: str, deltas_only: bool = False) -> bool:
+    """이 전이가 그 양을 움직이는가. 배열 첨자와 점 표기까지 같이 본다.
+
+    두 가지를 걸러야 실제 산출물에서 살아남는다 (로그 집계 결정표에서 겪었다):
+    - `read_lines == events + dropped` 는 **불변식 표시**지 대입이 아니다 -- `==` 제외
+    - 닫힌 계 등식에서는 `events = 0` 같은 재대입도 움직임이 아니다. 리포트가
+      "요약에 events = 0 을 적는다"고 서술한 것까지 대입으로 읽으면 오탐이 된다.
+      증감(`+=`/`-=`)만 흐름이다. (열린 계의 `credit := 0` 은 다르다 -- 그건
+      감소대응 쪽이 따로 본다.)
+    """
+    ops = r"\+=|-=" if deltas_only else rf"\+=|-=|(?:{_ASSIGN})(?!=)"
+    pat = rf"\b{re.escape(name)}\b\s*(?:\[[^\]]*\]|\.\w+)?\s*(?:{ops})"
     return bool(re.search(pat, action or ""))
 
 
@@ -528,12 +537,13 @@ def check_conservation(model, ids: list[Conserved]) -> list[Finding]:
                 f"모델이 그 양을 아예 안 만들었다", [], fixable_by_fsm=False))
             continue
 
+        closed = c.kind == "등식"
         for t in atoms:
             a = t.action or ""
             where = getattr(t, "dst", "") or t.id
-            right = [r for r in c.rhs if _moves(a, r)]
-            if c.kind == "등식":
-                left = _moves(a, c.lhs)
+            right = [r for r in c.rhs if _moves(a, r, deltas_only=closed)]
+            if closed:
+                left = _moves(a, c.lhs, deltas_only=True)
                 if left and not right:
                     out.append(Finding(
                         "보존 등식", "",
@@ -544,7 +554,7 @@ def check_conservation(model, ids: list[Conserved]) -> list[Finding]:
                     out.append(Finding(
                         "보존 등식", "",
                         f"{t.id}: {' · '.join(right)} 이 움직이는데 '{c.lhs}' 는 "
-                        f"그대로다 — `{c.raw}` 이 '{t.dst}' 에서 깨진다", [t.id]))
+                        f"그대로다 — `{c.raw}` 이 '{where}' 에서 깨진다", [t.id]))
             else:                                   # 감소대응
                 if has_coords and t.src not in holding.setdefault(
                         c.lhs, _states_holding(model, c.lhs)):

@@ -25,3 +25,7 @@ limits:
   fsm_repair_attempts: 3
   worker_timeout_s: 900
   max_tickets_per_run: 0     # 0 = 무제한
+
+# 중간 형식: 상태 없는 변환·분류 도메인 -> 결정표
+# (FSM 강제 시도는 artifacts/fsm.rejected.yaml 로 보존 -- 상태 7개 전부 AWAITING_* 였다)
+model_form: rules
