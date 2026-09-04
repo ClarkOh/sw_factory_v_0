@@ -43,6 +43,10 @@ class FactoryConfig:
     jira_project_key: str = ""
     worker: str = "headless"        # headless | scripted
     model: str = ""                 # "" = claude 기본값
+    # 중간 형식. 반응형 시스템이면 fsm, 상태 없는 변환·분류면 rules.
+    # 로그 집계를 fsm 으로 강제했더니 상태 7개가 전부 AWAITING_* 인 switch 문이 나왔다 --
+    # 형식이 안 맞으면 공장은 실패하는 게 아니라 **그럴듯한 껍데기를 만든다.**
+    model_form: str = "fsm"         # fsm | rules
     gates: Gates = field(default_factory=Gates)
     limits: Limits = field(default_factory=Limits)
 
@@ -58,6 +62,7 @@ class FactoryConfig:
             jira_project_key=d.get("jira_project_key", ""),
             worker=d.get("worker", "headless"),
             model=d.get("model", ""),
+            model_form=d.get("model_form", "fsm"),
             gates=Gates(**(d.get("gates") or {})),
             limits=Limits(**(d.get("limits") or {})),
         )

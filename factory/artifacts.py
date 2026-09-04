@@ -10,7 +10,8 @@ from pathlib import Path
 
 import yaml
 
-from factory.models import FSM, Event, Requirement, State, Transition, UseCase
+from factory.models import (FSM, Event, Requirement, Rule, RuleTable, State,
+                            Transition, UseCase)
 
 
 class ArtifactStore:
@@ -64,6 +65,34 @@ class ArtifactStore:
             events=[Event(**e) for e in d.get("events", [])],
             transitions=[Transition(**t) for t in d.get("transitions", [])],
         )
+
+    # --- 결정표 ---
+    @property
+    def rules_yaml(self) -> Path: return self.dir / "rules.yaml"
+
+    def save_rules(self, table: RuleTable) -> None:
+        _dump(self.rules_yaml, {
+            "project": table.project,
+            "rules": [{"id": r.id, "when": r.when, "then": r.then,
+                       "usecase": r.usecase, "notes": r.notes} for r in table.rules],
+        })
+
+    def load_rules(self) -> RuleTable:
+        d = _load(self.rules_yaml)
+        return RuleTable(project=d.get("project", ""),
+                         rules=[Rule(**r) for r in d.get("rules", [])])
+
+    def load_model(self):
+        """이 프로젝트의 중간 형식. FSM 이든 결정표든 원자(atoms)를 내놓는다.
+
+        어느 형식인지는 파일의 존재로 안다 -- MODEL 단계가 하나만 만들기 때문이다.
+        둘 다 있으면 설정이 꼬인 것이므로 조용히 고르지 않고 바로 알린다.
+        """
+        has_fsm, has_rules = self.fsm_yaml.exists(), self.rules_yaml.exists()
+        if has_fsm and has_rules:
+            raise RuntimeError("fsm.yaml 과 rules.yaml 이 둘 다 있다 — "
+                               "MODEL 단계가 하나만 만들어야 한다")
+        return self.load_rules() if has_rules else self.load_fsm()
 
 
 def _dump(path: Path, data: dict) -> None:

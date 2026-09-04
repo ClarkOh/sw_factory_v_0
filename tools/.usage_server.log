@@ -1,0 +1,13 @@
+
+--- 시작 2026-09-03T22:56:10+00:00 ---
+세션 기록을 읽는 중... (C:\Users\USER\.claude\projects)
+  호출 16,442건 · 한도 도달 118회 (새로 13)
+
+  http://127.0.0.1:8770  ← 대시보드
+
+실시간 지표를 받으려면 새 터미널에서 이 값들을 켜고 claude 를 쓰세요:
+  CLAUDE_CODE_ENABLE_TELEMETRY=1  OTEL_METRICS_EXPORTER=otlp
+  OTEL_EXPORTER_OTLP_PROTOCOL=http/json  OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:8770
+  OTEL_METRIC_EXPORT_INTERVAL=10000
+
+Ctrl+C 로 종료

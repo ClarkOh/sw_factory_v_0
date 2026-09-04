@@ -145,14 +145,14 @@ def _untraced_requirements(ctx) -> list[str]:
     if not reqs:
         return []
     ucs = ctx.store.load_usecases()
-    fsm = ctx.store.load_fsm()
+    model = ctx.store.load_model()
 
     uc_of_req = {}
     for u in ucs:
         for r in u.requirements:
             uc_of_req.setdefault(r, []).append(u.id)
 
-    covered_uc = {t.usecase for t in fsm.transitions if t.usecase}
+    covered_uc = {t.usecase for t in model.atoms if t.usecase}
     done_uc = {t.usecase_ref for t in ctx.tracker.search(type=TicketType.STORY.value)
                if t.status == Status.DONE.value and t.usecase_ref}
 

@@ -23,6 +23,34 @@ DRIVER_TOOLS = ["Read", "Write", "Edit", "Glob", "Grep", "Bash(python *)"]
 SHELL_FILES = ("__main__.py", "_fsm_spec.py")
 
 
+def write_model_spec(ctx: Ctx) -> Path:
+    """중간 형식에 맞는 명세 표. FSM 이면 전이표, 결정표면 규칙표."""
+    from factory.models import RuleTable
+    if isinstance(ctx.store.load_model(), RuleTable):
+        return write_rules_spec(ctx)
+    return write_fsm_spec(ctx)
+
+
+def write_rules_spec(ctx: Ctx) -> Path:
+    """`app/_rules_spec.py`. 전이표와 같은 이유로 기계 생성한다 --
+    표를 모델에게 베껴 쓰게 하면 언젠가 틀리고, 틀린 표는 진단을 거짓말로 만든다."""
+    table = ctx.store.load_rules()
+    by_ref = {t.fsm_ref: t for t in ctx.tracker.search() if t.fsm_ref}
+    rows = []
+    for r in table.rules:
+        tk = by_ref.get(r.id)
+        rows.append("    {" + f"'id': {r.id!r}, 'when': {r.when!r}, 'then': {r.then!r}, "
+                    f"'ticket': {(tk.key if tk else None)!r}, "
+                    f"'status': {(tk.status if tk else 'unknown')!r}" + "},")
+    body = f'"""결정표 명세 -- rules.yaml 에서 자동 생성. 직접 수정하지 마세요."""' + chr(10)
+    body += f"PROJECT = {table.project!r}" + chr(10) + "RULES = [" + chr(10)
+    body += chr(10).join(rows) + chr(10) + "]" + chr(10)
+    out = ctx.cfg.repo / "app" / "_rules_spec.py"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(body, encoding="utf-8")
+    return out
+
+
 def write_fsm_spec(ctx: Ctx) -> Path:
     """`app/_fsm_spec.py` 를 fsm.yaml 에서 기계적으로 생성한다.
 
@@ -113,9 +141,9 @@ def generate_driver(ctx: Ctx, force: bool = False) -> Path:
 
     # 명세 표는 티켓 상태를 담으므로 진행에 따라 낡는다. 진입점을 재생성하지 않더라도
     # 항상 다시 쓴다 -- 낡은 진단은 없는 진단보다 나쁘다.
-    spec = write_fsm_spec(ctx)
-    n = len(ctx.store.load_fsm().transitions)
-    ctx.log(f"  FSM 명세 표 갱신: app/{spec.name} (전이 {n}개)")
+    spec = write_model_spec(ctx)
+    n = len(ctx.store.load_model().atoms)
+    ctx.log(f"  모델 명세 표 갱신: app/{spec.name} (원자 {n}개)")
 
     if target.exists() and not force:
         ctx.log(f"진입점 이미 존재 -> 재생성 생략 ({target.name})")

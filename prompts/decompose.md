@@ -16,9 +16,7 @@ subtasks:
 
 --- 전이 ---
 id: {tid}
-{src} --[{event}]--> {dst}
-guard: {guard}
-action: {action}
+{atom_md}
 
 --- 관련 유스케이스 ---
 {usecase}

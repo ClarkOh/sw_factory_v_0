@@ -10,9 +10,7 @@
 
 --- 구현해야 할 FSM 전이 ---
 id: {tid}
-{src} --[{event}]--> {dst}
-guard: {guard}
-action: {action}
+{atom_md}
 
 --- 통과해야 할 테스트 ---
 {dod_tests}

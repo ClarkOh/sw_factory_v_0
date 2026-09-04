@@ -113,7 +113,7 @@ def cmd_demo(ctx: Ctx, args) -> int:
     if not (ctx.cfg.repo / "app" / "__main__.py").exists():
         print("진입점이 없습니다. 먼저 `driver` 를 실행하세요.", file=sys.stderr)
         return 1
-    entry.write_fsm_spec(ctx)      # 티켓 상태 반영해 진단 표를 최신화
+    entry.write_model_spec(ctx)    # 티켓 상태 반영해 진단 표를 최신화
     events = []
     if args.script:
         events = [ln for ln in Path(args.script).read_text(encoding="utf-8").splitlines() if ln.strip()]
@@ -148,7 +148,8 @@ def cmd_cost(ctx: Ctx, _args) -> int:
     """이 프로젝트가 지금까지 쓴 비용. 기준선 비교는 단위당 값으로 한다."""
     from factory import cost
 
-    n = len(ctx.store.load_fsm().transitions) if ctx.store.fsm_yaml.exists() else 0
+    n = (len(ctx.store.load_model().atoms)
+         if ctx.store.fsm_yaml.exists() or ctx.store.rules_yaml.exists() else 0)
     s = cost.summarize(ctx.cfg.workspace, transitions=n)
     if not s["calls"]:
         print("기록 없음 (.factory/cost.jsonl). 아직 워커를 부르지 않았거나 이전 실행입니다.")

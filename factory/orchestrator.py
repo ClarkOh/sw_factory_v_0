@@ -177,7 +177,7 @@ class Orchestrator:
         elif phase is Phase.USECASE:
             analysis.derive_usecases(self.ctx)
         elif phase is Phase.MODEL:
-            analysis.model_fsm(self.ctx)
+            analysis.model(self.ctx)
         elif phase is Phase.TICKETIZE:
             planning.ticketize(self.ctx)
         elif phase is Phase.SPEC_TESTS:

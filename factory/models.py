@@ -57,6 +57,87 @@ class Event:
 
 
 @dataclass
+class Rule:
+    """결정표의 규칙 하나 — **좌표(src/dst)를 뺀 전이** 다.
+
+    두 번째 도메인(로그 집계)을 FSM 으로 억지로 만들었더니 상태 7개가 전부
+    `AWAITING_*` 였고, 핵심 규칙 7건은 출발·이벤트·도착이 모두 같은 자기 루프였다.
+    상태 기계가 아니라 switch 문이었다 -- src/dst 가 정보를 하나도 안 날랐다.
+
+    파이프라인이 구조적으로 쓰는 것은 다섯 가지뿐이다: id, test_name, usecase,
+    내용(when/then), signature. 그 다섯이 살아 있으면
+    **규칙 1개 = 티켓 1개 = 테스트 1개 = 완료 정의 1개** 대응도 그대로 산다.
+    """
+    id: str                       # R-001
+    when: str = ""                # 조건 (guard 에 해당)
+    then: str = ""                # 결과 (action 에 해당)
+    usecase: str = ""             # UC-* 역추적
+    notes: str = ""
+
+    # 보존량 검사 등이 전이와 규칙을 같은 코드로 읽도록 이름을 맞춘다.
+    @property
+    def guard(self) -> str:
+        return self.when
+
+    @property
+    def action(self) -> str:
+        return self.then
+
+    @property
+    def test_name(self) -> str:
+        return f"test_{self.id.lower().replace('-', '_')}"
+
+    def signature(self) -> str:
+        raw = f"{self.when}|{self.then}"
+        return hashlib.sha256(raw.encode()).hexdigest()[:12]
+
+    def describe(self) -> str:
+        """티켓 제목용 한 줄."""
+        w = self.when.strip() or "(무조건)"
+        return f"[{self.id}] {w[:60]}"
+
+    def context_md(self) -> list[str]:
+        """워커 프롬프트에 넣을 문맥."""
+        return [f"- 조건: `{self.when or '(없음)'}`",
+                f"- 결과: `{self.then or '(없음)'}`"]
+
+
+@dataclass
+class RuleTable:
+    """결정표 — 상태 없는 도메인의 중간 형식. FSM 과 같은 자리에 선다.
+
+    규칙의 순서가 의미를 갖는다: 위에서부터 첫 번째로 조건이 참인 규칙이 적용된다.
+    (순서 무관이라고 선언하면 겹침 검사가 필요해지는데, 그 검사는 조건식을 평가할 수
+    있어야 가능하다. 술어가 자유 변수인 이 단계에서는 순서 우선이 정직하다.)
+    """
+    project: str
+    rules: list[Rule] = field(default_factory=list)
+
+    # 파이프라인이 형식을 모르고 원자를 셀 수 있게 한다. FSM 쪽에도 같은 것이 있다.
+    @property
+    def atoms(self) -> list[Rule]:
+        return self.rules
+
+    def validate(self) -> list[str]:
+        errs: list[str] = []
+        for r in self.rules:
+            if not isinstance(r.id, str) or not r.id.strip():
+                errs.append(f"규칙 id가 문자열이 아님: {r.id!r}")
+        if errs:
+            return errs
+        if not self.rules:
+            errs.append("규칙이 하나도 없음")
+        seen: set[str] = set()
+        for r in self.rules:
+            if r.id in seen:
+                errs.append(f"{r.id}: 규칙 id 중복")
+            seen.add(r.id)
+            if not (r.when.strip() or r.then.strip()):
+                errs.append(f"{r.id}: 조건도 결과도 비어 있음")
+        return errs
+
+
+@dataclass
 class Transition:
     id: str                       # T-001
     src: str                      # from state id
@@ -77,6 +158,16 @@ class Transition:
         raw = f"{self.src}|{self.event}|{self.guard}|{self.dst}|{self.action}"
         return hashlib.sha256(raw.encode()).hexdigest()[:12]
 
+    def describe(self) -> str:
+        return f"[{self.id}] {self.src} --{self.event}--> {self.dst}"
+
+    def context_md(self) -> list[str]:
+        return [f"- 출발: `{self.src}`",
+                f"- 이벤트: `{self.event}`",
+                f"- 도착: `{self.dst}`",
+                f"- guard: `{self.guard or '(없음)'}`",
+                f"- action: `{self.action or '(없음)'}`"]
+
 
 @dataclass
 class FSM:
@@ -91,6 +182,12 @@ class FSM:
             if s.initial:
                 return s.id
         return None
+
+    @property
+    def atoms(self) -> list[Transition]:
+        """형식 무관 원자 목록. RuleTable 에도 같은 것이 있다 --
+        티켓화·1:1 검사·추적은 이걸 통해서만 원자를 만진다."""
+        return self.transitions
 
     def validate(self) -> list[str]:
         """구조적 결함 목록. 비어 있어야 다음 단계로 넘어간다.

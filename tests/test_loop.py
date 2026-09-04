@@ -1730,3 +1730,94 @@ def test_defensive_reset_where_nothing_can_be_lost_is_not_a_defect():
               ("T-3", "ADMIN", "EXIT", "IDLE", "credit = 0")],
              states=[("IDLE", True), ("PAID", False), ("ADMIN", False)])
     assert not [x for x in simulate.check_conservation(f, ids) if "T-3" in x.refs]
+
+
+# --------------------------------------------------------------------------
+# 결정표 -- 두 번째 중간 형식
+# --------------------------------------------------------------------------
+
+def _table(rows):
+    from factory.models import Rule, RuleTable
+    return RuleTable("t", [Rule(id=i, when=w, then=n) for i, w, n in rows])
+
+
+def test_ruletable_validates_like_fsm():
+    """결정표도 FSM 과 같은 자리에서 구조 검증을 받는다."""
+    ok = _table([("R-1", "is_blank(line)", "dropped += 1")])
+    assert not ok.validate()
+    bad = _table([("R-1", "a", "b"), ("R-1", "c", "d"), ("R-2", "", "")])
+    errs = bad.validate()
+    assert any("중복" in e for e in errs)
+    assert any("비어" in e for e in errs)
+
+
+def test_load_model_refuses_ambiguity(tmp_path):
+    """fsm.yaml 과 rules.yaml 이 둘 다 있으면 조용히 고르지 않는다.
+
+    조용히 고르면 MODEL 단계의 산출물과 티켓의 근거가 갈라질 수 있다 --
+    그 갈라짐은 구현 수십 건 뒤에야 드러난다.
+    """
+    import pytest
+    from factory.artifacts import ArtifactStore
+    from factory.models import FSM, State, Event, Transition
+
+    st = ArtifactStore(tmp_path)
+    st.save_rules(_table([("R-1", "w", "t += 1")]))
+    m = st.load_model()
+    assert [a.id for a in m.atoms] == ["R-1"], "rules.yaml 만 있으면 결정표"
+
+    st.save_fsm(FSM("t", [State("A", initial=True)], [Event("E")],
+                    [Transition("T-1", "A", "E", "A")]))
+    with pytest.raises(RuntimeError):
+        st.load_model()
+
+
+def test_conservation_check_reads_rules_too():
+    """보존 등식 검사가 형식을 가리지 않는다 -- 이게 결정표를 넣은 값어치다.
+
+    로그 집계를 FSM 으로 강제했을 때도 이 검사만은 유효했다. 원자의 내용
+    (when/then)만 보기 때문이다. 좌표가 없으니 도달성 면제 없이 전부 검사한다.
+    """
+    from factory import simulate
+
+    ids = simulate.load_conserved("```보존\n등식: read = kept + dropped\n```")
+    bad = _table([("R-1", "is_blank(line)", "read += 1"),          # 행선지 없음
+                  ("R-2", "valid(line)", "read += 1; kept += 1"),
+                  ("R-3", "!valid(line)", "read += 1; dropped += 1")])
+    found = simulate.check_conservation(bad, ids)
+    assert [f.refs[0] for f in found] == ["R-1"]
+
+    good = _table([("R-1", "is_blank(line)", "read += 1; dropped += 1"),
+                   ("R-2", "valid(line)", "read += 1; kept += 1")])
+    assert not simulate.check_conservation(good, ids)
+
+
+def test_ticketize_works_on_a_ruletable(tmp_path):
+    """규칙 1개 = 티켓 1개 = 테스트 1개 대응이 결정표에서도 산다.
+
+    파이프라인이 구조적으로 쓰는 것은 id · test_name · usecase · 내용 · signature
+    다섯 가지뿐이라는 측정 위에 세운 설계다. src/dst 는 표시용이었다.
+    """
+    from factory.models import UseCase
+    from factory.stages import planning
+
+    ctx = make_ctx(tmp_path, make_worker())
+    ctx.store.save_usecases([UseCase(id="UC-01", title="줄 분류", actor="운영자",
+                                     requirements=["REQ-1"])])
+    from factory.models import Rule, RuleTable
+    ctx.store.save_rules(RuleTable("counter", [
+        Rule(id="R-001", when="is_blank(line)", then="dropped += 1", usecase="UC-01"),
+        Rule(id="R-002", when="valid(line)", then="kept += 1", usecase="UC-01"),
+    ]))
+
+    planning.ticketize(ctx)
+    stories = ctx.tracker.search(type="story")
+    assert len(stories) == 2, "규칙 2개 -> 스토리 2개"
+    assert {s.fsm_ref for s in stories} == {"R-001", "R-002"}
+    assert stories[0].dod_tests == ["tests/test_fsm.py::test_r_001"], \
+        "DoD 테스트 이름이 규칙에서 나온다"
+    assert "AWAITING" not in stories[0].title, "지어낸 상태가 제목에 없다"
+
+    # 두 번 돌려도 늘지 않는다 (멱등) -- FSM 쪽과 같은 보장
+    planning.ticketize(ctx)
+    assert len(ctx.tracker.search(type="story")) == 2

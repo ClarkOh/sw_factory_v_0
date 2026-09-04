@@ -56,6 +56,98 @@ def derive_usecases(ctx: Ctx) -> list[UseCase]:
     return ucs
 
 
+def model(ctx: Ctx):
+    """MODEL 단계. 중간 형식은 factory.yaml 의 `model_form` 이 정한다.
+
+    이 선택이 곧 최소한의 ARCHITECT 다: 도메인의 원자가 무엇인지 사람이 한 줄로
+    선언한다. 반응형이면 전이(fsm), 상태 없는 변환·분류면 규칙(rules).
+    """
+    if ctx.cfg.model_form == "rules":
+        return model_rules(ctx)
+    return model_fsm(ctx)
+
+
+def model_rules(ctx: Ctx):
+    """유스케이스 → 결정표. FSM 쪽과 같은 수리 루프를 돈다."""
+    from factory.models import Rule, RuleTable
+
+    d = _ask(ctx, "rules", prompt(
+        "rules",
+        project=ctx.cfg.project,
+        usecases_yaml=ctx.store.usecases_yaml.read_text(encoding="utf-8"),
+    ))
+    table = _to_rules(d, ctx.cfg.project)
+
+    for attempt in range(1, ctx.cfg.limits.fsm_repair_attempts + 1):
+        errs = table.validate()
+        if not errs:
+            break
+        ctx.store.save_rules(table)
+        d = _ask(ctx, f"rules_repair:{attempt}", prompt(
+            "fsm_repair",           # 결함 목록을 주고 고치게 하는 틀은 같다
+            errors="\n".join(f"- {e}" for e in errs),
+            fsm_yaml=ctx.store.rules_yaml.read_text(encoding="utf-8"),
+        ))
+        table = _to_rules(d, ctx.cfg.project)
+    else:
+        raise RuntimeError("결정표 구조 수리 상한 초과: " + "; ".join(table.validate()[:5]))
+
+    table = _simulate_rules_and_repair(ctx, table)
+    ctx.store.save_rules(table)
+    ctx.log(f"결정표: 규칙 {len(table.rules)}개 → {ctx.store.rules_yaml}")
+    return table
+
+
+def _to_rules(d: dict, project: str):
+    from factory.models import Rule, RuleTable
+    rules = []
+    for i, r in enumerate(d.get("rules", []) or [], 1):
+        if not isinstance(r, dict):
+            continue
+        rules.append(Rule(
+            id=str(r.get("id") or f"R-{i:03d}"),
+            when=str(r.get("when") or r.get("guard") or ""),
+            then=str(r.get("then") or r.get("action") or ""),
+            usecase=str(r.get("usecase") or ""),
+            notes=str(r.get("notes") or "")))
+    return RuleTable(project=project, rules=rules)
+
+
+def _simulate_rules_and_repair(ctx: Ctx, table):
+    """결정표에 돌릴 수 있는 검사: 보존 등식과 유스케이스 커버리지.
+
+    도달성·재생 같은 그래프 검사는 좌표가 없으니 성립하지 않는다.
+    보존 등식은 원자의 내용만 보므로 형식을 가리지 않는다 -- 그래서 살아남는다.
+    """
+    from factory import simulate
+
+    ucs = ctx.store.load_usecases()
+    for attempt in range(1, ctx.cfg.limits.fsm_repair_attempts + 1):
+        findings = list(simulate.check_conservation(
+            table, simulate.load_conserved(_principles(ctx))))
+        covered = {r.usecase for r in table.rules if r.usecase}
+        for u in ucs:
+            if u.id not in covered:
+                findings.append(simulate.Finding(
+                    "커버리지", "", f"{u.id} '{u.title}' 를 참조하는 규칙이 하나도 없다",
+                    [u.id]))
+        fixable = [f for f in findings if f.fixable_by_fsm]
+        for f in findings[:10]:
+            ctx.log(f"    - {f}")
+        if not fixable:
+            return table
+        ctx.log(f"  모델 검사: {len(fixable)}건 수리 시도 {attempt}/{ctx.cfg.limits.fsm_repair_attempts}")
+        ctx.store.save_rules(table)
+        d = _ask(ctx, f"rules_sim_repair:{attempt}", prompt(
+            "fsm_sim_repair",
+            findings="\n".join(f"- {f}" for f in fixable),
+            fsm_yaml=ctx.store.rules_yaml.read_text(encoding="utf-8"),
+        ))
+        table = _to_rules(d, ctx.cfg.project)
+    ctx.log("  모델 검사: 진전 없음 -- 게이트에서 사람이 판단합니다")
+    return table
+
+
 def model_fsm(ctx: Ctx) -> FSM:
     """유스케이스 → FSM. 구조 검증에 걸리면 결함을 되먹여 자동 수리한다.
 

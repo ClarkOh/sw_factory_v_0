@@ -15,7 +15,7 @@ def ticketize(ctx: Ctx) -> list[Ticket]:
     멱등: signature로 기존 티켓을 찾아 재사용한다. 두 번 돌려도 티켓이 두 배가 되지 않는다.
     변경 감지: 전이 내용이 바뀌면 해당 Story를 todo로 되돌리고 're-spec' 라벨을 붙인다.
     """
-    fsm = ctx.store.load_fsm()
+    model = ctx.store.load_model()
     ucs = {u.id: u for u in ctx.store.load_usecases()}
     created, reopened, reused = [], [], []
 
@@ -41,7 +41,7 @@ def ticketize(ctx: Ctx) -> list[Ticket]:
         created.append(e.key)
 
     # --- Story: 전이 하나당 하나 ---
-    for tr in fsm.transitions:
+    for tr in model.atoms:
         sig = tr.signature()
         prev = next(
             (t for t in ctx.tracker.search(type=TicketType.STORY.value) if t.fsm_ref == tr.id),
@@ -89,18 +89,17 @@ def decompose(ctx: Ctx, story: Ticket) -> list[Ticket]:
     if existing:
         return existing
 
-    fsm = ctx.store.load_fsm()
-    tr = next((t for t in fsm.transitions if t.id == story.fsm_ref), None)
+    model = ctx.store.load_model()
+    tr = next((t for t in model.atoms if t.id == story.fsm_ref), None)
     if tr is None:
-        raise RuntimeError(f"{story.key}: FSM에 전이 {story.fsm_ref} 가 없습니다")
+        raise RuntimeError(f"{story.key}: 모델에 원자 {story.fsm_ref} 가 없습니다")
     uc = next((u for u in ctx.store.load_usecases() if u.id == tr.usecase), None)
 
     data = ask_yaml(
         ctx, f"decompose:{story.key}",
         prompt(
             "decompose",
-            tid=tr.id, src=tr.src, dst=tr.dst, event=tr.event,
-            guard=tr.guard or "(없음)", action=tr.action or "(없음)",
+            tid=tr.id, atom_md="\n".join(tr.context_md()),
             usecase=_epic_body(uc) if uc else "(연결된 유스케이스 없음)",
             test_code=_read_dod_tests(ctx, story),
         ),
@@ -126,19 +125,11 @@ def decompose(ctx: Ctx, story: Ticket) -> list[Ticket]:
 # --- 본문 생성 ---
 
 def _story_title(tr) -> str:
-    return f"[{tr.id}] {tr.src} --{tr.event}--> {tr.dst}"
+    return tr.describe()
 
 
 def _story_body(tr, uc: UseCase | None) -> str:
-    lines = [
-        f"FSM 전이 `{tr.id}` 구현",
-        "",
-        f"- 출발: `{tr.src}`",
-        f"- 이벤트: `{tr.event}`",
-        f"- 도착: `{tr.dst}`",
-        f"- 가드: `{tr.guard or '없음'}`",
-        f"- 동작: `{tr.action or '없음'}`",
-    ]
+    lines = [f"원자 `{tr.id}` 구현", ""] + tr.context_md()
     if uc:
         lines += ["", f"유스케이스: [{uc.id}] {uc.title}"]
         if uc.acceptance:

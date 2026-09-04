@@ -100,7 +100,7 @@ def spec_tests(ctx: Ctx, force: bool = False) -> Path:
     # 생성된 테스트가 **지금의** FSM과 1:1인지 확인한다. 이전 세대의 테스트가 저장소에
     # 남아 있으면 워커가 그걸 베끼고, 그 결과 존재하지 않는 전이의 테스트가 DoD 가 되어
     # 티켓 수십 개가 SPEC_CONFLICT 로 죽는다 (v4 에서 21건). 여기서 막는다.
-    expected = {t.test_name for t in ctx.store.load_fsm().transitions}
+    expected = {t.test_name for t in ctx.store.load_model().atoms}
     actual = set(_test_names(test_path))
     if expected != actual:
         missing, extra = sorted(expected - actual), sorted(actual - expected)
@@ -109,7 +109,7 @@ def spec_tests(ctx: Ctx, force: bool = False) -> Path:
             f"누락 {len(missing)}: {missing[:5]} / 잉여 {len(extra)}: {extra[:5]}")
 
     out = run_tests(ctx)
-    ctx.log(f"테스트 생성 완료: {out.collected}개 수집, FSM 전이 {len(expected)}개와 1:1 (현재 red — 정상)")
+    ctx.log(f"테스트 생성 완료: {out.collected}개 수집, 모델 원자 {len(expected)}개와 1:1 (현재 red — 정상)")
     return test_path
 
 
@@ -117,7 +117,8 @@ def _test_names(path: Path) -> list[str]:
     import ast
     tree = ast.parse(path.read_text(encoding="utf-8"))
     return [n.name for n in tree.body
-            if isinstance(n, ast.FunctionDef) and n.name.startswith("test_t_")]
+            if isinstance(n, ast.FunctionDef)
+            and (n.name.startswith("test_t_") or n.name.startswith("test_r_"))]
 
 
 # --------------------------------------------------------------------------
@@ -129,8 +130,8 @@ def implement(ctx: Ctx, ticket: Ticket, subtasks: list[Ticket]) -> tuple[bool, s
     before = snapshot_tests(ctx)
     saved = {rel: (ctx.cfg.repo / rel).read_bytes() for rel in before}
 
-    fsm = ctx.store.load_fsm()
-    tr = next((t for t in fsm.transitions if t.id == ticket.fsm_ref), None)
+    model = ctx.store.load_model()
+    tr = next((t for t in model.atoms if t.id == ticket.fsm_ref), None)
     body = ticket.description
     if subtasks:
         body += "\n\n**서브태스크**\n" + "\n".join(
@@ -143,10 +144,7 @@ def implement(ctx: Ctx, ticket: Ticket, subtasks: list[Ticket]) -> tuple[bool, s
             "implement",
             key=ticket.key, title=ticket.title, description=body,
             tid=tr.id if tr else ticket.fsm_ref,
-            src=tr.src if tr else "?", dst=tr.dst if tr else "?",
-            event=tr.event if tr else "?",
-            guard=(tr.guard or "(없음)") if tr else "?",
-            action=(tr.action or "(없음)") if tr else "?",
+            atom_md="\n".join(tr.context_md()) if tr else "?",
             dod_tests="\n".join(ticket.dod_tests) or "(지정 없음)",
             conventions=conv.read_text(encoding="utf-8") if conv.exists() else "(CONVENTIONS.md 없음)",
         ),

@@ -501,15 +501,19 @@ def _moves(action: str, name: str) -> bool:
     return bool(re.search(pat, action or ""))
 
 
-def check_conservation(fsm: FSM, ids: list[Conserved]) -> list[Finding]:
+def check_conservation(model, ids: list[Conserved]) -> list[Finding]:
     """선언된 등식을 **한 전이 안에서** 깨는 곳을 찾는다.
 
     등식이 두 전이에 걸쳐서만 맞으면, 그 사이 상태에서는 장부가 깨져 있다.
     거기서 정전이나 실패가 나면 차이가 그대로 사라진다 -- 자판기의 -700 이 그랬다.
     """
+    # FSM 이든 결정표든 원자의 내용(guard/action)만 본다. 좌표(src/dst)는
+    # 도달성 면제에만 쓰이므로, 좌표가 없는 형식에서는 면제 없이 전부 검사한다.
+    atoms = model.atoms
+    has_coords = bool(atoms) and hasattr(atoms[0], "src")
     out = []
     holding: dict[str, set] = {}
-    actions = " ; ".join(t.action or "" for t in fsm.transitions)
+    actions = " ; ".join(t.action or "" for t in atoms)
     for c in ids:
         # **선언이 틀린 것과 설계가 틀린 것을 구분한다.** 이름이 어느 전이에도
         # 없으면 그건 모든 전이가 등식을 깬 게 아니라 내가 이름을 잘못 적은 것이다.
@@ -524,8 +528,9 @@ def check_conservation(fsm: FSM, ids: list[Conserved]) -> list[Finding]:
                 f"모델이 그 양을 아예 안 만들었다", [], fixable_by_fsm=False))
             continue
 
-        for t in fsm.transitions:
+        for t in atoms:
             a = t.action or ""
+            where = getattr(t, "dst", "") or t.id
             right = [r for r in c.rhs if _moves(a, r)]
             if c.kind == "등식":
                 left = _moves(a, c.lhs)
@@ -534,14 +539,15 @@ def check_conservation(fsm: FSM, ids: list[Conserved]) -> list[Finding]:
                         "보존 등식", "",
                         f"{t.id}: '{c.lhs}' 이 움직이는데 대응하는 "
                         f"{' · '.join(c.rhs)} 변화가 이 전이에 없다 — "
-                        f"`{c.raw}` 이 '{t.dst}' 에서 깨진다", [t.id]))
+                        f"`{c.raw}` 이 '{where}' 에서 깨진다", [t.id]))
                 elif right and not left:
                     out.append(Finding(
                         "보존 등식", "",
                         f"{t.id}: {' · '.join(right)} 이 움직이는데 '{c.lhs}' 는 "
                         f"그대로다 — `{c.raw}` 이 '{t.dst}' 에서 깨진다", [t.id]))
             else:                                   # 감소대응
-                if t.src not in holding.setdefault(c.lhs, _states_holding(fsm, c.lhs)):
+                if has_coords and t.src not in holding.setdefault(
+                        c.lhs, _states_holding(model, c.lhs)):
                     continue                        # 잃을 것이 없는 자리
                 if _guard_pins_zero(t.guard or "", c.lhs):
                     continue                        # 설계자가 이미 막아 둔 갈래
@@ -554,7 +560,7 @@ def check_conservation(fsm: FSM, ids: list[Conserved]) -> list[Finding]:
                         "보존 등식", "",
                         f"{t.id}: '{c.lhs}' 이 줄어드는데 "
                         f"{' · '.join(c.rhs)} 어디로도 가지 않는다 — "
-                        f"그만큼이 '{t.dst}' 에서 사라진다", [t.id]))
+                        f"그만큼이 '{where}' 에서 사라진다", [t.id]))
     return out
 
 
