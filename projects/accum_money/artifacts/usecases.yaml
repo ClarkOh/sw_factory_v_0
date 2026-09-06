@@ -1,0 +1,1550 @@
+usecases:
+- id: UC-01
+  title: 수동 신규 포지션 주문을 실행한다
+  actor: 사용자
+  precondition: 사용자가 거래 권한으로 인증되어 있고, 시스템 상태가 거래 중단·긴급 정지가 아니며, 실행 모드(PAPER/TESTNET/LIVE)가
+    표시되어 있다
+  postcondition: 명령이 command_id와 함께 영구 저장되어 최종 상태(ACKNOWLEDGED 이후 체결 추적 중 또는 REJECTED/CANCELED)에
+    있고, 모든 단계가 감사 로그에 남아 있다
+  main_flow:
+  - step: 1. 사용자가 명령어 창에 신규 포지션 명령(symbol, LONG/SHORT, 주문 방식, 수량 또는 USDT 금액, 레버리지,
+      가격 또는 가격 계산 방식, 선택적 손절·익절 조건)을 입력한다
+    event: SUBMIT_ORDER_COMMAND
+  - step: 2. 시스템이 명령 원문·사용자·인터페이스·접수 시각을 감사 기록으로 남기고, 고유 command_id를 발급해 RECEIVED
+      상태로 영구 저장한 뒤 command_id를 표시한다
+  - step: 3. 시스템이 문법·필수 항목·중복 명령 여부를 확인하고, 검증 규칙(지원 심볼, LONG/SHORT, 지원 주문 유형, 가격·수량,
+      레버리지 범위, 잔고·증거금, 현재 포지션·주문 상태, tick/step size, 최소·최대 주문 조건, 최대 포지션·레버리지·일일 손실,
+      시장 데이터 최신성, 거래 중단 여부)을 통과시켜 VALIDATED로 전이하고 검증 결과를 기록한다
+  - step: 4. 시스템이 리스크 서비스와 예산 서비스의 규칙을 적용하고, 현재 bid/ask를 참고해 Binance 규칙(tick size,
+      step size, 최소 수량, 최소 명목금액)에 맞게 가격·수량을 decimal로 보정한 뒤 APPROVED로 전이한다
+  - step: 5. 시스템이 예상 주문 내용(보정된 가격·수량, 예상 명목금액, 레버리지, 손절·익절)을 사용자에게 제시한다
+  - step: 6. 사용자가 예상 주문 내용을 승인한다
+    event: CONFIRM_ORDER
+  - step: 7. 시스템이 고유 client_order_id를 부여하고 전송 전 상태를 영구 저장한 뒤, Trading Engine이 Adapter를
+      통해 내부 주문을 Binance Futures 주문 타입으로 변환·서명해 전송하고 SUBMITTED로 전이한다
+  - step: 8. Binance가 주문 접수 응답을 반환한다
+    event: ORDER_ACKNOWLEDGED
+  - step: 9. 시스템이 ACKNOWLEDGED로 전이하고 전송 후 상태와 Binance 요청·응답을 영구 저장하며, 주문 접수 알림을 큐에
+      넣고 결과를 CLI와 웹에 표시한다
+  alt_flows:
+  - step: 1a. 명령 문법이 틀리거나 필수 항목이 빠진 경우 시스템은 명령을 REJECTED로 기록하고 누락 항목을 포함한 실패 이유를 표시하며
+      Binance로 전송하지 않는다
+    event: SUBMIT_ORDER_COMMAND
+  - step: 1b. 동일한 명령이 중복 접수된 경우 시스템은 새 command_id를 만들지 않고 기존 command_id와 상태를 반환하며
+      Binance 주문을 생성하지 않는다
+    event: SUBMIT_ORDER_COMMAND
+  - step: 1c. 사용자에게 거래 권한이 없는 경우 시스템은 명령을 거부하고 권한 부족을 표시한다
+    event: SUBMIT_ORDER_COMMAND
+  - step: 3a. 검증 규칙 중 하나라도 실패한 경우 시스템은 명령을 REJECTED로 전이하고 실패한 규칙과 값을 사용자에게 표시하며 Binance로
+      전송하지 않는다
+  - step: 3b. 거래 중단 또는 긴급 정지 상태인 경우 시스템은 신규 주문 명령을 REJECTED로 전이하고 현재 시스템 상태를 이유로 표시한다
+  - step: 4a. Risk Service가 거부한 경우 시스템은 사용자 입력이나 전략 판단과 관계없이 명령을 REJECTED로 전이하고 거부
+      사유를 표시한다
+  - step: 4b. 예산 서비스가 예산 초과로 판정한 경우 시스템은 명령을 REJECTED로 전이하고 배정 예산과 요청 금액을 표시한다
+  - step: 6a. 사용자가 예상 주문을 거부한 경우 시스템은 명령을 CANCELED로 전이하고 Binance로 전송하지 않는다
+    event: REJECT_ORDER_PREVIEW
+  - step: 6b. 확인이 필요하지 않은 모드로 설정된 경우 시스템은 5~6단계를 생략하고 7단계로 진행한다
+  - step: 8a. Binance가 주문을 거절한 경우 시스템은 REJECTED로 전이하고 Binance 오류 코드를 내부 오류 모델로 변환해
+      사용자에게 표시한다
+    event: ORDER_REJECTED
+  - step: 8b. Binance 응답이 유실되거나 타임아웃된 경우 시스템은 같은 주문을 즉시 다시 생성하지 않고 UC-02 절차로 진입한다
+    event: ORDER_RESPONSE_TIMEOUT
+  - step: 9a. 명령에 손절·익절 조건이 포함된 경우 시스템은 진입 주문이 체결되기 전에는 보호 주문을 생성하지 않고 진입 주문과의 관계만
+      기록한다
+  acceptance:
+  - 접수된 모든 명령은 시스템 내에서 유일한 command_id를 가진다 (중복 0건)
+  - Binance로 전송된 모든 주문은 유일한 client_order_id를 가진다 (중복 0건)
+  - 명령 상태 전이는 RECEIVED→VALIDATED→APPROVED→SUBMITTED→ACKNOWLEDGED→(FILLED|PARTIALLY_FILLED|CANCELED|REJECTED|EXPIRED)
+    외의 전이가 0건이다
+  - 검증에 실패한 명령에 대한 Binance 주문 요청 기록은 0건이고, 실패 이유 메시지가 사용자 응답에 포함된다
+  - 동일 명령을 2회 이상 입력해도 Binance 주문 수는 1건이다
+  - 전송 전 상태(SUBMITTED 직전)와 전송 후 상태 레코드가 영구 저장소에 모두 존재한다
+  - 금액·수량 계산 코드에 부동소수점 타입 사용이 0건이다 (정적 검사)
+  - 보정된 가격은 tick size의 정수배, 수량은 step size의 정수배이며 최소 수량·최소 명목금액 이상이다
+  - Market, Limit, Stop Market, Stop Limit, Take Profit Market, Take Profit Limit,
+    Trailing Stop, Post-only Limit, Reduce-only 주문 유형이 명령 입력에서 수용된다
+  - quantity 또는 notional 중 하나만으로도 명령이 수용된다
+  - Trading Engine 외 모듈에서 Binance 주문 API 호출이 0건이다 (정적 검사)
+  - 명령어 창 코드는 Command API 외의 거래 엔진 내부 함수를 참조하지 않는다 (정적 검사)
+  - Risk Service 거부 명령의 Binance 전송 기록은 0건이다
+  requirements:
+  - REQ-001
+  - REQ-003
+  - REQ-005
+  - REQ-034
+  - REQ-035
+  - REQ-036
+  - REQ-040
+  - REQ-041
+  - REQ-044
+  - REQ-047
+  - REQ-048
+  - REQ-049
+  - REQ-050
+  - REQ-051
+  - REQ-053
+  - REQ-067
+  - REQ-068
+  - REQ-069
+  - REQ-070
+  - REQ-071
+  - REQ-072
+  - REQ-073
+  - REQ-074
+  - REQ-075
+  - REQ-076
+  - REQ-077
+  - REQ-078
+  - REQ-079
+  - REQ-080
+  - REQ-081
+  - REQ-082
+  - REQ-083
+  - REQ-084
+  - REQ-085
+  - REQ-096
+  - REQ-124
+  - REQ-125
+  - REQ-126
+  - REQ-127
+  - REQ-128
+  - REQ-129
+  - REQ-130
+  - REQ-131
+  - REQ-132
+  - REQ-133
+  - REQ-134
+  - REQ-135
+  - REQ-136
+  - REQ-137
+  - REQ-138
+  - REQ-142
+  - REQ-143
+  - REQ-144
+  - REQ-145
+  - REQ-146
+  - REQ-147
+  - REQ-148
+  - REQ-149
+  - REQ-150
+  - REQ-151
+  - REQ-152
+  - REQ-153
+  - REQ-154
+  - REQ-155
+  - REQ-296
+  - REQ-298
+  - REQ-299
+  - REQ-300
+  - REQ-302
+  - REQ-304
+  - REQ-305
+  - REQ-306
+  - REQ-327
+  - REQ-329
+  - REQ-336
+  - REQ-350
+  - REQ-370
+  - REQ-371
+  - REQ-372
+  - REQ-378
+  - REQ-386
+  - REQ-390
+- id: UC-02
+  title: 응답이 불명확한 주문을 Binance 조회로 확정한다
+  actor: Binance
+  precondition: 주문이 SUBMITTED 상태로 영구 저장되어 있고 client_order_id가 부여되어 있다
+  postcondition: 주문의 내부 상태가 Binance의 실제 상태와 일치하고, 차이가 있었다면 reconciliation 기록이 남아 있으며
+    중복 주문이 없다
+  main_flow:
+  - step: 1. Binance가 주문 요청에 대한 응답을 정해진 시간 내에 반환하지 않는다
+    event: ORDER_RESPONSE_TIMEOUT
+  - step: 2. 시스템이 주문을 실패로 단정하지 않고 결과 불명확으로 기록하며 새 주문을 생성하지 않는다
+  - step: 3. 시스템이 client_order_id로 Binance에 주문 상태 조회를 요청한다
+  - step: 4. Binance가 해당 주문의 실제 상태를 반환한다
+    event: ORDER_STATUS_RETURNED
+  - step: 5. 시스템이 내부 상태와 Binance 상태를 대조해 차이를 reconciliation 기록으로 남기고 내부 상태를 Binance
+      상태로 갱신한다
+  - step: 6. 시스템이 복구 과정을 감사 로그에 기록하고 결과를 CLI와 웹에 표시한다
+  alt_flows:
+  - step: 4a. Binance에 해당 client_order_id 주문이 존재하지 않는 경우 시스템은 원 명령을 같은 client_order_id로
+      재전송하며 새로운 client_order_id를 만들지 않는다
+    event: ORDER_STATUS_RETURNED
+  - step: 4b. 상태 조회 자체가 실패한 경우 시스템은 exponential backoff와 jitter를 적용해 제한된 횟수만큼 재조회한다
+    event: ORDER_STATUS_QUERY_FAILED
+  - step: 4c. 재조회가 최대 횟수를 초과해 실패한 경우 시스템은 주문을 실패 격리 상태로 옮기고 운영자에게 알리며 신규 자동 거래를 중단한다
+    event: ORDER_STATUS_QUERY_FAILED
+  - step: 2a. 결과 불명확 상태가 설정된 시간을 초과해 지속되는 경우 시스템은 신규 자동 거래를 중단하고 TRADING_PAUSED로 전환한다
+    event: UNCERTAIN_ORDER_TIMEOUT
+  acceptance:
+  - 응답 유실 시나리오에서 Binance에 생성된 주문 수는 최대 1건이다
+  - 타임아웃 직후 재전송 요청이 0건이고, 재전송 전에 client_order_id 조회 요청이 1건 이상 기록된다
+  - 타임아웃된 주문의 상태가 조회 결과 없이 REJECTED 또는 FAILED로 전이된 경우가 0건이다
+  - 내부 상태와 Binance 상태가 다른 경우 reconciliation 레코드가 1건 이상 생성된다
+  - 재조회 간격은 직전 간격 이상이며 동일 간격이 연속 반복되지 않는다 (jitter)
+  - 재조회 횟수는 설정된 최대 횟수를 초과하지 않는다
+  - 설정된 불명확 지속 시간 초과 시 시스템 상태가 TRADING_PAUSED이고 신규 자동 주문이 0건이다
+  requirements:
+  - REQ-017
+  - REQ-019
+  - REQ-020
+  - REQ-021
+  - REQ-026
+  - REQ-027
+  - REQ-037
+  - REQ-038
+  - REQ-039
+  - REQ-042
+  - REQ-053
+  - REQ-056
+  - REQ-303
+  - REQ-387
+  - REQ-393
+- id: UC-03
+  title: 주문 체결·상태 변경 이벤트를 반영한다
+  actor: Binance
+  precondition: ACKNOWLEDGED 상태의 주문이 있고 User Data Stream이 연결되어 있다
+  postcondition: 주문·체결·포지션 상태가 영구 저장소와 감사 로그에 반영되어 있고, 필요한 알림이 큐에 들어가 있다
+  main_flow:
+  - step: 1. Binance가 User Data Stream으로 주문 체결 이벤트를 전송한다
+    event: ORDER_FILLED
+  - step: 2. 시스템이 주문 상태를 FILLED로 전이하고 체결 내역과 포지션 변화를 영구 저장소와 감사 로그에 기록한다
+  - step: 3. 시스템이 진입 주문에 연결된 손절·익절 조건이 있으면 체결 수량에 맞춰 보호 주문을 생성하고 관계를 기록한다
+  - step: 4. 시스템이 체결 및 포지션 진입 알림을 큐에 넣고 결과를 CLI와 웹에 실시간 표시한다
+  alt_flows:
+  - step: 1a. 부분 체결 이벤트인 경우 시스템은 주문을 PARTIALLY_FILLED 상태로 두고 체결 수량과 잔량을 기록하며 계속 추적한다
+    event: ORDER_PARTIALLY_FILLED
+  - step: 1b. 취소 이벤트인 경우 시스템은 CANCELED로 전이하고 연결된 손절·익절 조건은 생성하지 않는다
+    event: ORDER_CANCELED
+  - step: 1c. 만료 이벤트인 경우 시스템은 EXPIRED로 전이하고 연결된 손절·익절 조건은 생성하지 않는다
+    event: ORDER_EXPIRED
+  - step: 1d. 거절 이벤트인 경우 시스템은 REJECTED로 전이하고 거절·실패 알림을 큐에 넣는다
+    event: ORDER_REJECTED
+  - step: 1e. 동일 이벤트를 반복 수신한 경우 시스템은 체결 내역·포지션·알림을 중복 생성하지 않는다
+    event: ORDER_FILLED
+  - step: 1f. 스트림 연결이 끊긴 경우 시스템은 UC-13으로 재연결하고 REST 조회로 누락 이벤트를 대조한다
+    event: WS_DISCONNECTED
+  - step: '2a. 이벤트가 내부 상태와 모순되는 경우(예: 내부 CANCELED인데 FILLED 수신) 시스템은 reconciliation
+      절차를 수행하고 Binance 상태를 기준으로 갱신한다'
+  - step: 2b. 영구 저장소 기록이 실패한 경우 시스템은 신규 자동 거래를 중단하고 이벤트를 재처리 큐에 남긴다
+  acceptance:
+  - 부분 체결 이벤트 후 주문 상태는 PARTIALLY_FILLED이며 FILLED가 아니다
+  - 동일 이벤트를 2회 수신해도 체결 레코드 수와 알림 수는 1이다
+  - 진입 주문이 REJECTED/CANCELED/EXPIRED인 경우 그에 연결된 보호 주문 생성 건수는 0이다
+  - 체결 이벤트마다 체결 내역·포지션 변화·주문 상태 변경 감사 레코드가 각각 1건 이상 존재한다
+  - 부분 체결 시나리오 자동화 테스트가 존재하고 통과한다
+  requirements:
+  - REQ-006
+  - REQ-041
+  - REQ-042
+  - REQ-043
+  - REQ-045
+  - REQ-060
+  - REQ-106
+  - REQ-107
+  - REQ-108
+  - REQ-152
+  - REQ-207
+  - REQ-231
+  - REQ-232
+  - REQ-233
+  - REQ-258
+  - REQ-274
+  - REQ-309
+  - REQ-348
+  - REQ-349
+  - REQ-395
+- id: UC-04
+  title: 손절·익절을 설정하고 변경한다
+  actor: 사용자
+  precondition: 사용자가 거래 권한으로 인증되어 있고 대상 포지션이 존재한다
+  postcondition: reduce-only 또는 close-position 보호 주문이 Binance에 존재하고 포지션·진입 주문과 연결되어
+    기록되어 있으며 추적 중이다
+  main_flow:
+  - step: 1. 사용자가 대상 포지션과 손절·익절 조건(절대 가격, 진입가 대비 비율, 또는 예상 손익률)과 대상 수량(일부 또는 전체)을
+      입력한다
+    event: SET_PROTECTIVE_ORDER
+  - step: 2. 시스템이 command_id를 발급하고 Binance에서 대상 포지션의 존재·방향·수량을 확인한다
+  - step: 3. 시스템이 손절·익절 가격 방향이 포지션 방향에 유효한지 검증하고, 가격을 tick size에 맞게 보정하며 수량이 포지션 수량
+      이하인지 확인한다
+  - step: 4. 시스템이 예상 보호 주문 내용을 사용자에게 제시한다
+  - step: 5. 사용자가 승인한다
+    event: CONFIRM_ORDER
+  - step: 6. 시스템이 reduce-only 또는 close-position 성격의 보호 주문을 고유 client_order_id로 Binance에
+      전송한다
+  - step: 7. Binance가 보호 주문 접수를 응답한다
+    event: ORDER_ACKNOWLEDGED
+  - step: 8. 시스템이 보호 주문 ID를 포지션·진입 주문과 연결해 기록하고 상태 추적을 시작하며, 손절·익절 생성을 감사 로그에 남기고
+      결과를 표시한다
+  alt_flows:
+  - step: 2a. Binance에 대상 포지션이 없는 경우 시스템은 명령을 거부하고 이유를 표시하며 주문을 생성하지 않는다
+  - step: '3a. 가격 방향이 무효한 경우(예: LONG 손절가가 현재가 이상) 시스템은 명령을 거부하고 유효 범위를 표시한다'
+  - step: 3b. 요청 수량이 포지션 수량보다 큰 경우 시스템은 reduce-only 주문을 생성하지 않고 차단 이유를 표시한다
+  - step: 1a. 사용자가 기존 손절·익절을 변경하는 경우 시스템은 기존 보호 주문 취소를 Binance에서 확인한 뒤 새 보호 주문을 생성하고
+      관계 기록을 갱신한다
+    event: MODIFY_PROTECTIVE_ORDER
+  - step: 1b. 사용자가 손절·익절을 취소하는 경우 시스템은 보호 주문을 취소하고 Binance에서 취소를 확인한 뒤 감사 기록을 남긴다
+    event: CANCEL_PROTECTIVE_ORDER
+  - step: 7a. Binance가 보호 주문을 거절한 경우 시스템은 REJECTED로 기록하고 이유를 표시한다
+    event: ORDER_REJECTED
+  - step: 8a. 포지션 수량이 변경된 경우 시스템은 설정된 정책에 따라 보호 주문 수량을 조정한다
+    event: POSITION_CHANGED
+  - step: 8b. 포지션이 종료된 경우 시스템은 남아 있는 보호 주문을 취소한다
+    event: POSITION_CLOSED
+  - step: 8c. 보호 주문이 체결된 경우 시스템은 손절 또는 익절 실행 알림을 큐에 넣는다
+    event: ORDER_FILLED
+  acceptance:
+  - 모든 보호 주문 레코드는 포지션 ID와 진입 주문 ID를 참조한다 (null 0건)
+  - 생성된 보호 주문의 reduce-only 또는 close-position 플래그가 true다
+  - 포지션 수량을 초과하는 보호 주문의 Binance 전송 기록은 0건이다
+  - 포지션 종료 후 해당 포지션의 미체결 보호 주문 수는 0이다
+  - 절대 가격·비율·손익률 세 입력 방식 모두 동일한 tick size 보정 가격으로 변환된다
+  - 손절·익절 생성·변경·취소마다 감사 레코드가 1건 이상 존재한다
+  requirements:
+  - REQ-008
+  - REQ-044
+  - REQ-046
+  - REQ-089
+  - REQ-109
+  - REQ-132
+  - REQ-133
+  - REQ-134
+  - REQ-135
+  - REQ-136
+  - REQ-156
+  - REQ-157
+  - REQ-158
+  - REQ-159
+  - REQ-160
+  - REQ-161
+  - REQ-162
+  - REQ-163
+  - REQ-164
+  - REQ-165
+  - REQ-166
+  - REQ-167
+  - REQ-168
+  - REQ-186
+  - REQ-234
+  - REQ-256
+  - REQ-261
+  - REQ-268
+- id: UC-05
+  title: 주문을 취소한다
+  actor: 사용자
+  precondition: 사용자가 거래 권한으로 인증되어 있고 미체결 주문이 1건 이상 있다
+  postcondition: 취소 요청이 거래 트랜잭션으로 기록되어 있고 Binance에서 최종 취소가 확인되어 주문 상태가 CANCELED다
+  main_flow:
+  - step: 1. 사용자가 특정 주문 ID를 지정해 취소를 요청한다
+    event: CANCEL_ORDER
+  - step: 2. 시스템이 command_id를 발급해 취소 요청을 거래 트랜잭션으로 영구 저장하고 Binance에 취소를 전송한다
+  - step: 3. Binance가 취소 확인을 반환한다
+    event: ORDER_CANCELED
+  - step: 4. 시스템이 주문을 CANCELED로 전이하고 감사 로그에 기록하며 결과를 표시한다
+  alt_flows:
+  - step: 1a. 사용자가 심볼의 모든 미체결 주문 취소를 요청한 경우 시스템은 각 주문에 대해 2~4단계를 수행하고 주문별 결과를 표시한다
+    event: CANCEL_ALL_ORDERS
+  - step: 1b. 존재하지 않는 주문 ID인 경우 시스템은 요청을 거부하고 이유를 표시한다
+    event: CANCEL_ORDER
+  - step: 3a. 주문이 이미 체결되어 취소가 실패한 경우 시스템은 취소 요청을 실패로 기록하고 현재 주문 상태를 표시한다
+    event: ORDER_STATUS_RETURNED
+  - step: 3b. 취소 응답이 유실된 경우 시스템은 client_order_id로 상태를 조회해 최종 취소 여부를 확인한 뒤 상태를 확정한다
+    event: ORDER_RESPONSE_TIMEOUT
+  - step: 2a. 거래 중단 상태인 경우 시스템은 설정된 허용 범위 내의 주문만 취소를 허용하고 범위 밖 주문은 거부한다
+  acceptance:
+  - 모든 취소 요청은 command_id를 가진 트랜잭션 레코드로 존재한다
+  - Binance 취소 확인 없이 CANCELED로 전이된 주문이 0건이다
+  - 일괄 취소 후 해당 심볼의 미체결 주문 수가 0이다
+  - 거래 중단 상태에서 허용 범위 밖 주문 취소 요청은 거부 응답을 받는다
+  requirements:
+  - REQ-064
+  - REQ-086
+  - REQ-140
+  - REQ-141
+  - REQ-171
+  - REQ-172
+  - REQ-174
+  - REQ-175
+  - REQ-267
+  - REQ-302
+- id: UC-06
+  title: 포지션을 전체 또는 일부 청산한다
+  actor: 사용자
+  precondition: 사용자가 거래 권한(전량 시장가 청산은 긴급 청산 권한)으로 인증되어 있고 포지션이 존재한다
+  postcondition: reduce-only 청산 주문이 접수되어 추적 중이고 포지션 수량이 요청만큼 감소했으며 종료 시 남은 보호 주문이
+    취소되어 있다
+  main_flow:
+  - step: 1. 사용자가 청산 대상 포지션, 수량(일부 또는 전체), 주문 방식(시장가/지정가)을 입력한다
+    event: CLOSE_POSITION
+  - step: 2. 시스템이 command_id를 발급하고 Binance에서 현재 포지션 수량을 확인해 요청 수량이 포지션 수량 이하인지 검증한다
+  - step: 3. 시스템이 예상 청산 주문 내용을 제시한다
+  - step: 4. 사용자가 승인한다
+    event: CONFIRM_ORDER
+  - step: 5. 시스템이 reduce-only 주문을 Binance에 전송한다
+  - step: 6. Binance가 접수를 응답한다
+    event: ORDER_ACKNOWLEDGED
+  - step: 7. 시스템이 체결 추적을 시작하고 포지션 종료 시 남은 보호 주문을 취소하며 포지션 종료 알림을 큐에 넣는다
+  alt_flows:
+  - step: 2a. 요청 수량이 포지션 수량보다 큰 경우 시스템은 주문을 생성하지 않고 차단 이유와 현재 수량을 표시한다
+  - step: 2b. 포지션이 존재하지 않는 경우 시스템은 요청을 거부한다
+  - step: 3a. 전량 시장가 청산인 경우 시스템은 별도의 강한 확인 절차를 요구하고 확인이 없으면 전송하지 않는다
+    event: CONFIRM_EMERGENCY_LIQUIDATION
+  - step: 1a. 사용자에게 긴급 청산 권한이 없는 상태에서 전량 시장가 청산을 요청한 경우 시스템은 거부한다
+    event: CLOSE_POSITION
+  - step: 6a. Binance가 거절한 경우 시스템은 REJECTED로 기록하고 이유를 표시한다
+    event: ORDER_REJECTED
+  acceptance:
+  - 포지션 수량 초과 reduce-only 주문의 Binance 전송 기록이 0건이다
+  - 전량 시장가 청산은 강한 확인 이벤트 없이 전송된 경우가 0건이다
+  - 포지션 종료 후 해당 포지션의 미체결 보호 주문 수가 0이다
+  - 청산 주문 레코드의 reduce-only 플래그가 true다
+  requirements:
+  - REQ-007
+  - REQ-046
+  - REQ-065
+  - REQ-138
+  - REQ-139
+  - REQ-168
+  - REQ-229
+  - REQ-366
+- id: UC-07
+  title: 계정·포지션·주문·시스템 상태를 조회한다
+  actor: 사용자
+  precondition: 사용자가 조회 권한으로 인증되어 있고 명령어 창이 가동 중이다
+  postcondition: 요청한 정보가 기준 시각과 함께 표시되어 있다
+  main_flow:
+  - step: 1. 사용자가 잔고 조회를 요청한다
+    event: QUERY_BALANCE
+  - step: 2. 시스템이 USDT 지갑 잔고, 사용 가능 잔고, 사용 중 증거금, 계산된 총자산과 투자자산을 기준 시각과 함께 표시한다
+  - step: 3. 사용자가 포지션 조회를 요청한다
+    event: QUERY_POSITION
+  - step: 4. 시스템이 포지션 방향·수량, 진입 평균가, 시장가·청산가, 미실현·실현 손익, 레버리지, 손절·익절 설정 상태를 표시한다
+  - step: 5. 사용자가 미체결 주문 목록 또는 특정 주문을 조회한다
+    event: QUERY_ORDERS
+  - step: 6. 시스템이 주문 목록 또는 해당 주문의 상세와 상태를 표시한다
+  - step: 7. 사용자가 command_id로 명령 처리 상태를 조회한다
+    event: QUERY_COMMAND_STATUS
+  - step: 8. 시스템이 명령의 현재 상태와 상태 이력을 표시한다
+  - step: 9. 사용자가 시스템 상태를 조회한다
+    event: QUERY_SYSTEM_STATUS
+  - step: 10. 시스템이 HEALTHY/DEGRADED/TRADING_PAUSED/RECOVERING/FAILED 중 하나의 상태, 실행
+      모드, Binance·WebSocket 연결 상태를 표시한다
+  - step: 11. 사용자가 최근 오류 및 명령 결과를 조회한다
+    event: QUERY_RECENT_ERRORS
+  - step: 12. 시스템이 최근 오류 목록과 명령 결과를 표시한다
+  alt_flows:
+  - step: 2a. Binance 조회가 실패한 경우 시스템은 마지막으로 알려진 값과 그 기준 시각, DEGRADED 표시를 함께 반환하며 명령어
+      창은 계속 동작한다
+    event: QUERY_BALANCE
+  - step: 4a. 거래 중단 또는 안전 모드 상태인 경우에도 시스템은 포지션·주문·상태 조회를 정상 처리한다
+    event: QUERY_POSITION
+  - step: 8a. 존재하지 않는 command_id인 경우 시스템은 오류를 표시한다
+    event: QUERY_COMMAND_STATUS
+  - step: 1a. 사용자에게 조회 권한이 없는 경우 시스템은 요청을 거부한다
+    event: QUERY_BALANCE
+  acceptance:
+  - 시스템 상태 응답값은 HEALTHY, DEGRADED, TRADING_PAUSED, RECOVERING, FAILED 중 하나다
+  - 모든 조회 응답에 실행 모드(PAPER/TESTNET/LIVE) 필드가 포함된다
+  - TRADING_PAUSED 상태에서 잔고·포지션·주문·시스템 상태·오류 조회가 모두 성공 응답을 반환한다
+  - Binance 연결 실패 중에도 명령어 창 조회 명령이 오류 없이 응답한다
+  - 포지션 응답에 방향, 수량, 진입 평균가, 시장가, 청산가, 미실현 손익, 실현 손익, 레버리지, 손절·익절 상태 필드가 모두 존재한다
+  - 잔고 응답에 지갑 잔고, 사용 가능 잔고, 사용 중 증거금, 총자산, 투자자산 필드가 모두 존재한다
+  requirements:
+  - REQ-003
+  - REQ-028
+  - REQ-029
+  - REQ-031
+  - REQ-033
+  - REQ-061
+  - REQ-063
+  - REQ-066
+  - REQ-087
+  - REQ-088
+  - REQ-094
+  - REQ-095
+  - REQ-119
+  - REQ-169
+  - REQ-170
+  - REQ-173
+  - REQ-176
+  - REQ-177
+  - REQ-178
+  - REQ-179
+  - REQ-180
+  - REQ-181
+  - REQ-182
+  - REQ-183
+  - REQ-184
+  - REQ-185
+  - REQ-186
+  - REQ-187
+  - REQ-292
+  - REQ-293
+- id: UC-08
+  title: 자동 거래를 시작·중지한다
+  actor: 사용자
+  precondition: 사용자가 거래 권한으로 인증되어 있고 시스템 상태가 FAILED가 아니다
+  postcondition: 자동 거래 활성 상태가 요청대로 변경되어 표시되고 기존 손절·익절 주문은 유지되어 있다
+  main_flow:
+  - step: 1. 사용자가 자동 거래 시작을 요청한다
+    event: START_AUTO_TRADING
+  - step: 2. 시스템이 안전 조건(계정·포지션 확정, 시장 데이터 최신, 시간 동기, 리스크·예산 계산 가능, DB 기록 가능)을 확인하고
+      자동 거래를 활성화해 상태를 표시하며 감사 기록을 남긴다
+  - step: 3. 사용자가 자동 거래 중지를 요청한다
+    event: STOP_AUTO_TRADING
+  - step: 4. 시스템이 자동 거래를 비활성화하고 기존 손절·익절 주문은 유지한 채 자동 거래 중단 알림을 큐에 넣고 상태를 표시한다
+  alt_flows:
+  - step: 2a. 안전 조건이 하나라도 충족되지 않은 경우 시스템은 시작을 거부하고 미충족 조건을 표시한다
+  - step: 1a. 사용자가 자동 거래 일시 중지를 요청한 경우 시스템은 신규 명령 생성을 멈추고 재개 전까지 상태를 유지한다
+    event: PAUSE_AUTO_TRADING
+  - step: 1b. 사용자가 신규 진입만 중지를 요청한 경우 시스템은 신규 진입 명령 생성을 멈추되 기존 포지션의 보호 주문 관리는 계속한다
+    event: PAUSE_NEW_ENTRIES
+  - step: 1c. 사용자가 신규 진입 재개를 요청한 경우 시스템은 안전 조건을 확인한 뒤 신규 진입을 재개한다
+    event: RESUME_NEW_ENTRIES
+  - step: 1d. 사용자가 특정 전략을 활성화 또는 비활성화한 경우 시스템은 해당 전략만 상태를 바꾸고 다른 전략에는 영향을 주지 않는다
+    event: ENABLE_STRATEGY
+  - step: 1e. 사용자가 특정 전략을 비활성화한 경우 시스템은 해당 전략의 Trade Proposal 생성을 멈춘다
+    event: DISABLE_STRATEGY
+  - step: 1f. 사용자에게 거래 권한이 없는 경우 시스템은 요청을 거부한다
+    event: START_AUTO_TRADING
+  acceptance:
+  - 자동 거래 중지 전후 미체결 손절·익절 주문 수가 동일하다
+  - 신규 진입 중지 상태에서 신규 진입 주문 생성 건수가 0이고 보호 주문 조정 건수는 0 이상이다
+  - 안전 조건 미충족 시 시작 요청은 거부 응답을 반환하고 자동 거래 활성 상태는 false다
+  - 비활성화된 전략의 Trade Proposal 생성 건수가 0이다
+  - 시작·중지·일시 중지마다 감사 레코드가 1건 이상 존재한다
+  requirements:
+  - REQ-002
+  - REQ-090
+  - REQ-091
+  - REQ-221
+  - REQ-222
+  - REQ-223
+  - REQ-224
+  - REQ-225
+  - REQ-227
+  - REQ-236
+  - REQ-249
+  - REQ-269
+  - REQ-289
+- id: UC-09
+  title: 자동 거래 파이프라인을 실행한다
+  actor: 타이머
+  precondition: 자동 거래가 활성화되어 있고 1개 이상의 전략 플러그인이 활성 상태다
+  postcondition: 전략 판단이 감사 기록으로 남아 있고, 승인된 Trade Proposal은 수동 거래와 동일한 명령 흐름으로 처리되어
+    상태가 추적되고 있다
+  main_flow:
+  - step: 1. 타이머가 설정된 자동화 주기에 도달했음을 알린다
+    event: AUTOMATION_TICK
+  - step: 2. 시스템이 정규화·검증된 시장 데이터를 읽고 최신성과 정합성을 확인한다 (Data Collection/Validation)
+  - step: 3. 시스템이 교체 가능한 지표 모듈로 지표를 계산한다 (Indicator Calculation)
+  - step: 4. 시스템이 활성 전략 플러그인을 실행해 전략 ID·버전, 입력 기준 시각, 사용 지표, 신호, 판단 근거, 제안 방향, 제안
+      수량 또는 예산, 손절·익절 제안, 신뢰도, 만료 시각을 담은 Trade Proposal을 생성하고 감사 기록에 남긴다 (Signal Calculation)
+  - step: 5. 시스템이 리스크를 계산하고 총자산·투자 가능 자산·전략별 예산을 사용 증거금, 예약 주문 금액, 실현·미실현 손익을 반영해
+      배정하며 결과를 감사 기록에 남긴다 (Risk Calculation/Budget Allocation)
+  - step: 6. 시스템이 Trade Proposal을 거래 명령으로 변환해 command_id를 발급하고 수동 거래와 동일한 검증·Risk
+      Service 최종 검사·멱등성 규칙을 적용한다 (Trade Planning)
+  - step: 7. 시스템이 Trading Engine을 통해 주문을 Binance에 전송한다 (Trade Execution)
+  - step: 8. Binance가 주문 접수를 응답한다
+    event: ORDER_ACKNOWLEDGED
+  - step: 9. 시스템이 주문·포지션을 모니터링하고 알림을 큐에 넣으며 감사·보고 기록과 대시보드를 갱신한다 (Monitoring/Notification/Audit
+      and Reporting)
+  alt_flows:
+  - step: 2a. 시장 데이터가 stale 기준을 초과했거나 order book이 불완전한 경우 시스템은 해당 데이터를 판단에 사용하지 않고
+      신규 자동 거래를 중단해 TRADING_PAUSED로 전환하며 자동 거래 중단 알림을 큐에 넣는다
+  - step: 2b. 계정 상태 확인 불가, 포지션 확정 불가, 시스템·거래소 시간차 허용 범위 초과, 리스크·예산 한도 계산 불가, DB 기록
+      불가 중 하나라도 해당하면 시스템은 신규 자동 거래를 중단한다
+  - step: 4a. 전략이 신호를 생성하지 않은 경우 시스템은 판단 근거만 기록하고 주문을 만들지 않는다
+  - step: 4b. Trade Proposal의 만료 시각이 지난 경우 시스템은 이를 폐기하고 기록한다
+  - step: 4c. 전략 플러그인이 예외를 던진 경우 시스템은 해당 전략만 격리하고 다른 전략과 모듈은 계속 실행하며 프로세스를 종료하지 않는다
+  - step: 5a. Risk Service가 거부한 경우 시스템은 전략이 허용했더라도 주문을 실행하지 않고 거부 사유를 기록하며 리스크 한도
+      초과 알림을 큐에 넣는다
+  - step: 5b. 예산 초과인 경우 시스템은 주문을 차단하고 기록한다
+  - step: 6a. 특정 파이프라인 단계가 비활성화된 경우 시스템은 해당 단계를 건너뛰고 건너뛴 사실을 기록한다
+  - step: 6b. 신규 진입 중지 상태인 경우 시스템은 신규 진입 명령을 생성하지 않고 기존 포지션 관리(보호 주문 조정)만 수행한다
+  - step: 8a. Binance가 거절한 경우 시스템은 REJECTED로 기록하고 거절 알림을 큐에 넣는다
+    event: ORDER_REJECTED
+  - step: 8b. 응답이 유실된 경우 시스템은 UC-02 절차를 수행한다
+    event: ORDER_RESPONSE_TIMEOUT
+  acceptance:
+  - 모든 전략 출력 레코드에 전략 ID, 버전, 입력 기준 시각, 지표, 신호, 판단 근거, 제안 방향, 제안 수량 또는 예산, 손절·익절 제안,
+    신뢰도, 만료 시각 필드가 존재한다
+  - 전략 모듈 코드에서 Binance 주문 API 또는 Trading Engine 직접 호출이 0건이다 (정적 검사)
+  - Risk Service가 거부한 Trade Proposal의 Binance 전송 기록이 0건이다
+  - 자동 생성 명령의 검증·리스크·감사 레코드 구조가 수동 명령과 동일하다
+  - stale 데이터 조건에서 신규 자동 주문 건수가 0이고 시스템 상태가 TRADING_PAUSED다
+  - 전략 플러그인 예외 발생 후 프로세스가 살아 있고 다른 전략의 실행 기록이 계속 생성된다
+  - 파이프라인 10단계 각각의 입력·출력 데이터 모델이 명시적으로 정의되어 있다 (타입 정의 존재)
+  - 각 단계는 설정으로 개별 비활성화가 가능하고 비활성화 시 건너뜀 기록이 남는다
+  - 지표·전략·리스크·예산·자동화 주기 값이 코드 상수가 아닌 설정 또는 인터페이스로 주입된다 (정적 검사)
+  requirements:
+  - REQ-002
+  - REQ-005
+  - REQ-010
+  - REQ-011
+  - REQ-012
+  - REQ-013
+  - REQ-054
+  - REQ-055
+  - REQ-057
+  - REQ-058
+  - REQ-059
+  - REQ-060
+  - REQ-067
+  - REQ-081
+  - REQ-110
+  - REQ-214
+  - REQ-215
+  - REQ-216
+  - REQ-217
+  - REQ-218
+  - REQ-219
+  - REQ-220
+  - REQ-224
+  - REQ-235
+  - REQ-265
+  - REQ-273
+  - REQ-304
+  - REQ-313
+  - REQ-314
+  - REQ-315
+  - REQ-316
+  - REQ-317
+  - REQ-318
+  - REQ-319
+  - REQ-320
+  - REQ-321
+  - REQ-322
+  - REQ-323
+  - REQ-324
+  - REQ-325
+  - REQ-326
+  - REQ-327
+  - REQ-328
+  - REQ-329
+  - REQ-330
+  - REQ-331
+  - REQ-332
+  - REQ-333
+  - REQ-334
+  - REQ-335
+  - REQ-336
+  - REQ-337
+  - REQ-351
+  - REQ-389
+  - REQ-390
+- id: UC-10
+  title: 긴급 정지를 실행한다
+  actor: 사용자
+  precondition: 사용자가 거래 권한(포지션 청산 설정 시 긴급 청산 권한)으로 인증되어 있다
+  postcondition: 신규 주문이 차단되어 있고 설정된 긴급 정지 동작(진입 주문 취소, 전체 미체결 취소, 포지션 유지 또는 청산)이 수행·기록되어
+    있다
+  main_flow:
+  - step: 1. 사용자가 긴급 정지를 요청한다
+    event: EMERGENCY_STOP
+  - step: 2. 시스템이 권한을 확인하고 즉시 신규 주문 생성을 차단하며 시스템 상태를 TRADING_PAUSED로 전환하고 감사 기록을 남긴다
+  - step: 3. 시스템이 설정된 긴급 정지 동작(신규 주문만 차단 / 미체결 진입 주문 취소 / 모든 미체결 주문 취소 / 기존 포지션 유지
+      / 기존 포지션 시장가 청산)을 읽는다
+  - step: 4. 시스템이 설정에 따라 취소 대상 주문을 Binance에 취소 요청한다
+  - step: 5. Binance가 취소를 확인한다
+    event: ORDER_CANCELED
+  - step: 6. 시스템이 자동 거래 중단 알림을 큐에 넣고 처리 결과를 CLI와 웹에 표시한다
+  alt_flows:
+  - step: 3a. 설정이 기존 포지션 시장가 청산인 경우 시스템은 별도의 강한 확인을 요구하고 확인이 있을 때만 청산 주문을 전송한다
+    event: CONFIRM_EMERGENCY_LIQUIDATION
+  - step: 3b. 강한 확인이 없거나 긴급 청산 권한이 없는 경우 시스템은 신규 주문 차단과 주문 취소까지만 수행하고 포지션은 유지한다
+  - step: 4a. Binance 장애 중인 경우 시스템은 취소 요청을 재시도 정책으로 재시도하며 긴급 정지 상태 자체는 즉시 적용한다
+    event: API_ERROR_RETURNED
+  - step: 5a. 취소 응답이 유실된 경우 시스템은 상태 조회로 최종 취소 여부를 확인한다
+    event: ORDER_RESPONSE_TIMEOUT
+  - step: 1a. 사용자에게 권한이 없는 경우 시스템은 요청을 거부한다
+    event: EMERGENCY_STOP
+  acceptance:
+  - 긴급 정지 후 신규 주문 명령은 모두 REJECTED이고 Binance 전송 기록이 0건이다
+  - 강한 확인 이벤트 없이 시장가 청산 주문이 전송된 경우가 0건이다
+  - 긴급 정지 동작 설정값은 정의된 5개 옵션 조합 중 하나다
+  - Binance 연결 실패 중에도 긴급 정지 명령이 접수되어 상태가 TRADING_PAUSED로 바뀐다
+  - 긴급 정지 시 감사 레코드와 자동 거래 중단 알림 레코드가 각각 1건 이상 존재한다
+  requirements:
+  - REQ-030
+  - REQ-031
+  - REQ-065
+  - REQ-082
+  - REQ-093
+  - REQ-226
+  - REQ-228
+  - REQ-229
+  - REQ-236
+  - REQ-270
+  - REQ-366
+  - REQ-367
+- id: UC-11
+  title: 시스템을 시작하고 상태를 복구한다
+  actor: 프로세스 관리자
+  precondition: 영구 저장소에 접근 가능하고 Binance API 자격 증명이 secret 저장소에 있다
+  postcondition: 로컬 상태가 Binance 상태와 대조·조정되어 있고, 운영자 보고가 제공되었으며, 자동 거래는 안전 조건 충족과 재개
+    정책에 따라만 재개되어 있다
+  main_flow:
+  - step: 1. 프로세스 관리자가 Core Trading Service를 시작한다
+    event: SYSTEM_START
+  - step: 2. 시스템이 시작 이벤트를 감사 기록으로 남기고 상태를 RECOVERING으로 표시하며 DB에서 마지막 시스템 상태와 처리 중·결과
+      불명확 명령을 읽는다
+  - step: 3. 시스템이 Binance 서버 시간, 계정 잔고, 실제 포지션, 미체결 주문, 최근 체결 내역을 조회한다
+  - step: 4. Binance가 조회 결과를 반환한다
+    event: ACCOUNT_STATE_RETURNED
+  - step: 5. 시스템이 로컬 주문·포지션·명령 상태를 Binance 상태와 비교해 차이를 reconciliation 기록으로 남기고 로컬
+      상태를 조정한다
+  - step: 6. 시스템이 보호 주문의 존재와 수량을 검증하고 시장 데이터를 다시 동기화한다
+  - step: 7. 시스템이 복구 결과 보고(Operator Report)를 운영자에게 표시·알림하고 상태를 HEALTHY 또는 TRADING_PAUSED로
+      전환한다
+  - step: 8. 운영자가 자동 거래 재개를 확인한다
+    event: RESUME_TRADING_AFTER_RECOVERY
+  - step: 9. 시스템이 안전 조건을 모두 재확인한 뒤 자동 거래를 재개한다
+  alt_flows:
+  - step: 3a. 시스템 시간과 Binance 서버 시간의 차이가 허용 범위를 초과한 경우 시스템은 신규 자동 거래를 중단하고 운영자 보고에
+      포함한다
+    event: ACCOUNT_STATE_RETURNED
+  - step: 4a. Binance 조회가 실패한 경우 시스템은 RECOVERING 상태를 유지하며 재시도 정책으로 재시도하고, 명령어 창·상태
+      조회·긴급 정지는 계속 제공한다
+    event: ACCOUNT_QUERY_FAILED
+  - step: 4b. 재시도가 모두 실패한 경우 시스템은 FAILED 상태로 표시하고 운영자에게 알리며 신규 거래를 차단한다
+    event: ACCOUNT_QUERY_FAILED
+  - step: 5a. 결과 불명확 명령이 있는 경우 시스템은 각 명령에 대해 UC-02 절차를 수행한다
+  - step: 5b. 로컬에 없는 주문·포지션이 Binance에 있는 경우 시스템은 이를 로컬에 등록하고 reconciliation 기록으로 남기며
+      운영자 보고에 포함한다
+  - step: 6a. 포지션은 있으나 보호 주문이 없거나 수량이 다른 경우 시스템은 이를 운영자 보고에 포함하고 정책에 따라 조정한다
+  - step: 8a. 자동 재개 설정이 켜져 있는 경우 시스템은 운영자 확인 없이 안전 조건 충족 시 자동 거래를 재개한다
+  - step: 8b. 재개 정책이 기본값(수동 확인)인데 운영자 확인이 없는 경우 시스템은 자동 거래를 재개하지 않고 TRADING_PAUSED를
+      유지한다
+  acceptance:
+  - 재시작 후 로컬 주문·포지션 상태가 Binance 조회 결과와 일치한다 (불일치 0건 또는 각 불일치마다 reconciliation 레코드
+    존재)
+  - 재시작 전 처리 중이던 모든 명령이 재시작 후 최종 상태 또는 추적 중 상태로 존재한다
+  - 재개 정책 기본값이 수동 확인이며, 확인 이벤트 없이 자동 거래가 재개된 경우가 0건이다
+  - 복구 완료 시 운영자 보고 레코드와 복구 결과 알림 레코드가 각각 1건 존재한다
+  - 시스템 시작·종료·재시작마다 감사 레코드가 존재한다
+  - 복구 순서가 로컬 상태 로드→Binance 조회→비교→reconciliation→보호 주문 검증→시장 데이터 재동기화→운영자 보고→재개 순으로
+    로그에 기록된다
+  - 시스템 재시작 시나리오 자동화 테스트가 존재하고 통과한다
+  requirements:
+  - REQ-022
+  - REQ-023
+  - REQ-024
+  - REQ-025
+  - REQ-031
+  - REQ-032
+  - REQ-058
+  - REQ-113
+  - REQ-239
+  - REQ-276
+  - REQ-278
+  - REQ-279
+  - REQ-280
+  - REQ-281
+  - REQ-282
+  - REQ-283
+  - REQ-284
+  - REQ-285
+  - REQ-286
+  - REQ-287
+  - REQ-288
+  - REQ-289
+  - REQ-290
+  - REQ-291
+  - REQ-307
+  - REQ-352
+  - REQ-353
+  - REQ-357
+  - REQ-392
+- id: UC-12
+  title: Binance와 상태를 재동기화한다
+  actor: 사용자
+  precondition: 사용자가 거래 권한으로 인증되어 있다 (거래 중단 상태여도 가능)
+  postcondition: 로컬 주문·포지션·계정 상태가 Binance 상태와 일치하고 차이는 reconciliation 기록으로 남아 있다
+  main_flow:
+  - step: 1. 사용자가 Binance 상태와 재동기화를 요청한다
+    event: RESYNC_WITH_BINANCE
+  - step: 2. 시스템이 command_id를 발급하고 Binance에 계정, 포지션, 미체결 주문, 최근 체결을 조회한다
+  - step: 3. Binance가 조회 결과를 반환한다
+    event: ACCOUNT_STATE_RETURNED
+  - step: 4. 시스템이 로컬 상태와 비교해 차이를 reconciliation 기록으로 남기고 로컬 상태를 갱신하며 결과 요약을 표시한다
+  alt_flows:
+  - step: 3a. Binance 조회가 실패한 경우 시스템은 재동기화 실패와 이유를 표시하고 로컬 상태를 변경하지 않으며 신규 자동 거래를
+      중단한다
+    event: ACCOUNT_QUERY_FAILED
+  - step: 4a. 차이가 없는 경우 시스템은 차이 0건임을 표시한다
+  - step: 1a. 시스템이 TRADING_PAUSED 상태인 경우에도 시스템은 재동기화를 정상 수행한다
+    event: RESYNC_WITH_BINANCE
+  acceptance:
+  - 재동기화 후 로컬 미체결 주문 집합과 Binance 미체결 주문 집합이 client_order_id 기준으로 동일하다
+  - 차이가 있었던 항목마다 reconciliation 레코드가 1건 존재한다
+  - TRADING_PAUSED 상태에서 재동기화 명령이 성공 응답을 반환한다
+  - 조회 실패 시 로컬 상태 변경 레코드가 0건이다
+  requirements:
+  - REQ-025
+  - REQ-042
+  - REQ-054
+  - REQ-062
+  - REQ-092
+  - REQ-285
+  - REQ-286
+- id: UC-13
+  title: 끊어진 WebSocket 연결을 자동으로 재연결한다
+  actor: Binance
+  precondition: 시장 데이터 스트림 또는 User Data Stream이 연결되어 있다
+  postcondition: 연결이 복구되어 데이터 수신이 재개되었고 끊긴 동안의 누락이 대조·보정되어 있다
+  main_flow:
+  - step: 1. Binance WebSocket 연결이 끊어진다
+    event: WS_DISCONNECTED
+  - step: 2. 시스템이 사용자 개입 없이 연결 상태를 끊김으로 표시하고 마지막 정상 수신 시각을 기록하며 exponential backoff와
+      jitter로 재연결을 시도한다
+  - step: 3. Binance가 재연결을 수락한다
+    event: WS_CONNECTED
+  - step: 4. 시스템이 구독을 복원하고 User Data Stream의 경우 REST 조회로 끊긴 동안의 주문·포지션 변화를 대조하며, order
+      book은 snapshot부터 재구축하고 연결 상태를 정상으로 표시한다
+  alt_flows:
+  - step: 3a. 재연결이 실패한 경우 시스템은 제한된 횟수까지 간격을 늘려 재시도한다
+    event: WS_CONNECT_FAILED
+  - step: 3b. 재연결이 최대 횟수까지 실패한 경우 시스템은 DEGRADED로 전환하고 Binance 연결 장애·데이터 수집 장애 알림을
+      큐에 넣으며 신규 자동 거래를 중단하되 계속 재시도한다
+    event: WS_CONNECT_FAILED
+  - step: 4a. 끊긴 시간이 데이터 stale 기준을 초과한 경우 시스템은 재연결 후 데이터가 최신이 될 때까지 자동 거래 판단에 사용하지
+      않는다
+  acceptance:
+  - 연결 끊김 후 사용자 명령 없이 재연결 시도 기록이 존재한다
+  - 재시도 간격은 직전 간격 이상이고 동일 값이 연속되지 않는다
+  - 재연결 후 User Data Stream 누락 대조를 위한 REST 조회 기록이 1건 이상 존재한다
+  - 재연결 최대 횟수 초과 시 시스템 상태가 DEGRADED이고 연결 장애 알림 레코드가 존재한다
+  - WebSocket 재연결 시나리오 자동화 테스트가 존재하고 통과한다
+  requirements:
+  - REQ-018
+  - REQ-019
+  - REQ-020
+  - REQ-021
+  - REQ-213
+  - REQ-237
+  - REQ-238
+  - REQ-248
+  - REQ-309
+  - REQ-396
+- id: UC-14
+  title: Order book을 구축하고 gap을 복구한다
+  actor: Binance
+  precondition: WebSocket depth 스트림 구독이 가능하고 REST snapshot 조회가 가능하다
+  postcondition: 시퀀스가 연속된 최신 order book이 유지되고 있고 최신성 정보가 관리되고 있다
+  main_flow:
+  - step: 1. 시스템이 depth 스트림을 구독하고 REST로 초기 snapshot을 요청한다
+  - step: 2. Binance가 snapshot을 반환한다
+    event: DEPTH_SNAPSHOT_RETURNED
+  - step: 3. Binance가 delta event를 전송한다
+    event: DEPTH_DELTA_RECEIVED
+  - step: 4. 시스템이 sequence 연속성을 확인하고 delta를 순서대로 적용하며 마지막 정상 수신 시각과 best bid/ask를
+      갱신한다
+  - step: 5. 시스템이 설정된 저장 수준에 따라 order book snapshot 또는 요약을 시계열 저장소에 기록한다
+  alt_flows:
+  - step: 3a. sequence gap 또는 순서 오류가 발견된 경우 시스템은 현재 order book을 폐기하고 불완전 상태로 표시한 뒤
+      snapshot부터 다시 동기화한다
+    event: DEPTH_DELTA_RECEIVED
+  - step: 2a. snapshot 조회가 실패한 경우 시스템은 재시도 정책으로 재요청하고 그동안 order book을 불완전 상태로 표시한다
+    event: DEPTH_SNAPSHOT_FAILED
+  - step: 4a. 마지막 정상 수신 이후 stale 기준 시간이 지난 경우 시스템은 order book을 오래됨으로 표시하고 자동 거래 판단에서
+      제외한다
+  acceptance:
+  - gap 주입 후 order book 상태가 불완전으로 바뀌고 새 snapshot 요청이 1건 이상 발생한다
+  - 불완전 또는 오래됨 상태의 order book을 입력으로 사용한 전략 실행 기록이 0건이다
+  - 적용된 모든 delta의 sequence는 직전 적용 sequence의 다음 값이다
+  - order book 저장 수준이 설정으로 변경 가능하다
+  - order book gap 시나리오 자동화 테스트가 존재하고 통과한다
+  requirements:
+  - REQ-202
+  - REQ-203
+  - REQ-208
+  - REQ-209
+  - REQ-210
+  - REQ-211
+  - REQ-212
+  - REQ-213
+  - REQ-214
+  - REQ-312
+  - REQ-374
+  - REQ-379
+  - REQ-397
+- id: UC-15
+  title: 실시간 시장 데이터를 수신하고 정규화한다
+  actor: Binance
+  precondition: WebSocket 연결이 정상이다
+  postcondition: 정규화·검증된 시장 데이터가 시계열 저장소에 기록되고 최신 수신 시각이 갱신되어 있으며 전략은 정규화된 데이터만 읽는다
+  main_flow:
+  - step: 1. Binance가 trades/aggregate trades, mark price, kline update, best bid/ask
+      메시지를 전송한다
+    event: MARKET_DATA_RECEIVED
+  - step: 2. 시스템이 원본 메시지를 내부 도메인 모델로 정규화하고 출처·데이터 시각·수집 시각을 붙여 검증한다
+  - step: 3. 시스템이 미완성 캔들과 확정 캔들을 구분해 시계열 저장소에 기록하고 최근 데이터 수신 시각을 갱신한다
+  - step: 4. 시스템이 정규화된 데이터를 Event Queue로 발행해 지표 계산·웹 실시간 갱신이 거래 실행 흐름과 분리되어 처리되게 한다
+  alt_flows:
+  - step: 2a. 메시지가 스키마 검증에 실패한 경우 시스템은 해당 메시지를 폐기하고 오류를 기록하며 프로세스를 종료하지 않는다
+    event: MARKET_DATA_RECEIVED
+  - step: 3a. 마지막 수신 이후 stale 기준 시간이 경과한 경우 시스템은 데이터를 오래됨으로 표시하고 신규 자동 거래를 중단한다
+  - step: 3b. 시계열 저장소 기록이 실패한 경우 시스템은 데이터 수집 장애 알림을 큐에 넣고 재시도한다
+  acceptance:
+  - 전략 모듈 코드에서 Binance 원본 메시지 타입 참조가 0건이다 (정적 검사)
+  - 저장된 모든 시장 데이터 레코드에 출처, 데이터 시각, 수집 시각 필드가 존재한다
+  - kline 레코드에 확정 여부 필드가 존재하고 미완성 캔들이 확정 캔들로 잘못 저장된 경우가 0건이다
+  - stale 기준 초과 시 신규 자동 주문 건수가 0이다
+  - 잘못된 메시지 주입 후 프로세스가 살아 있고 이후 메시지가 정상 처리된다
+  requirements:
+  - REQ-009
+  - REQ-057
+  - REQ-081
+  - REQ-200
+  - REQ-204
+  - REQ-205
+  - REQ-206
+  - REQ-250
+  - REQ-312
+  - REQ-313
+  - REQ-343
+  - REQ-347
+- id: UC-16
+  title: 과거 시장 데이터를 주기적으로 수집한다
+  actor: 타이머
+  precondition: 수집 주기, 대상 interval, 보존 기간이 설정되어 있다
+  postcondition: 마지막 정상 수집 위치 이후의 kline·funding rate·mark price·index price·open interest
+    데이터가 누락 없이 저장되어 있다
+  main_flow:
+  - step: 1. 타이머가 수집 주기에 도달했음을 알린다
+    event: COLLECTION_TICK
+  - step: 2. 시스템이 마지막 정상 수집 위치를 읽고 그 이후 구간을 Binance REST로 요청한다
+  - step: 3. Binance가 kline(OHLC, volume, trade count), funding rate, mark price,
+      index price, open interest 데이터를 반환한다
+    event: HISTORICAL_DATA_RETURNED
+  - step: 4. 시스템이 출처·데이터 시각·수집 시각을 붙여 확정 캔들과 미완성 캔들을 구분하고 동일 키는 병합해 시계열 저장소에 저장한 뒤
+      마지막 정상 수집 위치를 갱신한다
+  - step: 5. 시스템이 저장 구간의 누락을 탐지하고 누락 구간을 다시 요청한다
+  - step: 6. 시스템이 보존 기간을 초과한 데이터를 설정에 따라 정리한다
+  alt_flows:
+  - step: 3a. Binance 요청이 실패한 경우 시스템은 재시도 정책으로 재시도하고 마지막 정상 수집 위치를 변경하지 않는다
+    event: HISTORICAL_DATA_FAILED
+  - step: 3b. 재시도가 모두 실패한 경우 시스템은 데이터 수집 장애 알림을 큐에 넣고 다음 주기에 같은 위치부터 재개한다
+    event: HISTORICAL_DATA_FAILED
+  - step: 4a. 이미 저장된 키와 중복된 데이터를 받은 경우 시스템은 동일 키로 병합하고 레코드 수를 늘리지 않는다
+  - step: 2a. aggregate trades 수집이 설정으로 활성화된 경우 시스템은 같은 절차로 aggregate trades도 수집한다
+  acceptance:
+  - 동일 구간을 2회 수집해도 시계열 레코드 수가 증가하지 않는다
+  - 임의로 삭제한 구간이 다음 수집 주기 후 다시 채워진다
+  - 수집 실패 후 재개 시 요청 시작 위치가 마지막 정상 수집 위치와 같다
+  - 설정된 각 interval마다 kline 레코드가 존재한다
+  - 보존 기간 설정 변경 시 정리 대상 구간이 그에 따라 달라진다
+  - 데이터 수집 실패 알림 레코드가 재시도 소진 시 1건 존재한다
+  requirements:
+  - REQ-188
+  - REQ-189
+  - REQ-190
+  - REQ-191
+  - REQ-192
+  - REQ-193
+  - REQ-194
+  - REQ-195
+  - REQ-196
+  - REQ-197
+  - REQ-198
+  - REQ-199
+  - REQ-200
+  - REQ-201
+  - REQ-237
+  - REQ-343
+  - REQ-344
+  - REQ-373
+- id: UC-17
+  title: 이벤트 알림을 전달한다
+  actor: 알림 채널 서버
+  precondition: 알림 수신자와 채널(초기 Email)이 설정되어 있고 알림 큐가 동작 중이다
+  postcondition: 알림이 전달되었거나 실패 내역이 기록되어 있으며 거래 실행 결과는 알림 결과에 영향받지 않았다
+  main_flow:
+  - step: 1. 시스템이 알림 대상 이벤트(주문 접수, 체결·부분 체결, 거절·실패, 포지션 진입·종료, 손절·익절 실행, 리스크 한도 초과,
+      자동 거래 중단, 데이터 수집 장애, Binance 연결 장애, 복구 결과, 일간·주간 요약)를 거래 실행과 분리된 알림 큐에 넣는다
+  - step: 2. 시스템이 중복 알림 키를 확인하고 템플릿으로 메시지를 생성해 교체 가능한 채널 어댑터를 통해 비동기 전송한다
+  - step: 3. 알림 채널 서버가 전송을 수락한다
+    event: NOTIFICATION_DELIVERED
+  - step: 4. 시스템이 전송 결과를 기록하고 웹 Activity and Logs에 표시한다
+  alt_flows:
+  - step: 3a. 알림 채널 서버가 전송을 거부하거나 응답하지 않는 경우 시스템은 실패 내역을 기록하고 알림 큐에서 재시도 정책으로 재시도한다
+    event: NOTIFICATION_DELIVERY_FAILED
+  - step: 3b. 재시도가 모두 실패한 경우 시스템은 최종 실패로 기록하되 관련 거래 명령의 상태는 변경하지 않는다
+    event: NOTIFICATION_DELIVERY_FAILED
+  - step: 2a. 동일 이벤트에 대한 알림이 이미 전송된 경우 시스템은 중복 전송하지 않는다
+  - step: 1a. 타이머가 일간·주간 요약 시각에 도달한 경우 시스템은 거래 요약 알림을 생성한다
+    event: REPORT_TICK
+  acceptance:
+  - 알림 채널 서버를 차단해도 해당 기간 거래 명령의 최종 상태 분포가 차단 전과 동일하다
+  - 동일 이벤트 ID에 대한 전송 레코드가 최대 1건이다
+  - 전송 실패마다 실패 내역 레코드가 존재한다
+  - 알림 전송이 거래 실행 스레드/프로세스와 다른 큐 소비자에서 수행된다 (호출 스택 검사)
+  - 채널 구현 교체 시 알림 서비스 코드 변경 없이 설정만으로 가능하다
+  - 정의된 11종 이벤트 각각에 대해 알림 레코드가 생성된다
+  requirements:
+  - REQ-014
+  - REQ-027
+  - REQ-230
+  - REQ-231
+  - REQ-232
+  - REQ-233
+  - REQ-234
+  - REQ-235
+  - REQ-236
+  - REQ-237
+  - REQ-238
+  - REQ-239
+  - REQ-240
+  - REQ-241
+  - REQ-242
+  - REQ-243
+  - REQ-244
+  - REQ-245
+  - REQ-277
+  - REQ-338
+  - REQ-339
+  - REQ-340
+  - REQ-341
+  - REQ-347
+  - REQ-376
+- id: UC-18
+  title: Binance API 오류와 네트워크 장애를 처리한다
+  actor: Binance
+  precondition: 시스템이 Binance API 요청을 수행 중이다
+  postcondition: 재시도 가능 오류는 정책대로 재시도되었고, 반복 실패 작업은 격리되어 운영자에게 알려졌으며, 명령어 창·상태 조회·긴급
+    정지는 계속 동작한다
+  main_flow:
+  - step: 1. Binance가 API 오류 코드를 반환한다
+    event: API_ERROR_RETURNED
+  - step: 2. 시스템 Adapter가 오류 코드를 내부 오류 모델로 변환하고 재시도 가능·불가능으로 분류한다
+  - step: 3. 시스템이 재시도 가능 오류에 대해 exponential backoff와 jitter로 제한된 횟수만큼 재시도하며 각 시도를
+      감사 기록으로 남긴다
+  - step: 4. Binance가 재시도에 정상 응답한다
+    event: API_REQUEST_SUCCEEDED
+  - step: 5. 시스템이 작업을 완료하고 복구 과정을 기록한다
+  alt_flows:
+  - step: 2a. 재시도 불가능 오류인 경우 시스템은 즉시 작업을 실패로 기록하고 사용자에게 변환된 오류를 표시하며 재시도하지 않는다
+  - step: 1a. rate limit 초과 응답인 경우 시스템은 요청 속도를 제한하고 지정된 대기 시간 후 재시도한다
+    event: RATE_LIMIT_EXCEEDED
+  - step: 1b. 네트워크가 단절된 경우 시스템은 동일한 재시도 정책을 적용하고 Binance 연결 장애 알림을 큐에 넣으며 상태를 DEGRADED로
+      표시한다
+    event: NETWORK_UNREACHABLE
+  - step: 4a. 재시도가 최대 횟수를 초과한 경우 시스템은 작업을 실패 격리 상태로 옮기고 운영자에게 알리며 다른 모듈은 계속 동작한다
+    event: API_ERROR_RETURNED
+  - step: 3a. 처리되지 않은 예외가 어느 모듈에서 발생한 경우 시스템은 해당 작업만 실패 처리하고 프로세스를 종료하지 않는다
+  - step: 3b. 장애 진행 중 사용자가 명령어 창에서 상태 조회 또는 긴급 정지를 요청한 경우 시스템은 이를 정상 처리한다
+    event: QUERY_SYSTEM_STATUS
+  acceptance:
+  - 재시도 불가능 오류에 대한 재요청 기록이 0건이다
+  - 재시도 횟수가 설정 최대값을 초과한 경우가 0건이다
+  - 재시도 간격은 직전 간격 이상이며 연속 동일값이 없다
+  - 최대 횟수 초과 작업은 실패 격리 상태이고 운영자 알림 레코드가 존재한다
+  - 한 모듈에 예외를 주입해도 프로세스가 종료되지 않고 다른 모듈의 처리 기록이 계속 생성된다
+  - Binance 차단 중 명령어 창의 상태 조회와 긴급 정지 명령이 성공 응답을 반환한다
+  - 각 장애 시나리오(API 오류, rate limit, 네트워크 단절)에 대한 자동화 테스트가 존재하고 통과한다
+  requirements:
+  - REQ-015
+  - REQ-016
+  - REQ-017
+  - REQ-019
+  - REQ-020
+  - REQ-021
+  - REQ-026
+  - REQ-027
+  - REQ-028
+  - REQ-029
+  - REQ-030
+  - REQ-031
+  - REQ-111
+  - REQ-238
+  - REQ-308
+  - REQ-310
+  - REQ-311
+  - REQ-391
+- id: UC-19
+  title: 불확실한 상태에서 안전 모드로 전환한다
+  actor: Binance
+  precondition: 시스템이 HEALTHY 상태이고 자동 거래가 활성화되어 있다
+  postcondition: 신규 거래가 중단되어 있고 상태가 TRADING_PAUSED 또는 DEGRADED로 표시되며 조회·재동기화·허용 범위
+    취소·긴급 정리·오류 로그 조회는 가능하다
+  main_flow:
+  - step: 1. Binance가 계정 상태 조회에 실패를 반환한다
+    event: ACCOUNT_QUERY_FAILED
+  - step: 2. 시스템이 계정 상태를 확인할 수 없음을 판정하고 신규 자동 거래를 중단하며 상태를 TRADING_PAUSED로 전환하고 감사
+      기록과 자동 거래 중단 알림을 생성한다
+  - step: 3. 시스템이 안전 모드에서 기존 포지션과 주문 상태 조회, Binance 재동기화, 허용 범위 주문 취소, 긴급 포지션 정리,
+      시스템 상태·오류 로그 조회를 계속 제공한다
+  - step: 4. Binance가 이후 계정 조회에 정상 응답한다
+    event: ACCOUNT_STATE_RETURNED
+  - step: 5. 시스템이 안전 조건을 모두 재확인하고 재개 정책에 따라 자동 거래를 재개하거나 운영자 확인을 기다린다
+  alt_flows:
+  - step: 1a. 포지션 조회 결과가 불일치하여 현재 포지션을 확정할 수 없는 경우 시스템은 2단계와 동일하게 전환한다
+    event: ACCOUNT_STATE_RETURNED
+  - step: 1b. 주문 결과가 설정된 시간 이상 불명확한 경우 시스템은 2단계와 동일하게 전환한다
+    event: UNCERTAIN_ORDER_TIMEOUT
+  - step: 1c. 시장 데이터가 stale 기준을 초과하거나 정합성이 깨진 경우 시스템은 2단계와 동일하게 전환한다
+  - step: 1d. 시스템 시간과 거래소 시간의 차이가 허용 범위를 초과한 경우 시스템은 2단계와 동일하게 전환한다
+    event: SERVER_TIME_RETURNED
+  - step: 1e. 리스크 한도 또는 예산 한도를 계산할 수 없는 경우 시스템은 2단계와 동일하게 전환한다
+  - step: 1f. 데이터베이스에 거래 상태를 기록할 수 없는 경우 시스템은 2단계와 동일하게 전환한다
+  - step: 3a. 안전 모드 중 사용자가 신규 주문을 입력한 경우 시스템은 거래 중단 상태를 이유로 거부한다
+    event: SUBMIT_ORDER_COMMAND
+  - step: 3b. 안전 모드 중 사용자가 긴급 포지션 정리를 요청한 경우 시스템은 UC-06/UC-10 절차로 처리한다
+    event: CLOSE_POSITION
+  acceptance:
+  - 각 트리거 조건(계정 확인 불가, 포지션 미확정, 주문 장시간 불명확, 데이터 stale, 시간차 초과, 한도 계산 불가, DB 기록 불가)
+    발생 후 신규 자동 주문 건수가 0이다
+  - 전환 후 시스템 상태 값이 TRADING_PAUSED 또는 DEGRADED다
+  - 안전 모드에서 상태 조회, 재동기화, 주문·포지션 조회, 허용 범위 취소, 긴급 정리, 오류 로그 조회 명령이 모두 성공 응답을 반환한다
+  - 안전 모드 전환마다 감사 레코드와 자동 거래 중단 알림이 존재한다
+  - 안전 조건 미충족 상태에서 자동 거래가 재개된 경우가 0건이다
+  requirements:
+  - REQ-031
+  - REQ-032
+  - REQ-033
+  - REQ-054
+  - REQ-055
+  - REQ-056
+  - REQ-057
+  - REQ-058
+  - REQ-059
+  - REQ-060
+  - REQ-061
+  - REQ-062
+  - REQ-063
+  - REQ-064
+  - REQ-065
+  - REQ-066
+  - REQ-236
+- id: UC-20
+  title: 실행 모드를 선택하고 LIVE 모드를 활성화한다
+  actor: 운영자
+  precondition: 운영자가 설정 변경 권한으로 인증되어 있고 API 자격 증명이 환경별 secret 저장소에 있다
+  postcondition: 선택된 실행 모드가 CLI와 웹에 항상 표시되고, LIVE는 별도 설정과 명시적 확인이 모두 있을 때만 활성화되어 있다
+  main_flow:
+  - step: 1. 운영자가 실행 모드(PAPER/TESTNET/LIVE)를 선택한다
+    event: SELECT_EXECUTION_MODE
+  - step: 2. 시스템이 권한을 확인하고 선택 모드가 LIVE인 경우 별도 LIVE 활성화 설정이 켜져 있는지 확인한다
+  - step: 3. 시스템이 LIVE 전환의 영향(실계좌 거래)을 표시하고 명시적 확인을 요구한다
+  - step: 4. 운영자가 LIVE 활성화를 명시적으로 확인한다
+    event: CONFIRM_LIVE_MODE
+  - step: 5. 시스템이 secret 저장소에서 자격 증명을 읽어 실제 Binance 계정에 연결하고, 설정 변경을 감사 기록으로 남기며 CLI와
+      웹에 LIVE 모드를 표시한다
+  alt_flows:
+  - step: 2a. LIVE 활성화 설정이 꺼져 있는 경우 시스템은 LIVE 전환을 거부하고 필요한 설정을 안내한다
+  - step: 4a. 운영자가 확인하지 않은 경우 시스템은 이전 모드를 유지한다
+    event: REJECT_LIVE_MODE
+  - step: 1a. PAPER를 선택한 경우 시스템은 거래소 주문 없이 내부 모의 체결 엔진으로 주문을 처리하도록 전환한다
+    event: SELECT_EXECUTION_MODE
+  - step: 1b. TESTNET을 선택한 경우 시스템은 Binance 테스트넷 엔드포인트에 연결한다
+    event: SELECT_EXECUTION_MODE
+  - step: 1c. 운영자에게 설정 변경 권한이 없는 경우 시스템은 거부한다
+    event: SELECT_EXECUTION_MODE
+  - step: 5a. 시스템 시작 시 모드 설정이 없는 경우 시스템은 PAPER 또는 TESTNET을 기본값으로 사용한다
+    event: SYSTEM_START
+  acceptance:
+  - 설정 없이 시작한 시스템의 실행 모드는 PAPER 또는 TESTNET이다
+  - LIVE 활성화 설정 또는 확인 이벤트 중 하나라도 없이 LIVE로 전환된 경우가 0건이다
+  - PAPER 모드에서 Binance 주문 API 호출 기록이 0건이고 모의 체결 레코드가 생성된다
+  - TESTNET 모드의 모든 요청 호스트가 테스트넷 엔드포인트다
+  - CLI 프롬프트와 웹 모든 화면에 실행 모드 문자열이 존재한다
+  - 소스 코드와 설정 파일에 API Secret 평문이 0건이다 (정적 검사)
+  - API Key 설정에 IP 제한이 적용되어 있고 출금 권한이 없음을 시작 시 확인·기록한다
+  - PAPER/TESTNET 모드 테스트가 LIVE 기능 테스트보다 먼저 존재한다
+  requirements:
+  - REQ-112
+  - REQ-116
+  - REQ-117
+  - REQ-118
+  - REQ-119
+  - REQ-120
+  - REQ-121
+  - REQ-122
+  - REQ-123
+  - REQ-361
+  - REQ-362
+  - REQ-363
+  - REQ-364
+  - REQ-367
+  - REQ-385
+- id: UC-21
+  title: 웹 대시보드에서 운영 현황을 조회한다
+  actor: 사용자
+  precondition: 사용자가 조회 권한으로 웹에 인증되어 있다
+  postcondition: 요청한 화면이 Command/API Gateway를 통해 읽은 최신 데이터로 표시되어 있고 실행 모드가 항상 보인다
+  main_flow:
+  - step: 1. 사용자가 웹 대시보드에 접속한다
+    event: OPEN_DASHBOARD
+  - step: 2. 시스템이 Overview에 실행 모드, 시스템 실행 상태, Binance·WebSocket 연결 상태, 자동 거래 활성 상태,
+      최근 데이터 수신 시각, 총자산, 투자자산, 사용 가능 잔고, 실현·미실현 손익을 표시한다
+  - step: 3. 사용자가 Positions and Orders 화면을 선택한다
+    event: SELECT_DASHBOARD_VIEW
+  - step: 4. 시스템이 현재 포지션, 진입가·시장가·청산가, 레버리지, 손절·익절 상태, 미체결 주문, 최근 체결 내역을 표시한다
+  - step: 5. 사용자가 Charts 화면을 선택한다
+    event: SELECT_DASHBOARD_VIEW
+  - step: 6. 시스템이 BTCUSDT 가격 차트에 주문·체결 위치와 손절·익절 가격을 표시하고 총자산·투자자산·손익 변화, 전략별 성과를
+      표시한다
+  - step: 7. 사용자가 Activity and Logs 화면을 선택한다
+    event: SELECT_DASHBOARD_VIEW
+  - step: 8. 시스템이 최근 사용자 명령, 전략 판단, 주문 상태 변화, 경고·오류, 복구 내역, 알림 전송 결과를 표시하고 Event Queue를
+      통해 실시간 갱신한다
+  alt_flows:
+  - step: 2a. Binance 연결이 끊긴 경우 시스템은 연결 상태를 끊김으로 표시하고 마지막 알려진 값과 기준 시각을 표시한다
+  - step: 1a. 미인증 사용자인 경우 시스템은 로그인 화면으로 보내고 데이터를 표시하지 않는다
+    event: OPEN_DASHBOARD
+  - step: 8a. 실시간 갱신 연결이 끊긴 경우 시스템은 화면에 갱신 중단을 표시하고 재연결을 시도한다
+  acceptance:
+  - Overview 응답에 정의된 9개 항목과 실행 모드 필드가 모두 존재한다
+  - 웹 코드에서 데이터베이스 직접 쓰기 호출이 0건이며 모든 데이터 접근이 Command/API Gateway를 경유한다 (정적 검사)
+  - 차트 응답에 주문·체결 마커와 손절·익절 가격선 데이터가 포함된다
+  - Activity and Logs 응답에 명령, 전략 판단, 주문 상태 변화, 경고·오류, 복구 내역, 알림 결과 6종 항목이 존재한다
+  - 웹 모든 화면 응답에 실행 모드가 포함된다
+  requirements:
+  - REQ-004
+  - REQ-097
+  - REQ-120
+  - REQ-187
+  - REQ-246
+  - REQ-247
+  - REQ-248
+  - REQ-249
+  - REQ-250
+  - REQ-251
+  - REQ-252
+  - REQ-253
+  - REQ-254
+  - REQ-255
+  - REQ-256
+  - REQ-257
+  - REQ-258
+  - REQ-259
+  - REQ-260
+  - REQ-261
+  - REQ-262
+  - REQ-263
+  - REQ-264
+  - REQ-265
+  - REQ-272
+  - REQ-273
+  - REQ-274
+  - REQ-275
+  - REQ-276
+  - REQ-277
+  - REQ-295
+  - REQ-347
+  - REQ-375
+- id: UC-22
+  title: 웹 화면에서 거래 명령을 실행한다
+  actor: 사용자
+  precondition: 사용자가 거래 권한으로 웹에 인증되어 있다
+  postcondition: 명령이 명령어 창과 동일한 Command API로 처리되어 처리 과정과 결과가 웹에 표시되어 있다
+  main_flow:
+  - step: 1. 사용자가 웹 Commands 화면에서 거래 명령을 입력한다
+    event: SUBMIT_ORDER_COMMAND
+  - step: 2. 시스템이 동일한 Command/API Gateway로 명령을 접수해 command_id를 발급하고 UC-01과 동일한 절차를
+      수행하며 처리 과정을 단계별로 웹에 표시한다
+  - step: 3. 사용자가 예상 주문을 승인한다
+    event: CONFIRM_ORDER
+  - step: 4. 시스템이 주문을 전송하고 최종 결과를 웹에 표시한다
+  alt_flows:
+  - step: 1a. 사용자가 주문 취소를 요청한 경우 시스템은 UC-05 절차로 처리한다
+    event: CANCEL_ORDER
+  - step: 1b. 사용자가 손절·익절 설정을 요청한 경우 시스템은 UC-04 절차로 처리한다
+    event: SET_PROTECTIVE_ORDER
+  - step: 1c. 사용자가 자동 거래 시작 또는 중지를 요청한 경우 시스템은 UC-08 절차로 처리한다
+    event: START_AUTO_TRADING
+  - step: 1d. 사용자가 긴급 정지를 요청한 경우 시스템은 UC-10 절차로 처리한다
+    event: EMERGENCY_STOP
+  - step: 2a. 검증에 실패한 경우 시스템은 실패 이유를 웹에 표시한다
+  - step: 1e. 사용자에게 거래 권한이 없는 경우 시스템은 거부하고 이유를 표시한다
+    event: SUBMIT_ORDER_COMMAND
+  acceptance:
+  - 웹과 CLI에서 동일 명령을 입력하면 동일한 Command API 엔드포인트가 호출된다 (호출 기록 비교)
+  - 웹에서 접수된 명령의 감사 레코드에 인터페이스 값이 web으로 기록된다
+  - 명령 처리 상태 변경마다 웹 표시 이벤트가 1건 이상 발생한다
+  - 웹 코드에서 거래 엔진 내부 함수 직접 호출이 0건이다 (정적 검사)
+  requirements:
+  - REQ-004
+  - REQ-097
+  - REQ-100
+  - REQ-153
+  - REQ-266
+  - REQ-267
+  - REQ-268
+  - REQ-269
+  - REQ-270
+  - REQ-271
+  - REQ-295
+  - REQ-296
+  - REQ-301
+- id: UC-23
+  title: 감사 로그로 명령의 전체 흐름을 재구성한다
+  actor: 운영자
+  precondition: 운영자가 조회 권한으로 인증되어 있고 감사 로그 저장소에 접근 가능하다
+  postcondition: 지정한 command_id 또는 correlation ID의 접수부터 최종 결과까지 전 과정이 시간순으로 제시되어 있다
+  main_flow:
+  - step: 1. 운영자가 command_id 또는 correlation ID로 감사 추적을 요청한다
+    event: QUERY_AUDIT_TRAIL
+  - step: 2. 시스템이 append-only 감사 로그에서 해당 ID의 명령 원문, 사용자·인터페이스, 접수 시각, 검증 결과, 리스크 계산,
+      예산 배분, Binance 요청·응답, 주문 상태 변경, 체결, 포지션 변화, 손절·익절 변경, 전략 신호·근거, 오류·재시도·복구, 설정
+      변경 이벤트를 시간순으로 조회한다
+  - step: 3. 시스템이 인증 정보·개인정보 필드가 마스킹된 상태로 전체 흐름을 표시한다
+  alt_flows:
+  - step: 1a. 존재하지 않는 ID인 경우 시스템은 결과 없음을 표시한다
+    event: QUERY_AUDIT_TRAIL
+  - step: 2a. 누군가 기존 감사 레코드의 수정 또는 삭제를 시도한 경우 시스템은 이를 거부하고 시도 자체를 기록한다
+    event: MODIFY_AUDIT_RECORD
+  - step: 1b. 운영자에게 조회 권한이 없는 경우 시스템은 거부한다
+    event: QUERY_AUDIT_TRAIL
+  acceptance:
+  - 무작위로 고른 완료 명령 100건에 대해 감사 로그만으로 RECEIVED부터 최종 상태까지 모든 전이가 복원된다
+  - 감사 레코드 UPDATE/DELETE 시도가 오류를 반환하고 레코드 수가 변하지 않는다
+  - 모든 감사 레코드에 command ID, correlation ID가 있고 Binance 관련 레코드에 client order ID가 있다
+  - 로그·오류 메시지·테스트 출력 전체에서 API Key, Secret, 서명 값 문자열 검색 결과가 0건이다
+  - 정의된 15종 이벤트 각각에 대해 감사 레코드 타입이 존재한다
+  - Transaction DB, Time-Series Storage, Audit Log가 서로 다른 저장 영역(스키마 또는 저장소)에 있다
+  - Transaction DB에 명령, 주문, 체결, 포지션, 계정 snapshot, 전략 실행, 리스크 결정, 예산 배정, 알림 상태, 시스템
+    설정 테이블이 존재한다
+  requirements:
+  - REQ-052
+  - REQ-098
+  - REQ-099
+  - REQ-100
+  - REQ-101
+  - REQ-102
+  - REQ-103
+  - REQ-104
+  - REQ-105
+  - REQ-106
+  - REQ-107
+  - REQ-108
+  - REQ-109
+  - REQ-110
+  - REQ-111
+  - REQ-112
+  - REQ-113
+  - REQ-114
+  - REQ-115
+  - REQ-154
+  - REQ-342
+  - REQ-344
+  - REQ-345
+  - REQ-346
+  - REQ-368
+  - REQ-398
+  - REQ-399
+  - REQ-400
+  - REQ-401
+- id: UC-24
+  title: 사용자를 인증하고 권한을 확인한다
+  actor: 사용자
+  precondition: 교체 가능한 인증·권한 인터페이스가 설정되어 있다
+  postcondition: 사용자가 인증되어 조회·거래·설정 변경·긴급 청산 권한 집합이 세션에 부여되어 있다
+  main_flow:
+  - step: 1. 사용자가 CLI 또는 웹에서 자격 증명으로 로그인한다
+    event: LOGIN
+  - step: 2. 시스템이 암호화된 연결로 자격 증명을 검증하고 권한 집합을 세션에 부여하며 로그인 이벤트를 기록한다
+  - step: 3. 사용자가 명령을 요청한다
+    event: SUBMIT_ORDER_COMMAND
+  - step: 4. 시스템이 Command/API Gateway에서 명령에 필요한 권한(조회/거래/설정 변경/긴급 청산)을 확인하고 통과시킨다
+  alt_flows:
+  - step: 2a. 자격 증명이 잘못된 경우 시스템은 로그인을 거부하고 실패를 기록하며 자격 증명 값을 로그에 남기지 않는다
+    event: LOGIN
+  - step: 4a. 필요한 권한이 없는 경우 시스템은 명령을 거부하고 부족한 권한을 표시한다
+  - step: 4b. 중요한 거래 또는 설정 변경으로 분류된 명령인 경우 시스템은 추가 확인 또는 재인증을 요구한다
+    event: REAUTHENTICATE
+  - step: 3a. 사용자가 로그아웃한 경우 시스템은 세션을 종료한다
+    event: LOGOUT
+  - step: 1a. 암호화되지 않은 연결로 접근한 경우 시스템은 연결을 거부한다
+    event: LOGIN
+  acceptance:
+  - 미인증 요청에 대한 Command API 응답은 모두 거부다
+  - 조회 권한만 가진 사용자의 주문·설정·긴급 청산 명령이 모두 거부된다
+  - 4개 권한이 서로 독립적으로 부여·회수 가능하다
+  - 외부 통신(Binance, 웹, CLI-엔진) 연결의 평문 프로토콜 사용이 0건이다
+  - 중요 명령으로 분류된 명령이 재인증 이벤트 없이 실행된 경우가 0건이다
+  - 인증 구현을 교체해도 Gateway 코드 변경 없이 설정만으로 동작한다
+  requirements:
+  - REQ-296
+  - REQ-297
+  - REQ-365
+  - REQ-366
+  - REQ-367
+  - REQ-369
+  - REQ-380
+- id: UC-25
+  title: 운영자가 시스템 설정을 변경한다
+  actor: 운영자
+  precondition: 운영자가 설정 변경 권한으로 인증되어 있다
+  postcondition: 변경된 설정이 영구 저장되어 적용되고 변경 내역이 감사 기록으로 남아 있다
+  main_flow:
+  - step: 1. 운영자가 설정 항목(리스크 한도, 예산 정책, 긴급 정지 동작, 재시작 후 자동 재개, 데이터 보존 기간·수집 주기·interval,
+      order book 저장 수준, 포지션 모드, 마진 모드, 자동화 주기, 전략·지표 파라미터, 알림 채널)과 값을 입력한다
+    event: CHANGE_SETTING
+  - step: 2. 시스템이 권한과 값의 형식·범위를 검증한다
+  - step: 3. 시스템이 중요 설정인 경우 추가 확인을 요구한다
+  - step: 4. 운영자가 확인한다
+    event: CONFIRM_SETTING_CHANGE
+  - step: 5. 시스템이 설정을 영구 저장소에 기록하고 변경 전후 값을 감사 기록으로 남기며 새 설정을 적용한다
+  alt_flows:
+  - step: 2a. 값이 형식 또는 범위를 벗어난 경우 시스템은 거부하고 허용 범위를 표시한다
+  - step: 2b. 미정 사항(마진 모드, 포지션 모드, 한도값)이 설정되지 않은 경우 시스템은 임의 기본 규칙을 적용하지 않고 해당 기능을
+      비활성 또는 거래 중단으로 유지하며 필요한 설정을 안내한다
+  - step: 4a. 운영자가 확인하지 않은 경우 시스템은 변경을 폐기한다
+    event: REJECT_SETTING_CHANGE
+  - step: 1a. 운영자에게 설정 변경 권한이 없는 경우 시스템은 거부한다
+    event: CHANGE_SETTING
+  acceptance:
+  - 모든 설정 변경마다 변경 전·후 값을 포함한 감사 레코드가 존재한다
+  - 리스크 정책 11개 항목, 긴급 정지 동작, 자동 재개 여부, 보존 기간, order book 저장 수준, 마진 모드, 포지션 모드가 코드
+    수정 없이 설정으로 변경 가능하다
+  - 시스템 설정이 Transaction DB에 저장된다
+  - 미설정 상태의 한도값에 대해 하드코딩된 기본 거래 규칙이 적용된 경우가 0건이다
+  requirements:
+  - REQ-112
+  - REQ-188
+  - REQ-195
+  - REQ-201
+  - REQ-220
+  - REQ-228
+  - REQ-290
+  - REQ-328
+  - REQ-337
+  - REQ-342
+  - REQ-367
+  - REQ-371
+  - REQ-378
+  - REQ-379
+  - REQ-382
+- id: UC-26
+  title: 모듈을 교체하고 파이프라인 단계를 비활성화한다
+  actor: 개발자
+  precondition: 지표·전략·리스크·예산·알림·거래소 어댑터가 인터페이스 뒤에 있고 모듈 경계가 분리되어 있다
+  postcondition: 교체된 구현이 다른 모듈 수정 없이 동작하고, 비활성화된 단계는 건너뛰기로 기록된다
+  main_flow:
+  - step: '1. 개발자가 인터페이스를 구현한 새 모듈(예: 전략 플러그인)을 설정에 등록한다'
+    event: REPLACE_MODULE
+  - step: 2. 시스템이 인터페이스 적합성(필수 메서드, 입력·출력 데이터 모델)을 검사한다
+  - step: 3. 시스템이 새 모듈을 로드해 기존 모듈을 대체하고 교체 사실을 감사 기록으로 남긴다
+  - step: 4. 개발자가 특정 파이프라인 단계를 비활성화한다
+    event: DISABLE_PIPELINE_STAGE
+  - step: 5. 시스템이 이후 실행에서 해당 단계를 건너뛰고 건너뜀을 기록한다
+  alt_flows:
+  - step: 2a. 새 모듈이 인터페이스에 맞지 않는 경우 시스템은 로드를 거부하고 불일치 항목을 표시하며 기존 모듈을 유지한다
+  - step: 3a. 새 모듈이 초기화 중 예외를 던진 경우 시스템은 해당 모듈만 격리하고 기존 모듈로 되돌리며 프로세스를 종료하지 않는다
+  - step: 2b. 전략 모듈이 Binance 주문 API 또는 Trading Engine을 직접 참조하는 경우 시스템은 로드를 거부한다
+  - step: 4a. 개발자가 단계를 다시 활성화한 경우 시스템은 다음 실행부터 해당 단계를 수행한다
+    event: ENABLE_PIPELINE_STAGE
+  - step: 1a. 구현 중 거래 정합성이나 안전성에 영향을 주는 모호한 사항을 발견한 경우 개발자는 임의 결정 대신 질문 목록으로 보고하고
+      시스템은 해당 규칙을 설정 가능 항목으로 남긴다
+    event: REPORT_OPEN_QUESTION
+  acceptance:
+  - 지표, 전략, 리스크, 예산, 알림 채널, 거래소 어댑터 각각에 인터페이스 정의가 존재하고 구현체는 인터페이스를 통해서만 참조된다 (정적 검사)
+  - 각 모듈을 대체 구현으로 교체한 테스트에서 다른 모듈의 코드 변경이 0건이다
+  - 파이프라인 10단계 각각을 비활성화한 실행에서 건너뜀 기록이 존재한다
+  - 전략 모듈에서 거래소 API·Trading Engine 참조가 0건이다 (정적 검사)
+  - 모든 외부 연동(Binance REST/WS, 알림 채널, secret 저장소)이 어댑터 인터페이스 뒤에 있다 (정적 검사)
+  - User Interface, Command/API, Trading, Market Data, Strategy, Risk and Budget,
+    Notification, Persistence, Binance Adapter 경계가 별도 패키지로 존재한다
+  - 각 구현 단계 산출물에 acceptance criteria 문서가 함께 존재한다
+  - 거래 상태 머신과 멱등성 테스트가 다른 기능 테스트보다 먼저 존재한다
+  - 미정 사항이 코드 상수로 확정된 경우가 0건이며 질문 목록 문서가 존재한다
+  requirements:
+  - REQ-010
+  - REQ-011
+  - REQ-012
+  - REQ-013
+  - REQ-014
+  - REQ-142
+  - REQ-216
+  - REQ-217
+  - REQ-218
+  - REQ-220
+  - REQ-242
+  - REQ-305
+  - REQ-312
+  - REQ-314
+  - REQ-337
+  - REQ-354
+  - REQ-355
+  - REQ-356
+  - REQ-377
+  - REQ-380
+  - REQ-381
+  - REQ-382
+  - REQ-383
+  - REQ-384
+  - REQ-386
+  - REQ-388
+  - REQ-389
+  - REQ-402
+- id: UC-27
+  title: 프로세스를 독립적으로 재시작한다
+  actor: 프로세스 관리자
+  precondition: Core Trading Service, Market Data Worker, Automation Worker, Notification
+    Worker, Web API and Dashboard, Command Console가 별도 프로세스로 실행 중이다
+  postcondition: 재시작된 프로세스가 복구되어 있고 다른 프로세스는 중단 없이 계속 동작했다
+  main_flow:
+  - step: '1. 프로세스 관리자가 한 프로세스(예: Notification Worker)를 재시작한다'
+    event: RESTART_PROCESS
+  - step: 2. 시스템의 다른 프로세스가 중단 없이 계속 동작하며 해당 프로세스 종료·시작을 감사 기록으로 남긴다
+  - step: 3. 재시작된 프로세스가 자신의 미처리 작업을 큐에서 이어서 처리한다
+  alt_flows:
+  - step: 1a. 프로세스가 비정상 종료한 경우 프로세스 관리자가 자동으로 재시작하고 시스템은 재시작 사실을 기록한다
+    event: PROCESS_CRASHED
+  - step: 1b. Command Console(CLI)이 종료된 경우 거래 엔진은 계속 실행되고 진행 중 명령의 처리가 계속된다
+    event: CLI_EXIT
+  - step: 1c. Core Trading Service가 재시작된 경우 시스템은 UC-11 복구 절차를 수행하고 다른 워커는 계속 동작한다
+    event: RESTART_PROCESS
+  - step: 1d. Core Trading Service 인스턴스가 2개 이상 시작된 경우 시스템은 분산 락 또는 leader election으로
+      하나만 주문 권한을 갖게 하고 나머지는 대기한다
+    event: SYSTEM_START
+  acceptance:
+  - CLI 종료 후 거래 엔진 프로세스가 살아 있고 진행 중 명령이 최종 상태에 도달한다
+  - 한 워커를 강제 종료해도 다른 프로세스의 처리 기록이 끊기지 않는다
+  - 강제 종료된 프로세스가 설정 시간 내 자동 재시작된다
+  - 2개 인스턴스 동시 실행 시 동일 command_id의 Binance 전송 기록이 1건이다
+  - 프로세스 시작·종료·재시작마다 감사 레코드가 존재한다
+  requirements:
+  - REQ-015
+  - REQ-016
+  - REQ-113
+  - REQ-292
+  - REQ-294
+  - REQ-356
+  - REQ-357
+  - REQ-358
+  - REQ-359
+  - REQ-360
+- id: UC-28
+  title: 장애 시나리오 자동화 테스트를 실행한다
+  actor: 개발자
+  precondition: 테스트 스위트와 Binance 모의 어댑터가 준비되어 있다
+  postcondition: 필수 장애 시나리오 테스트가 모두 실행되어 통과 여부가 보고되고 결과에 자격 증명이 노출되지 않았다
+  main_flow:
+  - step: 1. 개발자가 테스트 스위트를 실행한다
+    event: RUN_TEST_SUITE
+  - step: 2. 시스템이 시스템 재시작, 응답 유실, 중복 명령, 부분 체결, WebSocket 재연결, order book gap 시나리오와
+      각 장애 시나리오 테스트를 실행한다
+  - step: 3. 시스템이 테스트별 통과·실패와 acceptance criteria 대응 관계를 보고한다
+  alt_flows:
+  - step: 2a. 하나라도 실패한 경우 시스템은 실패 시나리오와 원인을 보고하고 전체 결과를 실패로 표시한다
+  - step: 3a. 테스트 출력에 API Key·Secret 패턴이 포함된 경우 시스템은 출력을 마스킹하고 테스트를 실패로 표시한다
+  acceptance:
+  - 시스템 재시작, 응답 유실, 중복 명령, 부분 체결, WebSocket 재연결, order book gap 6개 시나리오 각각에 대응하는 테스트
+    케이스가 존재한다
+  - API 오류, rate limit, 네트워크 단절, DB 기록 실패, 알림 실패, 전략 예외 시나리오 테스트가 존재한다
+  - 테스트 출력 전체에서 API Key·Secret 문자열 검색 결과가 0건이다
+  - 각 구현 단계의 acceptance criteria가 테스트 케이스와 1:1 이상 매핑된다
+  requirements:
+  - REQ-383
+  - REQ-384
+  - REQ-391
+  - REQ-392
+  - REQ-393
+  - REQ-394
+  - REQ-395
+  - REQ-396
+  - REQ-397
+  - REQ-401

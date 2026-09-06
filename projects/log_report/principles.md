@@ -16,8 +16,12 @@
 이 등식들은 기계가 읽는다. 이름은 FSM 의 action 에서 쓰는 것과 같아야 한다.
 
 ```보존
-등식: read_lines = events + dropped
+등식: read_lines = accepted + duplicates + invalid + unrelated
 ```
+
+**P0. 원천은 남의 것이다.**
+`~/.claude` 아래의 파일은 Claude Code 의 소유물이다. 읽기만 한다.
+보존 기한 삭제는 **자체 저장소에만** 적용된다. 원천을 지우는 코드는 어떤 이유로도 안 된다.
 
 **P3. 같은 입력은 같은 출력을 낸다.**
 두 번 돌려 다른 리포트가 나오면 어느 쪽도 믿을 수 없다.

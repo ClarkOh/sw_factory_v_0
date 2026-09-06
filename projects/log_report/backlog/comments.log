@@ -1,0 +1,393 @@
+[SWF-1] created: [epic] [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+[SWF-2] created: [epic] [UC-02] 보존 기한이 지난 데이터를 정리한다
+[SWF-3] created: [epic] [UC-03] 사용량 리포트를 생성한다
+[SWF-4] created: [epic] [UC-04] 깨진 저장소를 원천에서 재구축한다
+[SWF-5] created: [epic] [UC-05] 기준 구현과 결과를 대조한다
+[SWF-6] created: [story] [R-001] event == RUN_COLLECTION and !exists(source_dir('~/.claude/pr
+[SWF-7] created: [story] [R-002] event == RUN_COLLECTION and exists(source_dir)
+[SWF-8] created: [story] [R-003] !readable(file)  # 열기 또는 읽기 실패
+[SWF-9] created: [story] [R-004] path(file) not in offsets  # 처음 보는 파일
+[SWF-10] created: [story] [R-005] size(file) < offsets[path(file)]  # 파일이 줄어듦(회전)
+[SWF-11] created: [story] [R-006] size(file) >= offsets[path(file)]
+[SWF-12] created: [story] [R-007] !parse_json(line)
+[SWF-13] created: [story] [R-008] record.type != 'assistant' or !has(record.message.usage)
+[SWF-14] created: [story] [R-009] all_zero_or_missing(record.message.usage 의 토큰 수 전부)
+[SWF-15] created: [story] [R-010] record.requestId in store.request_ids  # 같은 requestId 재출현
+[SWF-16] created: [story] [R-011] record.type == 'assistant' and has(record.message.usage) and
+[SWF-17] created: [story] [R-012] 모든 파일의 줄 처리 완료  # 정상 마감
+[SWF-18] created: [story] [R-013] 같은 원천 상태에서 수집을 다시 실행함  # 재실행 불변식
+[SWF-19] created: [story] [R-014] age(record) > 8일 and !reflected_in_daily_summary(record)
+[SWF-20] created: [story] [R-015] age(record) > 8일 and reflected_in_daily_summary(record)
+[SWF-21] created: [story] [R-016] 이번 실행에서 retention_deleted > 0
+[SWF-22] created: [story] [R-017] age(ledger_line) > 35일 and !counts_reflected_in_daily_summar
+[SWF-23] created: [story] [R-018] age(ledger_line) > 35일 and counts_reflected_in_daily_summary
+[SWF-24] created: [story] [R-019] age(summary_row) > 35일
+[SWF-25] created: [story] [R-020] !exists(offsets 항목이 가리키는 원천 파일 경로)
+[SWF-26] created: [story] [R-021] 정리 단계 완료  # 상한 불변식
+[SWF-27] created: [story] [R-022] event == REQUEST_REPORT and period in {session_5h, day_24h, 
+[SWF-28] created: [story] [R-023] 구간이 원시 레코드 보존 범위(8일) 안
+[SWF-29] created: [story] [R-024] 구간이 원시 보존 밖 and 일 요약 보존 범위(35일) 안
+[SWF-30] created: [story] [R-025] 구간이 원시로도 일 요약으로도 답할 수 없음
+[SWF-31] created: [story] [R-026] model in price_table
+[SWF-32] created: [story] [R-027] model not in price_table
+[SWF-33] created: [story] [R-028] sum(칸별 합계) != 총계
+[SWF-34] created: [story] [R-029] sum(칸별 합계) == 총계
+[SWF-35] created: [story] [R-030] 같은 저장소 상태에서 리포트를 두 번 생성함  # 결정성 불변식
+[SWF-36] created: [story] [R-031] event == REQUEST_REBUILD
+[SWF-37] created: [story] [R-032] event == REQUEST_REBUILD and !exists(source_dir)
+[SWF-38] created: [story] [R-033] event == REQUEST_REBUILD and exists(source_dir)
+[SWF-39] created: [story] [R-034] 재구축 중 원천 파일 하나를 읽지 못함
+[SWF-40] created: [story] [R-035] 재구축 완료
+[SWF-41] created: [story] [R-036] event == RUN_COMPARISON and !runnable(tools/usage_server.py)
+[SWF-42] created: [story] [R-037] event == RUN_COMPARISON and runnable(tools/usage_server.py)
+[SWF-43] created: [story] [R-038] 대조 결과 두 구현의 값이 다름
+[SWF-6] status: todo → in_progress
+[SWF-44] created: [subtask] R-001.1 app/fsm.py에 Machine 골격을 만들고 send 진입점을 정의한다
+[SWF-45] created: [subtask] R-001.2 RUN_COLLECTION의 원천 디렉터리 부재 가드 분기를 구현한다
+[SWF-46] created: [subtask] R-001.3 원천 디렉터리가 있을 때의 최소 수집 경로를 구현한다
+[SWF-6] commit f2061cd: SWF-6 [R-001] event == RUN_COLLECTION and !exists(source_dir('~/.claude/
+[SWF-44] status: todo → done
+[SWF-45] status: todo → done
+[SWF-46] status: todo → done
+[SWF-6] status: in_progress → done
+DoD 통과
+[SWF-7] status: todo → in_progress
+[SWF-47] created: [subtask] R-002.1 원천 파일 나열을 R-002 전용 메서드로 분리하고 재귀 glob을 고정한다
+[SWF-48] created: [subtask] R-002.2 파일별 처리 루프를 읽기 전용 열기로 제한하고 파일 규칙 훅으로 위임한다
+[SWF-7] commit bbddb50: SWF-7 [R-002] event == RUN_COLLECTION and exists(source_dir)
+[SWF-47] status: todo → done
+[SWF-48] status: todo → done
+[SWF-7] status: in_progress → done
+DoD 통과
+[SWF-8] status: todo → in_progress
+[SWF-49] created: [subtask] R-003.1 R-003 읽기 실패 가드를 전용 헬퍼로 분리하여 열기·읽기 단계만 감싼다
+[SWF-50] created: [subtask] R-003.2 R-003 결과가 장부·종료 코드에 반영되도록 _run_collection 을 정리하고 문서화한다
+[SWF-8] commit fba3c08: SWF-8 [R-003] !readable(file)  # 열기 또는 읽기 실패
+[SWF-49] status: todo → done
+[SWF-50] status: todo → done
+[SWF-8] status: in_progress → done
+DoD 통과
+[SWF-9] status: todo → in_progress
+[SWF-51] created: [subtask] R-004.1 _collect_file의 시작 위치 결정을 offsets 조회로 바꾼다
+[SWF-52] created: [subtask] R-004.2 처리 후 offsets 갱신을 파일 크기 기준으로 확정한다
+[SWF-9] commit 69d07d0: SWF-9 [R-004] path(file) not in offsets  # 처음 보는 파일
+[SWF-51] status: todo → done
+[SWF-52] status: todo → done
+[SWF-9] status: in_progress → done
+DoD 통과
+[SWF-10] status: todo → in_progress
+[SWF-53] created: [subtask] R-005.1 _read_source_bytes 가 기억한 offset 을 받아 회전(크기 감소) 시 start=0 을 스스로 고르게 확장한다
+[SWF-54] created: [subtask] R-005.2 _collect_file 의 위치 상태 단계를 R-005 분기로 바꾸고 처리 후 offsets[path]=size 를 유지한다
+[SWF-55] created: [subtask] R-005.3 모듈 docstring 의 구현 범위에 R-005 항목을 추가한다
+[SWF-10] commit 345188a: SWF-10 [R-005] size(file) < offsets[path(file)]  # 파일이 줄어듦(회전)
+[SWF-53] status: todo → done
+[SWF-54] status: todo → done
+[SWF-55] status: todo → done
+[SWF-10] status: in_progress → done
+DoD 통과
+[SWF-11] status: todo → in_progress
+[SWF-56] created: [subtask] R-006.1 R-006 꼬리 읽기 분기를 app/fsm.py에 명시하고 문서화하라
+[SWF-11] commit 012f5a1: SWF-11 [R-006] size(file) >= offsets[path(file)]
+[SWF-56] status: todo → done
+[SWF-11] status: in_progress → done
+DoD 통과
+[SWF-12] status: todo → in_progress
+[SWF-57] created: [subtask] R-007.1 R-007 파싱 실패 분기가 read_lines·invalid·parse_error 를 세는지 app/fsm.py 에서 확정한다
+[SWF-12] commit fd08e50: SWF-12 [R-007] !parse_json(line)
+[SWF-57] status: todo → done
+[SWF-12] status: in_progress → done
+DoD 통과
+[SWF-13] status: todo → in_progress
+[SWF-58] created: [subtask] R-008.1 R-008 무관 분류 가드를 _classify 에 확정하고 주석·모듈 docstring에 기록한다
+[SWF-13] commit 00f54b5: SWF-13 [R-008] record.type != 'assistant' or !has(record.message.usage)
+[SWF-58] status: todo → done
+[SWF-13] status: in_progress → done
+DoD 통과
+[SWF-14] status: todo → in_progress
+[SWF-59] created: [subtask] R-009.1 R-009 가드 all_zero_or_missing 을 전용 정적 메서드로 분리한다
+[SWF-60] created: [subtask] R-009.2 _classify 의 R-009 분기를 가드 메서드로 연결하고 결과 동작을 명시한다
+[SWF-61] created: [subtask] R-009.3 모듈 docstring 에 R-009 구현 범위를 기록한다
+[SWF-14] commit 4dcb433: SWF-14 [R-009] all_zero_or_missing(record.message.usage 의 토큰 수 전부)
+[SWF-59] status: todo → done
+[SWF-60] status: todo → done
+[SWF-61] status: todo → done
+[SWF-14] status: in_progress → done
+DoD 통과
+[SWF-15] status: todo → in_progress
+[SWF-15] status: in_progress → todo
+지난 실행이 중단됨 -> 대기열로 되돌림
+[SWF-15] status: todo → in_progress
+[SWF-62] created: [subtask] R-010.1 app/fsm.py _classify 의 R-010 중복 분기를 명세대로 확정한다
+[SWF-15] commit 9389419: SWF-15 [R-010] record.requestId in store.request_ids  # 같은 requestId 재출현
+[SWF-62] status: todo → done
+[SWF-15] status: in_progress → done
+DoD 통과
+[SWF-16] status: todo → in_progress
+[SWF-63] created: [subtask] R-011.1 R-011 채택 분기를 _classify 끝에 명시적으로 구현하고 주석을 달라
+[SWF-64] created: [subtask] R-011.2 채택 레코드를 원천과 별개인 data_dir 저장소 파일에 기록하라
+[SWF-65] created: [subtask] R-011.3 파일 헤더 문서에 R-011 항목을 추가하라
+[SWF-16] commit ed1f1b2: SWF-16 [R-011] record.type == 'assistant' and has(record.message.usage) 
+[SWF-63] status: todo → done
+[SWF-64] status: todo → done
+[SWF-65] status: todo → done
+[SWF-16] status: in_progress → done
+DoD 통과
+[SWF-17] status: todo → in_progress
+[SWF-66] created: [subtask] R-012.1 정상 마감 직전에 read_lines 등식 assert를 추가한다
+[SWF-67] created: [subtask] R-012.2 정상 마감 장부 한 줄에 retention_deleted를 명시적으로 넘긴다
+[SWF-68] created: [subtask] R-012.3 모듈 docstring의 규칙 목록에 R-012를 기록한다
+[SWF-17] commit 97b45c1: SWF-17 [R-012] 모든 파일의 줄 처리 완료  # 정상 마감
+[SWF-66] status: todo → done
+[SWF-67] status: todo → done
+[SWF-68] status: todo → done
+[SWF-17] status: in_progress → done
+DoD 통과
+[SWF-18] status: todo → in_progress
+[SWF-69] created: [subtask] R-013.1 읽기 위치 상태(offsets)를 data_dir/offsets.json 에 영속하라
+[SWF-70] created: [subtask] R-013.2 Machine 생성 시 data_dir 의 store·request_ids·offsets 상태 파일을 복원하라
+[SWF-71] created: [subtask] R-013.3 R-013 재실행 불변식을 _run_collection 과 모듈 docstring 에 명시하라
+[SWF-18] commit 91c5c5c: SWF-18 [R-013] 같은 원천 상태에서 수집을 다시 실행함  # 재실행 불변식
+[SWF-69] status: todo → done
+[SWF-70] status: todo → done
+[SWF-71] status: todo → done
+[SWF-18] status: in_progress → done
+DoD 통과
+[SWF-1] status: todo → done
+하위 스토리 전부 완료
+[SWF-19] status: todo → in_progress
+[SWF-72] created: [subtask] R-014.1 R-014 가드 판정 헬퍼를 app/fsm.py 에 추가한다
+[SWF-73] created: [subtask] R-014.2 일 요약 반영 함수와 비용 계산을 app/fsm.py 에 구현한다
+[SWF-74] created: [subtask] R-014.3 _run_collection 정상 마감 경로에 R-014 반영 단계를 삽입한다
+[SWF-75] created: [subtask] R-014.4 daily_summary 와 reflected 표식을 data_dir 에 영속·복원한다
+[SWF-19] commit 3c50007: SWF-19 [R-014] age(record) > 8일 and !reflected_in_daily_summary(record)
+[SWF-72] status: todo → done
+[SWF-73] status: todo → done
+[SWF-74] status: todo → done
+[SWF-75] status: todo → done
+[SWF-19] status: in_progress → done
+DoD 통과
+[SWF-20] status: todo → in_progress
+[SWF-76] created: [subtask] R-015.1 store 에서 기한 초과·반영 완료 레코드를 삭제하는 헬퍼를 추가한다
+[SWF-77] created: [subtask] R-015.2 수집 실행 흐름에 삭제 단계를 연결하고 장부에 retention_deleted 를 기록한다
+[SWF-20] commit dcd96ff: SWF-20 [R-015] age(record) > 8일 and reflected_in_daily_summary(record)
+[SWF-76] status: todo → done
+[SWF-77] status: todo → done
+[SWF-20] status: in_progress → done
+DoD 통과
+[SWF-21] status: todo → in_progress
+[SWF-78] created: [subtask] R-016.1 정상 마감 분기에서 retention_deleted > 0 일 때 deleted_at 을 계산해 장부 줄에 넘긴다
+[SWF-21] commit 713fa36: SWF-21 [R-016] 이번 실행에서 retention_deleted > 0
+[SWF-78] status: todo → done
+[SWF-21] status: in_progress → done
+DoD 통과
+[SWF-22] status: todo → in_progress
+[SWF-79] created: [subtask] R-017.1 장부 줄 보존 기한 상수와 나이·건수 반영 여부 판정 헬퍼를 추가한다
+[SWF-80] created: [subtask] R-017.2 35일 초과·미반영 장부 줄을 유지하는 장부 정리 패스를 _run_collection 에 넣는다
+[SWF-81] created: [subtask] R-017.3 모듈 docstring 과 주석에 R-017 규칙을 기록한다
+[SWF-22] commit 8f1cf87: SWF-22 [R-017] age(ledger_line) > 35일 and !counts_reflected_in_daily_sum
+[SWF-79] status: todo → done
+[SWF-80] status: todo → done
+[SWF-81] status: todo → done
+[SWF-22] status: in_progress → done
+DoD 통과
+[SWF-23] status: todo → in_progress
+[SWF-82] created: [subtask] R-018.1 장부 정리 패스에서 35일 초과·건수 반영 완료 줄을 삭제하도록 바꾼다
+[SWF-23] commit 00217da: SWF-23 [R-018] age(ledger_line) > 35일 and counts_reflected_in_daily_summ
+[SWF-82] status: todo → done
+[SWF-23] status: in_progress → done
+DoD 통과
+[SWF-24] status: todo → in_progress
+[SWF-83] created: [subtask] R-019.1 일 요약 행 보존 기한 상수와 나이 계산 헬퍼를 추가한다
+[SWF-84] created: [subtask] R-019.2 기한 초과 일 요약 행 정리 패스 메서드를 구현한다
+[SWF-85] created: [subtask] R-019.3 정리 패스를 _run_collection 에 연결하고 R-019 문서를 갱신한다
+[SWF-24] commit 1f53fdd: SWF-24 [R-019] age(summary_row) > 35일
+[SWF-83] status: todo → done
+[SWF-84] status: todo → done
+[SWF-85] status: todo → done
+[SWF-24] status: in_progress → done
+DoD 통과
+[SWF-25] status: todo → in_progress
+[SWF-86] created: [subtask] R-020.1 R-020 offsets 정리 헬퍼 메서드를 Machine 에 추가한다
+[SWF-87] created: [subtask] R-020.2 _run_collection 정리 패스에 offsets 정리를 연결하고 영속한다
+[SWF-25] commit 3a87549: SWF-25 [R-020] !exists(offsets 항목이 가리키는 원천 파일 경로)
+[SWF-86] status: todo → done
+[SWF-87] status: todo → done
+[SWF-25] status: in_progress → done
+DoD 통과
+[SWF-26] status: todo → in_progress
+[SWF-88] created: [subtask] R-021.1 R-021 상한 상수와 규칙 주석을 fsm.py 에 추가한다
+[SWF-89] created: [subtask] R-021.2 나이 상한 불변식 검사 메서드를 구현한다
+[SWF-90] created: [subtask] R-021.3 상태 파일 유계·offsets 정합 검사 메서드를 구현한다
+[SWF-91] created: [subtask] R-021.4 정리 단계 완료 지점에 두 검사를 연결한다
+[SWF-26] commit deb757c: SWF-26 [R-021] 정리 단계 완료  # 상한 불변식
+[SWF-88] status: todo → done
+[SWF-89] status: todo → done
+[SWF-90] status: todo → done
+[SWF-91] status: todo → done
+[SWF-26] status: in_progress → done
+DoD 통과
+[SWF-2] status: todo → done
+하위 스토리 전부 완료
+[SWF-27] status: todo → in_progress
+[SWF-92] created: [subtask] R-022.1 REQUEST_REPORT 이벤트를 Machine.send 에 등록하고 기간 guard 를 구현한다
+[SWF-93] created: [subtask] R-022.2 집계 대상 구간 목록(요청 기간 + 최근 30일 각 날짜)을 만드는 헬퍼를 구현한다
+[SWF-94] created: [subtask] R-022.3 각 구간에 구간 규칙(R-023..R-025)을 적용하는 자리를 만들고 리포트 결과를 조립한다
+[SWF-27] commit 621e501: SWF-27 [R-022] event == REQUEST_REPORT and period in {session_5h, day_24
+[SWF-92] status: todo → done
+[SWF-93] status: todo → done
+[SWF-94] status: todo → done
+[SWF-27] status: in_progress → done
+DoD 통과
+[SWF-28] status: todo → in_progress
+[SWF-95] created: [subtask] R-023.1 구간의 원시 보존 범위(8일) 안 여부를 판정하는 guard 헬퍼를 추가한다
+[SWF-96] created: [subtask] R-023.2 원시 레코드로 구간을 집계해 모델별·토큰 종류별 분해를 만드는 함수를 구현한다
+[SWF-97] created: [subtask] R-023.3 _aggregate_window 를 guard 분기로 바꾸고 리포트에 by_model 을 노출한다
+[SWF-28] commit b0bb3e2: SWF-28 [R-023] 구간이 원시 레코드 보존 범위(8일) 안
+[SWF-95] status: todo → done
+[SWF-96] status: todo → done
+[SWF-97] status: todo → done
+[SWF-28] status: in_progress → done
+DoD 통과
+[SWF-29] status: todo → in_progress
+[SWF-98] created: [subtask] R-024.1 일 요약 보존 범위 guard 판정 메서드를 추가한다
+[SWF-99] created: [subtask] R-024.2 구간을 일 요약으로 집계하는 메서드를 추가한다
+[SWF-100] created: [subtask] R-024.3 _aggregate_window 진입점에 R-024 분기를 연결한다
+[SWF-29] commit e5bb2ba: SWF-29 [R-024] 구간이 원시 보존 밖 and 일 요약 보존 범위(35일) 안
+[SWF-98] status: todo → done
+[SWF-99] status: todo → done
+[SWF-100] status: todo → done
+[SWF-29] status: in_progress → done
+DoD 통과
+[SWF-30] status: todo → in_progress
+[SWF-101] created: [subtask] R-025.1 _aggregate_window 의 두 guard 모두 거짓인 폴백을 '값 없음' 반환으로 교체하라
+[SWF-102] created: [subtask] R-025.2 모듈 docstring 과 리포트 조립 주석에 R-025 규칙을 기록하라
+[SWF-30] commit 2d09c01: SWF-30 [R-025] 구간이 원시로도 일 요약으로도 답할 수 없음
+[SWF-101] status: todo → done
+[SWF-102] status: todo → done
+[SWF-30] status: in_progress → done
+DoD 통과
+[SWF-31] status: todo → in_progress
+[SWF-31] status: in_progress → todo
+지난 실행이 중단됨 -> 대기열로 되돌림
+[SWF-31] status: todo → in_progress
+[SWF-103] created: [subtask] R-026.1 R-026 guard `model in price_table` 판정과 단가표 기반 비용 계산을 명시적으로 분리하라
+[SWF-104] created: [subtask] R-026.2 by_model 각 모델 항목에 flags 리스트를 두고 단가표에 있는 모델은 빈 리스트로 노출하라
+[SWF-31] commit d725049: SWF-31 [R-026] model in price_table
+[SWF-103] status: todo → done
+[SWF-104] status: todo → done
+[SWF-31] status: in_progress → done
+DoD 통과
+[SWF-32] status: todo → in_progress
+[SWF-105] created: [subtask] R-027.1 price_table 전체에서 토큰 종류별 최고 단가를 뽑는 _max_price 헬퍼를 app/fsm.py Machine 에 추가한다
+[SWF-106] created: [subtask] R-027.2 _record_cost 의 guard 거짓 분기를 R-027 결과(최고 단가 적용)로 바꾼다
+[SWF-107] created: [subtask] R-027.3 _aggregate_window_raw 에서 단가표에 없는 모델의 by_model 버킷 flags 에 '단가표 없음 — 최고 단가 적용' 표시를 붙인다
+[SWF-32] commit 1eec90d: SWF-32 [R-027] model not in price_table
+[SWF-105] status: todo → done
+[SWF-106] status: todo → done
+[SWF-107] status: todo → done
+[SWF-32] status: in_progress → done
+DoD 통과
+[SWF-33] status: todo → in_progress
+[SWF-108] created: [subtask] R-028.1 구간 집계 값의 칸별 합계와 총계 일치 여부를 판정하는 순수 헬퍼를 추가한다
+[SWF-109] created: [subtask] R-028.2 REQUEST_REPORT 에서 불일치 구간이 있으면 리포트를 만들지 않고 실패 결과를 돌려준다
+[SWF-33] commit b4b5c40: SWF-33 [R-028] sum(칸별 합계) != 총계
+[SWF-108] status: todo → done
+[SWF-109] status: todo → done
+[SWF-33] status: in_progress → done
+DoD 통과
+[SWF-34] status: todo → in_progress
+[SWF-110] created: [subtask] R-029.1 _request_report 에 R-029 guard(모든 구간 합계 일치)를 명시하고 리포트 조립을 그 guard 통과 뒤로 묶는다
+[SWF-111] created: [subtask] R-029.2 모듈 docstring 에 R-029 전이 설명을 추가한다
+[SWF-34] commit e993366: SWF-34 [R-029] sum(칸별 합계) == 총계
+[SWF-110] status: todo → done
+[SWF-111] status: todo → done
+[SWF-34] status: in_progress → done
+DoD 통과
+[SWF-35] status: todo → in_progress
+[SWF-112] created: [subtask] R-030.1 R-030 전이 명세를 app/fsm.py 모듈 docstring 규칙 목록에 추가한다
+[SWF-113] created: [subtask] R-030.2 _request_report 에 읽기 전용 불변식 단언(_assert_report_read_only)을 추가한다
+[SWF-114] created: [subtask] R-030.3 리포트 조립 뒤 by_model 합 == store 합 자기검증(_assert_by_model_matches_store)을 추가한다
+[SWF-35] commit 7b34db7: SWF-35 [R-030] 같은 저장소 상태에서 리포트를 두 번 생성함  # 결정성 불변식
+[SWF-112] status: todo → done
+[SWF-113] status: todo → done
+[SWF-114] status: todo → done
+[SWF-35] status: in_progress → done
+DoD 통과
+[SWF-3] status: todo → done
+하위 스토리 전부 완료
+[SWF-36] status: todo → in_progress
+[SWF-115] created: [subtask] R-031.1 send()에 REQUEST_REBUILD 이벤트를 _request_rebuild 핸들러로 연결한다
+[SWF-116] created: [subtask] R-031.2 _request_rebuild가 다른 처리보다 먼저 8일 초과 과거 복구 불가 안내를 messages[0]으로 반환하게 한다
+[SWF-36] commit 495e321: SWF-36 [R-031] event == REQUEST_REBUILD
+[SWF-115] status: todo → done
+[SWF-116] status: todo → done
+[SWF-36] status: in_progress → done
+DoD 통과
+[SWF-37] status: todo → in_progress
+[SWF-117] created: [subtask] R-032.1 _request_rebuild 에 원천 디렉터리 부재 분기를 추가해 빈 저장소로 exit 0 종료
+[SWF-118] created: [subtask] R-032.2 원천이 있을 때 저장소를 비우고 원천 전체를 처음부터 다시 수집하도록 연결
+[SWF-37] commit 6524905: SWF-37 [R-032] event == REQUEST_REBUILD and !exists(source_dir)
+[SWF-117] status: todo → done
+[SWF-118] status: todo → done
+[SWF-37] status: in_progress → done
+DoD 통과
+[SWF-38] status: todo → in_progress
+[SWF-119] created: [subtask] R-033.1 R-033 규칙을 app/fsm.py 모듈 헤더 규칙 목록에 추가한다
+[SWF-120] created: [subtask] R-033.2 _request_rebuild 의 원천 존재 분기를 _rebuild_from_source 헬퍼로 분리하고 R-033 을 명시한다
+[SWF-121] created: [subtask] R-033.3 재구축 경로의 원천 무변경 보장을 코드 수준에서 확인한다
+[SWF-38] commit ec2acc5: SWF-38 [R-033] event == REQUEST_REBUILD and exists(source_dir)
+[SWF-119] status: todo → done
+[SWF-120] status: todo → done
+[SWF-121] status: todo → done
+[SWF-38] status: in_progress → done
+DoD 통과
+[SWF-39] status: todo → in_progress
+[SWF-122] created: [subtask] R-034.1 _rebuild_from_source 가 재구축 집계와 file_failures 를 반환하도록 바꾼다
+[SWF-123] created: [subtask] R-034.2 REQUEST_REBUILD 결과를 file_failures 포함 장부 줄로 남긴다
+[SWF-39] commit cd95724: SWF-39 [R-034] 재구축 중 원천 파일 하나를 읽지 못함
+[SWF-122] status: todo → done
+[SWF-123] status: todo → done
+[SWF-39] status: in_progress → done
+DoD 통과
+[SWF-40] status: todo → in_progress
+[SWF-124] created: [subtask] R-035.1 재구축 완료 시 장부 줄에 rebuild=true 를 표시한다
+[SWF-40] commit 346949d: SWF-40 [R-035] 재구축 완료
+[SWF-124] status: todo → done
+[SWF-40] status: in_progress → done
+DoD 통과
+[SWF-4] status: todo → done
+하위 스토리 전부 완료
+[SWF-41] status: todo → in_progress
+[SWF-125] created: [subtask] R-036.1 RUN_COMPARISON 이벤트를 send 라우팅에 등록하고 _run_comparison 핸들러 골격을 추가하라
+[SWF-126] created: [subtask] R-036.2 기준 구현 실행 가능 여부 판정 함수 _usage_server_runnable 을 구현하라
+[SWF-127] created: [subtask] R-036.3 실행 불가 시 '대조 불가'와 사유를 보고하고 comparison 을 None 으로 반환하도록 _run_comparison 을 완성하라
+[SWF-41] commit 341f00a: SWF-41 [R-036] event == RUN_COMPARISON and !runnable(tools/usage_server.
+[SWF-125] status: todo → done
+[SWF-126] status: todo → done
+[SWF-127] status: todo → done
+[SWF-41] status: in_progress → done
+DoD 통과
+[SWF-42] status: todo → in_progress
+[SWF-128] created: [subtask] R-037.1 기준 구현 stdout 을 총 토큰·비용으로 파싱하는 헬퍼를 추가한다
+[SWF-129] created: [subtask] R-037.2 이 도구 쪽 같은 기간 총 토큰·비용을 산출하는 헬퍼를 추가한다
+[SWF-130] created: [subtask] R-037.3 _run_comparison 의 guard 거짓 경로를 성공 대조 결과로 채운다
+[SWF-131] created: [subtask] R-037.4 두 결과가 다를 때 차이 항목 목록을 comparison 에 채운다
+[SWF-132] created: [subtask] R-037.5 모듈 docstring 의 전이 목록에 R-037 항목을 추가한다
+[SWF-42] commit d75509e: SWF-42 [R-037] event == RUN_COMPARISON and runnable(tools/usage_server.p
+[SWF-128] status: todo → done
+[SWF-129] status: todo → done
+[SWF-130] status: todo → done
+[SWF-131] status: todo → done
+[SWF-132] status: todo → done
+[SWF-42] status: in_progress → done
+DoD 통과
+[SWF-43] status: todo → in_progress
+[SWF-133] created: [subtask] R-038.1 R-038 guard 분기를 _run_comparison / _comparison_diffs 에 확정한다
+[SWF-134] created: [subtask] R-038.2 app/fsm.py 전이 목록과 docstring 에 R-038 을 등재한다
+[SWF-43] commit 8ef1d88: SWF-43 [R-038] 대조 결과 두 구현의 값이 다름
+[SWF-133] status: todo → done
+[SWF-134] status: todo → done
+[SWF-43] status: in_progress → done
+DoD 통과
+[SWF-5] status: todo → done
+하위 스토리 전부 완료

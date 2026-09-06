@@ -30,3 +30,15 @@
 [11:16:15] [PAUSE] 게이트 'fsm' 승인 대기 중 (phase=MODEL)
    산출물을 검토한 뒤 `python -m factory.cli approve fsm` 하고 재개하세요.
 [11:16:15] 정지 지점: MODEL | 통계: {}
+[12:02:55] 공장 77f7f7a (수정본) · 요구사항 127442325a2a
+[12:02:55] -- MODEL --
+[12:04:49] 공장 77f7f7a (수정본) · 요구사항 84051253f55b
+[12:04:49] -- ELICIT --
+[12:06:23] 요구사항 44건 → C:\work\sw_factory\projects\log_report\artifacts\requirements.yaml
+[12:06:23] -- USECASE --
+[12:07:57] 유스케이스 5건 → C:\work\sw_factory\projects\log_report\artifacts\usecases.yaml
+[12:07:57] -- MODEL --
+[12:10:44] 결정표: 규칙 38개 → C:\work\sw_factory\projects\log_report\artifacts\rules.yaml
+[12:10:44] [PAUSE] 게이트 'fsm' 승인 대기 중 (phase=MODEL)
+   산출물을 검토한 뒤 `python -m factory.cli approve fsm` 하고 재개하세요.
+[12:10:44] 정지 지점: MODEL | 통계: {}

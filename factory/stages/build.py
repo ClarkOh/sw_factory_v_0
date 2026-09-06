@@ -78,7 +78,7 @@ def spec_tests(ctx: Ctx, force: bool = False) -> Path:
     res = ctx.worker.run(WorkerTask(
         prompt=prompt(
             "spec_test",
-            fsm_yaml=ctx.store.fsm_yaml.read_text(encoding="utf-8"),
+            fsm_yaml=ctx.store.model_yaml_text(),
             test_path="tests/test_fsm.py",
             interface=iface.read_text(encoding="utf-8") if iface.exists()
                       else "(INTERFACE.md 없음 — FSM의 상태/이벤트 이름을 그대로 쓰는 인터페이스를 가정하고,\n"
@@ -263,7 +263,7 @@ def spec_e2e(ctx: Ctx, force: bool = False) -> Path:
             "e2e_spec",
             e2e_path="tests/e2e/test_scenarios.py",
             usecases_yaml=ctx.store.usecases_yaml.read_text(encoding="utf-8"),
-            fsm_yaml=ctx.store.fsm_yaml.read_text(encoding="utf-8"),
+            fsm_yaml=ctx.store.model_yaml_text(),
         ),
         cwd=ctx.cfg.repo,
         allowed_tools=["Read", "Write", "Glob", "Grep", "Bash(python *)"],

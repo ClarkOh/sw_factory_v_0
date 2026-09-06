@@ -156,7 +156,7 @@ def generate_driver(ctx: Ctx, force: bool = False) -> Path:
     res = ctx.worker.run(WorkerTask(
         prompt=prompt(
             "driver",
-            fsm_yaml=ctx.store.fsm_yaml.read_text(encoding="utf-8"),
+            fsm_yaml=ctx.store.model_yaml_text(),
             interface=iface.read_text(encoding="utf-8") if iface.exists() else "(INTERFACE.md 없음)",
         ),
         cwd=ctx.cfg.repo,

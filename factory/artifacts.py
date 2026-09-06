@@ -82,6 +82,11 @@ class ArtifactStore:
         return RuleTable(project=d.get("project", ""),
                          rules=[Rule(**r) for r in d.get("rules", [])])
 
+    def model_yaml_text(self) -> str:
+        """중간 형식의 원문. 워커 프롬프트에 그대로 들어간다."""
+        p = self.rules_yaml if self.rules_yaml.exists() else self.fsm_yaml
+        return p.read_text(encoding="utf-8")
+
     def load_model(self):
         """이 프로젝트의 중간 형식. FSM 이든 결정표든 원자(atoms)를 내놓는다.
 

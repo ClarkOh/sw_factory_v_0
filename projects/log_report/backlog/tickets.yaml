@@ -1,0 +1,3764 @@
+- key: SWF-1
+  type: epic
+  title: '[UC-01] 사용량 로그를 수집하여 저장소에 적재한다'
+  description: '**액터** 스케줄러
+
+    **사전조건** 저장소·읽기 위치 상태 파일이 존재하거나 첫 실행이다
+
+    **사후조건** 새로 붙은 원천 줄이 분류·적재되고 수집 결과가 장부 한 줄로 남아 있으며 원천 파일은 변경되지 않았다
+
+
+    **주 흐름**
+
+    - 1. 스케줄러가 수집 실행을 요청한다  `[RUN_COLLECTION]`
+
+    - 2. 시스템이 `~/.claude/projects/**/*.jsonl` 원천 파일을 나열한다
+
+    - 3. 시스템이 파일마다 기억한 읽기 위치 이후에 새로 붙은 줄만 읽는다
+
+    - 4. 시스템이 각 줄을 JSON 레코드 하나로 해석하여 채택(`type`=`assistant`이고 `message.usage`에 토큰 수
+    있음)·중복(같은 `requestId` 재출현)·무효(파싱 불가 또는 토큰 수 전부 0/없음, 이유 기록)·무관(그 외)으로 분류한다
+
+    - 5. 시스템이 채택 레코드에서 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간 구분) 토큰·웹검색 횟수를 추출하여
+    원천과 별개 파일인 저장소에 적재한다
+
+    - 6. 시스템이 읽은 줄 수·채택·중복·무효·무관·보존 삭제 건수를 적재 장부 한 줄로 남긴다
+
+
+    **대안/예외 흐름**
+
+    - 1a. 같은 원천 상태에서 스케줄러가 수집을 다시 요청하면 시스템은 레코드를 복제하지 않고 저장소를 동일 상태로 유지한 채 장부 한 줄만
+    남긴다  `[RUN_COLLECTION]`
+
+    - 2a. 원천 디렉터리가 없으면 시스템은 오류로 처리하지 않고 빈 저장소 상태로 장부 한 줄을 남기고 정상 종료한다
+
+    - 3a. 파일 크기가 기억한 읽기 위치보다 줄어들었으면 시스템은 그 파일을 처음부터 다시 읽는다
+
+    - 3b. 원천 파일 하나를 읽지 못하면 시스템은 그 파일 경로와 실패 이유를 장부에 남기고 나머지 파일로 수집을 계속한다
+
+
+    **인수 조건**
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-2
+  type: epic
+  title: '[UC-02] 보존 기한이 지난 데이터를 정리한다'
+  description: '**액터** 스케줄러
+
+    **사전조건** 저장소·일 요약·적재 장부·읽기 위치 상태 파일이 존재한다
+
+    **사후조건** 모든 파일이 기간·크기 상한 안에 있고, 삭제된 데이터의 내용·건수는 일 요약과 장부에 반영되어 있다
+
+
+    **주 흐름**
+
+    - 1. 스케줄러가 수집 실행을 요청한다  `[RUN_COLLECTION]`
+
+    - 2. 시스템이 8일을 넘긴 원시 레코드 중 그 날의 일 요약에 반영된 것만 삭제한다
+
+    - 3. 시스템이 언제 몇 건을 지웠는지 적재 장부에 남긴다
+
+    - 4. 시스템이 35일을 넘긴 일 요약과 장부 줄 중 건수(채택·중복·무효·무관·보존 삭제)가 그 날의 일 요약에 반영된 것만 지운다
+
+    - 5. 시스템이 사라진 원천 파일의 읽기 위치 항목을 읽기 위치 상태에서 정리한다
+
+
+    **대안/예외 흐름**
+
+    - 2a. 기한을 넘겼으나 일 요약에 아직 반영되지 않은 원시 레코드가 있으면 시스템은 그 레코드를 삭제하지 않고 요약에 반영한 뒤에만 삭제한다
+
+    - 4a. 기한을 넘겼으나 건수가 일 요약에 반영되지 않은 장부 줄이 있으면 시스템은 그 줄을 지우지 않고 유지한다
+
+
+    **인수 조건**
+
+    - 삭제된 모든 원시 레코드의 날짜에 대해 해당 날짜의 일 요약 행이 삭제 이전에 존재한다
+
+    - 원시 레코드 삭제가 발생한 실행의 장부 줄에 삭제 시각과 삭제 건수가 기록되어 있다
+
+    - 정리 후 원시 레코드의 최고 나이가 8일 + 실행 주기 이내이고, 일 요약·장부 줄의 최고 나이가 35일 + 실행 주기 이내이다
+
+    - 저장소·일 요약·적재 장부·읽기 위치 상태 각 파일이 정의된 기간 또는 크기 상한을 넘지 않는다
+
+    - 정리 후 읽기 위치 상태의 모든 파일 경로가 실제로 존재하는 원천 파일을 가리킨다
+
+    - 일 요약에 반영되지 않은 레코드·장부 줄은 기한 경과 후에도 삭제되지 않고 남아 있다'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-3
+  type: epic
+  title: '[UC-03] 사용량 리포트를 생성한다'
+  description: '**액터** 사용자
+
+    **사전조건** 저장소와 일 요약이 존재한다(비어 있어도 된다)
+
+    **사후조건** 요청한 기간의 리포트가 근거(마지막 적재 시각·레코드 수)와 함께 제시되었고 저장소는 변경되지 않았다
+
+
+    **주 흐름**
+
+    - 1. 사용자가 기간(세션 칸 5시간·하루 24시간·주간 7일 중 하나)을 지정해 리포트를 요청한다  `[REQUEST_REPORT]`
+
+    - 2. 시스템이 기간이 원시 레코드 보존 범위(8일) 안이면 원시 레코드로, 벗어나면 일 요약으로 집계한다
+
+    - 3. 시스템이 모델별 단가표로 비용을 계산한다
+
+    - 4. 시스템이 칸별 합계와 총계가 일치함을 확인한 뒤 모델별 분해(토큰 종류별·비용), 최근 30일 일별 추이, 근거(마지막 적재 시각·레코드
+    수)를 포함한 리포트를 제시한다
+
+
+    **대안/예외 흐름**
+
+    - 2a. 일 요약으로도 답할 수 없는 기간이 포함되면 시스템은 그 구간을 0이 아니라 값 없음으로 표시한다
+
+    - 3a. 단가표에 없는 모델이 있으면 시스템은 단가표에서 가장 비싼 단가로 계산하고 그 사실을 리포트에 표시한다
+
+    - 4a. 칸별 합계가 총계와 다르면 시스템은 리포트를 생성하지 않고 사용자에게 실패와 사유를 알린다
+
+
+    **인수 조건**
+
+    - 세션 칸(5시간)·하루(24시간)·주간(7일) 세 기간 각각에 대해 리포트 요청이 처리된다
+
+    - 리포트의 총 토큰이 저장소의 해당 기간 레코드 합과 같다
+
+    - 같은 저장소 상태에서 리포트를 두 번 생성하면 두 결과물이 동일하다
+
+    - 리포트에 모델별 토큰 종류별·비용 분해와 최근 30일 일별 추이와 마지막 적재 시각·레코드 수가 존재한다
+
+    - 단가표에 없는 모델이 기간에 포함되면 그 비용은 단가표 최고 단가로 계산되고 리포트에 해당 표시가 존재한다
+
+    - 데이터로 답할 수 없는 구간의 값이 0이 아닌 값 없음으로 표기된다
+
+    - 칸별 합계가 총계와 다른 리포트 산출물은 존재하지 않는다'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-4
+  type: epic
+  title: '[UC-04] 깨진 저장소를 원천에서 재구축한다'
+  description: '**액터** 운영자
+
+    **사전조건** 저장소 파일이 깨져 있거나 없다
+
+    **사후조건** 저장소가 원천의 현재 내용으로부터 다시 지어졌고 원천 파일은 변경되지 않았다
+
+
+    **주 흐름**
+
+    - 1. 운영자가 저장소 재구축을 요청한다  `[REQUEST_REBUILD]`
+
+    - 2. 시스템이 원시 보존 기한(8일)을 넘긴 과거는 복구할 수 없음을 운영자에게 명시적으로 알린다
+
+    - 3. 시스템이 원천 파일 전체를 처음부터 읽어 저장소를 다시 짓는다
+
+    - 4. 시스템이 재구축 결과(적재 건수)를 장부에 남긴다
+
+
+    **대안/예외 흐름**
+
+    - 3a. 원천 디렉터리가 없으면 시스템은 오류로 처리하지 않고 빈 저장소로 시작한다
+
+    - 3b. 원천 파일 하나를 읽지 못하면 시스템은 그 파일과 실패 이유를 장부에 남기고 나머지 파일로 재구축을 계속한다
+
+
+    **인수 조건**
+
+    - 재구축 출력에 8일을 넘긴 과거는 복구할 수 없다는 안내 문구가 포함된다
+
+    - 재구축 후 저장소의 레코드 집합이 현재 원천을 처음부터 수집한 결과와 동일하다
+
+    - 재구축 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 원천 디렉터리가 없을 때 재구축이 종료 코드 0으로 끝나고 빈 저장소가 존재한다'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-5
+  type: epic
+  title: '[UC-05] 기준 구현과 결과를 대조한다'
+  description: '**액터** 개발자
+
+    **사전조건** 기준 구현(tools/usage_server.py)과 이 도구가 같은 원천에 접근할 수 있다
+
+    **사후조건** 같은 원천·기간에 대한 두 구현의 집계 차이가 보고되었다
+
+
+    **주 흐름**
+
+    - 1. 개발자가 기간을 지정해 이 도구와 기준 구현의 집계 대조를 요청한다  `[RUN_COMPARISON]`
+
+    - 2. 시스템이 같은 원천·기간에 대해 두 구현의 총 토큰·비용을 나란히 제시한다
+
+
+    **대안/예외 흐름**
+
+    - 2a. 두 결과가 다르면 시스템은 어느 항목(토큰 종류·모델·기간)이 얼마나 다른지 보고한다
+
+    - 2b. 기준 구현을 실행할 수 없으면 시스템은 대조 불가와 그 이유를 보고한다
+
+
+    **인수 조건**
+
+    - 대조 출력에 두 구현 각각의 총 토큰·비용 값이 존재한다
+
+    - 두 결과가 다를 때 차이 항목이 0건이 아닌 목록으로 보고된다
+
+    - 기준 구현 실행 실패 시 종료가 대조 성공으로 표기되지 않는다'
+  status: done
+  parent: null
+  labels:
+  - auto
+  - usecase
+  fsm_ref: ''
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-6
+  type: story
+  title: '[R-001] event == RUN_COLLECTION and !exists(source_dir(''~/.claude/pr'
+  description: '원자 `R-001` 구현
+
+
+    - 조건: `event == RUN_COLLECTION and !exists(source_dir(''~/.claude/projects''))`
+
+    - 결과: `오류로 처리하지 않는다; 저장소를 빈 상태로 보장; append_ledger_line(read_lines=0, accepted=0,
+    duplicates=0, invalid=0, unrelated=0, retention_deleted=0); exit_code == 0`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_001` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-001
+  usecase_ref: UC-01
+  signature: 939197bac146
+  dod_tests:
+  - tests/test_fsm.py::test_r_001
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-7
+  type: story
+  title: '[R-002] event == RUN_COLLECTION and exists(source_dir)'
+  description: '원자 `R-002` 구현
+
+
+    - 조건: `event == RUN_COLLECTION and exists(source_dir)`
+
+    - 결과: `files = glob(''~/.claude/projects/**/*.jsonl''); 각 파일에 파일 규칙(R-003..R-006)
+    적용; 원천은 읽기 전용으로만 연다 — 어떤 규칙도 원천에 쓰거나 지우지 않는다`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_002` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-002
+  usecase_ref: UC-01
+  signature: 7229401b8b9a
+  dod_tests:
+  - tests/test_fsm.py::test_r_002
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-8
+  type: story
+  title: '[R-003] !readable(file)  # 열기 또는 읽기 실패'
+  description: '원자 `R-003` 구현
+
+
+    - 조건: `!readable(file)  # 열기 또는 읽기 실패`
+
+    - 결과: `ledger_file_failures += (path(file), failure_reason); 이 파일을 건너뛰고 다음 파일로
+    계속; 실행은 비정상 종료하지 않는다`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_003` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-003
+  usecase_ref: UC-01
+  signature: 28fafa5781a2
+  dod_tests:
+  - tests/test_fsm.py::test_r_003
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-9
+  type: story
+  title: '[R-004] path(file) not in offsets  # 처음 보는 파일'
+  description: '원자 `R-004` 구현
+
+
+    - 조건: `path(file) not in offsets  # 처음 보는 파일`
+
+    - 결과: `offset = 0 부터 전체 줄을 줄 규칙(R-008..R-012)으로 처리; 처리 후 offsets[path(file)] =
+    size(file)`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_004` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-004
+  usecase_ref: UC-01
+  signature: b68bd45cbe8a
+  dod_tests:
+  - tests/test_fsm.py::test_r_004
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-10
+  type: story
+  title: '[R-005] size(file) < offsets[path(file)]  # 파일이 줄어듦(회전)'
+  description: '원자 `R-005` 구현
+
+
+    - 조건: `size(file) < offsets[path(file)]  # 파일이 줄어듦(회전)`
+
+    - 결과: `offset = 0 부터 처음의 줄들을 다시 읽어 줄 규칙으로 재분류; 처리 후 offsets[path(file)] = size(file)`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_005` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-005
+  usecase_ref: UC-01
+  signature: ca32519e1c5d
+  dod_tests:
+  - tests/test_fsm.py::test_r_005
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-11
+  type: story
+  title: '[R-006] size(file) >= offsets[path(file)]'
+  description: '원자 `R-006` 구현
+
+
+    - 조건: `size(file) >= offsets[path(file)]`
+
+    - 결과: `offsets[path(file)] 이후 새로 붙은 줄만 줄 규칙으로 처리; 처리 후 offsets[path(file)] = size(file)`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_006` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-006
+  usecase_ref: UC-01
+  signature: 5fb8841e469f
+  dod_tests:
+  - tests/test_fsm.py::test_r_006
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-12
+  type: story
+  title: '[R-007] !parse_json(line)'
+  description: '원자 `R-007` 구현
+
+
+    - 조건: `!parse_json(line)`
+
+    - 결과: `read_lines += 1; invalid += 1; count_reason(invalid_reasons, parse_error)`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_007` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-007
+  usecase_ref: UC-01
+  signature: bde1cc36ff2a
+  dod_tests:
+  - tests/test_fsm.py::test_r_007
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-13
+  type: story
+  title: '[R-008] record.type != ''assistant'' or !has(record.message.usage)'
+  description: '원자 `R-008` 구현
+
+
+    - 조건: `record.type != ''assistant'' or !has(record.message.usage)`
+
+    - 결과: `read_lines += 1; unrelated += 1`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_008` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-008
+  usecase_ref: UC-01
+  signature: e9a6abc5fe07
+  dod_tests:
+  - tests/test_fsm.py::test_r_008
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-14
+  type: story
+  title: '[R-009] all_zero_or_missing(record.message.usage 의 토큰 수 전부)'
+  description: '원자 `R-009` 구현
+
+
+    - 조건: `all_zero_or_missing(record.message.usage 의 토큰 수 전부)`
+
+    - 결과: `read_lines += 1; invalid += 1; count_reason(invalid_reasons, zero_or_missing_tokens)`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_009` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-009
+  usecase_ref: UC-01
+  signature: df5d17a9f3a8
+  dod_tests:
+  - tests/test_fsm.py::test_r_009
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-15
+  type: story
+  title: '[R-010] record.requestId in store.request_ids  # 같은 requestId 재출현'
+  description: '원자 `R-010` 구현
+
+
+    - 조건: `record.requestId in store.request_ids  # 같은 requestId 재출현`
+
+    - 결과: `read_lines += 1; duplicates += 1; 저장소에 적재하지 않는다`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_010` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-010
+  usecase_ref: UC-01
+  signature: 8bbaef289617
+  dod_tests:
+  - tests/test_fsm.py::test_r_010
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-16
+  type: story
+  title: '[R-011] record.type == ''assistant'' and has(record.message.usage) and'
+  description: '원자 `R-011` 구현
+
+
+    - 조건: `record.type == ''assistant'' and has(record.message.usage) and any_token_nonzero(usage)
+    and record.requestId not in store.request_ids`
+
+    - 결과: `read_lines += 1; accepted += 1; store.append(ts_utc, model, session_id,
+    input_tokens, output_tokens, cache_read_tokens, cache_write_5m_tokens, cache_write_1h_tokens,
+    web_search_count); store.request_ids += record.requestId  # 저장소는 원천과 별개 파일`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_011` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-011
+  usecase_ref: UC-01
+  signature: 89e1657dc8cf
+  dod_tests:
+  - tests/test_fsm.py::test_r_011
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-17
+  type: story
+  title: '[R-012] 모든 파일의 줄 처리 완료  # 정상 마감'
+  description: '원자 `R-012` 구현
+
+
+    - 조건: `모든 파일의 줄 처리 완료  # 정상 마감`
+
+    - 결과: `assert read_lines == accepted + duplicates + invalid + unrelated; append_ledger_line(read_lines,
+    accepted, duplicates, invalid, unrelated, retention_deleted)  # 실행 1회 = 장부 한 줄`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_012` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-012
+  usecase_ref: UC-01
+  signature: 221fe8bab33e
+  dod_tests:
+  - tests/test_fsm.py::test_r_012
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-18
+  type: story
+  title: '[R-013] 같은 원천 상태에서 수집을 다시 실행함  # 재실행 불변식'
+  description: '원자 `R-013` 구현
+
+
+    - 조건: `같은 원천 상태에서 수집을 다시 실행함  # 재실행 불변식`
+
+    - 결과: `저장소 레코드 집합은 이전 실행과 동일(복제 0건); 변화는 장부 한 줄 추가뿐`
+
+
+    유스케이스: [UC-01] 사용량 로그를 수집하여 저장소에 적재한다
+
+
+    인수 조건:
+
+    - 장부의 모든 줄에서 읽은 줄 수 = 채택 + 중복 + 무효 + 무관이 성립한다
+
+    - 수집 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 같은 원천 상태에서 수집을 2회 연속 실행하면 저장소의 레코드 집합이 동일하다
+
+    - 같은 `requestId`를 가진 레코드는 저장소에 정확히 1건만 존재한다
+
+    - 무효로 센 레코드마다 비어 있지 않은 무효 이유가 기록되어 있다
+
+    - 채택된 저장소 레코드마다 시각(UTC)·모델 이름·세션 id·입력·출력·캐시읽기·캐시쓰기(5분/1시간)·웹검색 횟수 필드가 존재한다
+
+    - 파일이 원래 크기보다 작아진 뒤 수집하면 그 파일의 처음부터의 줄들이 다시 읽혀 분류에 반영된다
+
+    - 읽기 실패한 파일이 있어도 수집이 비정상 종료하지 않고 장부에 실패 파일과 이유 항목이 존재한다
+
+    - 원천 디렉터리가 없을 때 수집이 종료 코드 0으로 끝나고 저장소가 빈 상태로 존재한다
+
+
+    **완료 조건: `test_r_013` 통과**'
+  status: done
+  parent: SWF-1
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-013
+  usecase_ref: UC-01
+  signature: bb444f4679de
+  dod_tests:
+  - tests/test_fsm.py::test_r_013
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-19
+  type: story
+  title: '[R-014] age(record) > 8일 and !reflected_in_daily_summary(record)'
+  description: '원자 `R-014` 구현
+
+
+    - 조건: `age(record) > 8일 and !reflected_in_daily_summary(record)`
+
+    - 결과: `삭제하지 않는다; daily_summary[date(record)] 에 토큰·비용·건수를 먼저 반영한다 — 반영된 뒤에야 R-015
+    의 대상이 된다`
+
+
+    유스케이스: [UC-02] 보존 기한이 지난 데이터를 정리한다
+
+
+    인수 조건:
+
+    - 삭제된 모든 원시 레코드의 날짜에 대해 해당 날짜의 일 요약 행이 삭제 이전에 존재한다
+
+    - 원시 레코드 삭제가 발생한 실행의 장부 줄에 삭제 시각과 삭제 건수가 기록되어 있다
+
+    - 정리 후 원시 레코드의 최고 나이가 8일 + 실행 주기 이내이고, 일 요약·장부 줄의 최고 나이가 35일 + 실행 주기 이내이다
+
+    - 저장소·일 요약·적재 장부·읽기 위치 상태 각 파일이 정의된 기간 또는 크기 상한을 넘지 않는다
+
+    - 정리 후 읽기 위치 상태의 모든 파일 경로가 실제로 존재하는 원천 파일을 가리킨다
+
+    - 일 요약에 반영되지 않은 레코드·장부 줄은 기한 경과 후에도 삭제되지 않고 남아 있다
+
+
+    **완료 조건: `test_r_014` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-014
+  usecase_ref: UC-02
+  signature: ff7b74a78568
+  dod_tests:
+  - tests/test_fsm.py::test_r_014
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-20
+  type: story
+  title: '[R-015] age(record) > 8일 and reflected_in_daily_summary(record)'
+  description: '원자 `R-015` 구현
+
+
+    - 조건: `age(record) > 8일 and reflected_in_daily_summary(record)`
+
+    - 결과: `store 에서 삭제; retention_deleted += 1`
+
+
+    유스케이스: [UC-02] 보존 기한이 지난 데이터를 정리한다
+
+
+    인수 조건:
+
+    - 삭제된 모든 원시 레코드의 날짜에 대해 해당 날짜의 일 요약 행이 삭제 이전에 존재한다
+
+    - 원시 레코드 삭제가 발생한 실행의 장부 줄에 삭제 시각과 삭제 건수가 기록되어 있다
+
+    - 정리 후 원시 레코드의 최고 나이가 8일 + 실행 주기 이내이고, 일 요약·장부 줄의 최고 나이가 35일 + 실행 주기 이내이다
+
+    - 저장소·일 요약·적재 장부·읽기 위치 상태 각 파일이 정의된 기간 또는 크기 상한을 넘지 않는다
+
+    - 정리 후 읽기 위치 상태의 모든 파일 경로가 실제로 존재하는 원천 파일을 가리킨다
+
+    - 일 요약에 반영되지 않은 레코드·장부 줄은 기한 경과 후에도 삭제되지 않고 남아 있다
+
+
+    **완료 조건: `test_r_015` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-015
+  usecase_ref: UC-02
+  signature: 39f22308180f
+  dod_tests:
+  - tests/test_fsm.py::test_r_015
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-21
+  type: story
+  title: '[R-016] 이번 실행에서 retention_deleted > 0'
+  description: '원자 `R-016` 구현
+
+
+    - 조건: `이번 실행에서 retention_deleted > 0`
+
+    - 결과: `이번 실행 장부 줄에 삭제 시각(deleted_at)과 삭제 건수(retention_deleted)를 기록`
+
+
+    유스케이스: [UC-02] 보존 기한이 지난 데이터를 정리한다
+
+
+    인수 조건:
+
+    - 삭제된 모든 원시 레코드의 날짜에 대해 해당 날짜의 일 요약 행이 삭제 이전에 존재한다
+
+    - 원시 레코드 삭제가 발생한 실행의 장부 줄에 삭제 시각과 삭제 건수가 기록되어 있다
+
+    - 정리 후 원시 레코드의 최고 나이가 8일 + 실행 주기 이내이고, 일 요약·장부 줄의 최고 나이가 35일 + 실행 주기 이내이다
+
+    - 저장소·일 요약·적재 장부·읽기 위치 상태 각 파일이 정의된 기간 또는 크기 상한을 넘지 않는다
+
+    - 정리 후 읽기 위치 상태의 모든 파일 경로가 실제로 존재하는 원천 파일을 가리킨다
+
+    - 일 요약에 반영되지 않은 레코드·장부 줄은 기한 경과 후에도 삭제되지 않고 남아 있다
+
+
+    **완료 조건: `test_r_016` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-016
+  usecase_ref: UC-02
+  signature: e0616ccffc7b
+  dod_tests:
+  - tests/test_fsm.py::test_r_016
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-22
+  type: story
+  title: '[R-017] age(ledger_line) > 35일 and !counts_reflected_in_daily_summar'
+  description: '원자 `R-017` 구현
+
+
+    - 조건: `age(ledger_line) > 35일 and !counts_reflected_in_daily_summary(ledger_line)  #
+    채택·중복·무효·무관·보존 삭제 건수`
+
+    - 결과: `지우지 않고 유지한다`
+
+
+    유스케이스: [UC-02] 보존 기한이 지난 데이터를 정리한다
+
+
+    인수 조건:
+
+    - 삭제된 모든 원시 레코드의 날짜에 대해 해당 날짜의 일 요약 행이 삭제 이전에 존재한다
+
+    - 원시 레코드 삭제가 발생한 실행의 장부 줄에 삭제 시각과 삭제 건수가 기록되어 있다
+
+    - 정리 후 원시 레코드의 최고 나이가 8일 + 실행 주기 이내이고, 일 요약·장부 줄의 최고 나이가 35일 + 실행 주기 이내이다
+
+    - 저장소·일 요약·적재 장부·읽기 위치 상태 각 파일이 정의된 기간 또는 크기 상한을 넘지 않는다
+
+    - 정리 후 읽기 위치 상태의 모든 파일 경로가 실제로 존재하는 원천 파일을 가리킨다
+
+    - 일 요약에 반영되지 않은 레코드·장부 줄은 기한 경과 후에도 삭제되지 않고 남아 있다
+
+
+    **완료 조건: `test_r_017` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-017
+  usecase_ref: UC-02
+  signature: 5415481fad6b
+  dod_tests:
+  - tests/test_fsm.py::test_r_017
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-23
+  type: story
+  title: '[R-018] age(ledger_line) > 35일 and counts_reflected_in_daily_summary'
+  description: '원자 `R-018` 구현
+
+
+    - 조건: `age(ledger_line) > 35일 and counts_reflected_in_daily_summary(ledger_line)`
+
+    - 결과: `장부에서 그 줄을 삭제`
+
+
+    유스케이스: [UC-02] 보존 기한이 지난 데이터를 정리한다
+
+
+    인수 조건:
+
+    - 삭제된 모든 원시 레코드의 날짜에 대해 해당 날짜의 일 요약 행이 삭제 이전에 존재한다
+
+    - 원시 레코드 삭제가 발생한 실행의 장부 줄에 삭제 시각과 삭제 건수가 기록되어 있다
+
+    - 정리 후 원시 레코드의 최고 나이가 8일 + 실행 주기 이내이고, 일 요약·장부 줄의 최고 나이가 35일 + 실행 주기 이내이다
+
+    - 저장소·일 요약·적재 장부·읽기 위치 상태 각 파일이 정의된 기간 또는 크기 상한을 넘지 않는다
+
+    - 정리 후 읽기 위치 상태의 모든 파일 경로가 실제로 존재하는 원천 파일을 가리킨다
+
+    - 일 요약에 반영되지 않은 레코드·장부 줄은 기한 경과 후에도 삭제되지 않고 남아 있다
+
+
+    **완료 조건: `test_r_018` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-018
+  usecase_ref: UC-02
+  signature: 0c0da46969b1
+  dod_tests:
+  - tests/test_fsm.py::test_r_018
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-24
+  type: story
+  title: '[R-019] age(summary_row) > 35일'
+  description: '원자 `R-019` 구현
+
+
+    - 조건: `age(summary_row) > 35일`
+
+    - 결과: `일 요약에서 그 행을 삭제`
+
+
+    유스케이스: [UC-02] 보존 기한이 지난 데이터를 정리한다
+
+
+    인수 조건:
+
+    - 삭제된 모든 원시 레코드의 날짜에 대해 해당 날짜의 일 요약 행이 삭제 이전에 존재한다
+
+    - 원시 레코드 삭제가 발생한 실행의 장부 줄에 삭제 시각과 삭제 건수가 기록되어 있다
+
+    - 정리 후 원시 레코드의 최고 나이가 8일 + 실행 주기 이내이고, 일 요약·장부 줄의 최고 나이가 35일 + 실행 주기 이내이다
+
+    - 저장소·일 요약·적재 장부·읽기 위치 상태 각 파일이 정의된 기간 또는 크기 상한을 넘지 않는다
+
+    - 정리 후 읽기 위치 상태의 모든 파일 경로가 실제로 존재하는 원천 파일을 가리킨다
+
+    - 일 요약에 반영되지 않은 레코드·장부 줄은 기한 경과 후에도 삭제되지 않고 남아 있다
+
+
+    **완료 조건: `test_r_019` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-019
+  usecase_ref: UC-02
+  signature: 6719575dc905
+  dod_tests:
+  - tests/test_fsm.py::test_r_019
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-25
+  type: story
+  title: '[R-020] !exists(offsets 항목이 가리키는 원천 파일 경로)'
+  description: '원자 `R-020` 구현
+
+
+    - 조건: `!exists(offsets 항목이 가리키는 원천 파일 경로)`
+
+    - 결과: `그 항목을 offsets 에서 제거  # 상태 파일도 유계여야 한다`
+
+
+    유스케이스: [UC-02] 보존 기한이 지난 데이터를 정리한다
+
+
+    인수 조건:
+
+    - 삭제된 모든 원시 레코드의 날짜에 대해 해당 날짜의 일 요약 행이 삭제 이전에 존재한다
+
+    - 원시 레코드 삭제가 발생한 실행의 장부 줄에 삭제 시각과 삭제 건수가 기록되어 있다
+
+    - 정리 후 원시 레코드의 최고 나이가 8일 + 실행 주기 이내이고, 일 요약·장부 줄의 최고 나이가 35일 + 실행 주기 이내이다
+
+    - 저장소·일 요약·적재 장부·읽기 위치 상태 각 파일이 정의된 기간 또는 크기 상한을 넘지 않는다
+
+    - 정리 후 읽기 위치 상태의 모든 파일 경로가 실제로 존재하는 원천 파일을 가리킨다
+
+    - 일 요약에 반영되지 않은 레코드·장부 줄은 기한 경과 후에도 삭제되지 않고 남아 있다
+
+
+    **완료 조건: `test_r_020` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-020
+  usecase_ref: UC-02
+  signature: a489a3835651
+  dod_tests:
+  - tests/test_fsm.py::test_r_020
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-26
+  type: story
+  title: '[R-021] 정리 단계 완료  # 상한 불변식'
+  description: '원자 `R-021` 구현
+
+
+    - 조건: `정리 단계 완료  # 상한 불변식`
+
+    - 결과: `assert max_age(원시 레코드) <= 8일 + 실행 주기; assert max_age(일 요약·장부 줄) <= 35일
+    + 실행 주기; assert 저장소·일 요약·장부·offsets 각 파일이 기간 또는 크기 상한 내`
+
+
+    유스케이스: [UC-02] 보존 기한이 지난 데이터를 정리한다
+
+
+    인수 조건:
+
+    - 삭제된 모든 원시 레코드의 날짜에 대해 해당 날짜의 일 요약 행이 삭제 이전에 존재한다
+
+    - 원시 레코드 삭제가 발생한 실행의 장부 줄에 삭제 시각과 삭제 건수가 기록되어 있다
+
+    - 정리 후 원시 레코드의 최고 나이가 8일 + 실행 주기 이내이고, 일 요약·장부 줄의 최고 나이가 35일 + 실행 주기 이내이다
+
+    - 저장소·일 요약·적재 장부·읽기 위치 상태 각 파일이 정의된 기간 또는 크기 상한을 넘지 않는다
+
+    - 정리 후 읽기 위치 상태의 모든 파일 경로가 실제로 존재하는 원천 파일을 가리킨다
+
+    - 일 요약에 반영되지 않은 레코드·장부 줄은 기한 경과 후에도 삭제되지 않고 남아 있다
+
+
+    **완료 조건: `test_r_021` 통과**'
+  status: done
+  parent: SWF-2
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-021
+  usecase_ref: UC-02
+  signature: 80aa9a89486b
+  dod_tests:
+  - tests/test_fsm.py::test_r_021
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-27
+  type: story
+  title: '[R-022] event == REQUEST_REPORT and period in {session_5h, day_24h, '
+  description: '원자 `R-022` 구현
+
+
+    - 조건: `event == REQUEST_REPORT and period in {session_5h, day_24h, week_7d}`
+
+    - 결과: `집계 대상 구간 목록 = 요청 기간 + 최근 30일 추이의 각 날짜; 각 구간에 구간 규칙(R-023..R-025) 적용; 저장소·요약은
+    읽기만 하고 변경하지 않는다`
+
+
+    유스케이스: [UC-03] 사용량 리포트를 생성한다
+
+
+    인수 조건:
+
+    - 세션 칸(5시간)·하루(24시간)·주간(7일) 세 기간 각각에 대해 리포트 요청이 처리된다
+
+    - 리포트의 총 토큰이 저장소의 해당 기간 레코드 합과 같다
+
+    - 같은 저장소 상태에서 리포트를 두 번 생성하면 두 결과물이 동일하다
+
+    - 리포트에 모델별 토큰 종류별·비용 분해와 최근 30일 일별 추이와 마지막 적재 시각·레코드 수가 존재한다
+
+    - 단가표에 없는 모델이 기간에 포함되면 그 비용은 단가표 최고 단가로 계산되고 리포트에 해당 표시가 존재한다
+
+    - 데이터로 답할 수 없는 구간의 값이 0이 아닌 값 없음으로 표기된다
+
+    - 칸별 합계가 총계와 다른 리포트 산출물은 존재하지 않는다
+
+
+    **완료 조건: `test_r_022` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-022
+  usecase_ref: UC-03
+  signature: 70a86b5c4d7b
+  dod_tests:
+  - tests/test_fsm.py::test_r_022
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-28
+  type: story
+  title: '[R-023] 구간이 원시 레코드 보존 범위(8일) 안'
+  description: '원자 `R-023` 구현
+
+
+    - 조건: `구간이 원시 레코드 보존 범위(8일) 안`
+
+    - 결과: `그 구간은 원시 레코드로 집계`
+
+
+    유스케이스: [UC-03] 사용량 리포트를 생성한다
+
+
+    인수 조건:
+
+    - 세션 칸(5시간)·하루(24시간)·주간(7일) 세 기간 각각에 대해 리포트 요청이 처리된다
+
+    - 리포트의 총 토큰이 저장소의 해당 기간 레코드 합과 같다
+
+    - 같은 저장소 상태에서 리포트를 두 번 생성하면 두 결과물이 동일하다
+
+    - 리포트에 모델별 토큰 종류별·비용 분해와 최근 30일 일별 추이와 마지막 적재 시각·레코드 수가 존재한다
+
+    - 단가표에 없는 모델이 기간에 포함되면 그 비용은 단가표 최고 단가로 계산되고 리포트에 해당 표시가 존재한다
+
+    - 데이터로 답할 수 없는 구간의 값이 0이 아닌 값 없음으로 표기된다
+
+    - 칸별 합계가 총계와 다른 리포트 산출물은 존재하지 않는다
+
+
+    **완료 조건: `test_r_023` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-023
+  usecase_ref: UC-03
+  signature: 3915e0f0ea6f
+  dod_tests:
+  - tests/test_fsm.py::test_r_023
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-29
+  type: story
+  title: '[R-024] 구간이 원시 보존 밖 and 일 요약 보존 범위(35일) 안'
+  description: '원자 `R-024` 구현
+
+
+    - 조건: `구간이 원시 보존 밖 and 일 요약 보존 범위(35일) 안`
+
+    - 결과: `그 구간은 일 요약으로 집계`
+
+
+    유스케이스: [UC-03] 사용량 리포트를 생성한다
+
+
+    인수 조건:
+
+    - 세션 칸(5시간)·하루(24시간)·주간(7일) 세 기간 각각에 대해 리포트 요청이 처리된다
+
+    - 리포트의 총 토큰이 저장소의 해당 기간 레코드 합과 같다
+
+    - 같은 저장소 상태에서 리포트를 두 번 생성하면 두 결과물이 동일하다
+
+    - 리포트에 모델별 토큰 종류별·비용 분해와 최근 30일 일별 추이와 마지막 적재 시각·레코드 수가 존재한다
+
+    - 단가표에 없는 모델이 기간에 포함되면 그 비용은 단가표 최고 단가로 계산되고 리포트에 해당 표시가 존재한다
+
+    - 데이터로 답할 수 없는 구간의 값이 0이 아닌 값 없음으로 표기된다
+
+    - 칸별 합계가 총계와 다른 리포트 산출물은 존재하지 않는다
+
+
+    **완료 조건: `test_r_024` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-024
+  usecase_ref: UC-03
+  signature: 94d92ea22b88
+  dod_tests:
+  - tests/test_fsm.py::test_r_024
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-30
+  type: story
+  title: '[R-025] 구간이 원시로도 일 요약으로도 답할 수 없음'
+  description: '원자 `R-025` 구현
+
+
+    - 조건: `구간이 원시로도 일 요약으로도 답할 수 없음`
+
+    - 결과: `그 구간 값 = ''값 없음'' 으로 표기 (숫자 0 금지)`
+
+
+    유스케이스: [UC-03] 사용량 리포트를 생성한다
+
+
+    인수 조건:
+
+    - 세션 칸(5시간)·하루(24시간)·주간(7일) 세 기간 각각에 대해 리포트 요청이 처리된다
+
+    - 리포트의 총 토큰이 저장소의 해당 기간 레코드 합과 같다
+
+    - 같은 저장소 상태에서 리포트를 두 번 생성하면 두 결과물이 동일하다
+
+    - 리포트에 모델별 토큰 종류별·비용 분해와 최근 30일 일별 추이와 마지막 적재 시각·레코드 수가 존재한다
+
+    - 단가표에 없는 모델이 기간에 포함되면 그 비용은 단가표 최고 단가로 계산되고 리포트에 해당 표시가 존재한다
+
+    - 데이터로 답할 수 없는 구간의 값이 0이 아닌 값 없음으로 표기된다
+
+    - 칸별 합계가 총계와 다른 리포트 산출물은 존재하지 않는다
+
+
+    **완료 조건: `test_r_025` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-025
+  usecase_ref: UC-03
+  signature: 0a14a138e306
+  dod_tests:
+  - tests/test_fsm.py::test_r_025
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-31
+  type: story
+  title: '[R-026] model in price_table'
+  description: '원자 `R-026` 구현
+
+
+    - 조건: `model in price_table`
+
+    - 결과: `cost(model) = Σ(토큰 종류별 수 × price_table[model][종류])`
+
+
+    유스케이스: [UC-03] 사용량 리포트를 생성한다
+
+
+    인수 조건:
+
+    - 세션 칸(5시간)·하루(24시간)·주간(7일) 세 기간 각각에 대해 리포트 요청이 처리된다
+
+    - 리포트의 총 토큰이 저장소의 해당 기간 레코드 합과 같다
+
+    - 같은 저장소 상태에서 리포트를 두 번 생성하면 두 결과물이 동일하다
+
+    - 리포트에 모델별 토큰 종류별·비용 분해와 최근 30일 일별 추이와 마지막 적재 시각·레코드 수가 존재한다
+
+    - 단가표에 없는 모델이 기간에 포함되면 그 비용은 단가표 최고 단가로 계산되고 리포트에 해당 표시가 존재한다
+
+    - 데이터로 답할 수 없는 구간의 값이 0이 아닌 값 없음으로 표기된다
+
+    - 칸별 합계가 총계와 다른 리포트 산출물은 존재하지 않는다
+
+
+    **완료 조건: `test_r_026` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-026
+  usecase_ref: UC-03
+  signature: 3f5aabcf1570
+  dod_tests:
+  - tests/test_fsm.py::test_r_026
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-32
+  type: story
+  title: '[R-027] model not in price_table'
+  description: '원자 `R-027` 구현
+
+
+    - 조건: `model not in price_table`
+
+    - 결과: `cost(model) = Σ(토큰 종류별 수 × max_price(price_table)[종류]); 리포트에 ''단가표 없음 —
+    최고 단가 적용'' 표시를 그 모델에 붙인다`
+
+
+    유스케이스: [UC-03] 사용량 리포트를 생성한다
+
+
+    인수 조건:
+
+    - 세션 칸(5시간)·하루(24시간)·주간(7일) 세 기간 각각에 대해 리포트 요청이 처리된다
+
+    - 리포트의 총 토큰이 저장소의 해당 기간 레코드 합과 같다
+
+    - 같은 저장소 상태에서 리포트를 두 번 생성하면 두 결과물이 동일하다
+
+    - 리포트에 모델별 토큰 종류별·비용 분해와 최근 30일 일별 추이와 마지막 적재 시각·레코드 수가 존재한다
+
+    - 단가표에 없는 모델이 기간에 포함되면 그 비용은 단가표 최고 단가로 계산되고 리포트에 해당 표시가 존재한다
+
+    - 데이터로 답할 수 없는 구간의 값이 0이 아닌 값 없음으로 표기된다
+
+    - 칸별 합계가 총계와 다른 리포트 산출물은 존재하지 않는다
+
+
+    **완료 조건: `test_r_027` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-027
+  usecase_ref: UC-03
+  signature: 8c9e29521c97
+  dod_tests:
+  - tests/test_fsm.py::test_r_027
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-33
+  type: story
+  title: '[R-028] sum(칸별 합계) != 총계'
+  description: '원자 `R-028` 구현
+
+
+    - 조건: `sum(칸별 합계) != 총계`
+
+    - 결과: `리포트 산출물을 생성하지 않는다; 사용자에게 실패와 그 사유를 보고`
+
+
+    유스케이스: [UC-03] 사용량 리포트를 생성한다
+
+
+    인수 조건:
+
+    - 세션 칸(5시간)·하루(24시간)·주간(7일) 세 기간 각각에 대해 리포트 요청이 처리된다
+
+    - 리포트의 총 토큰이 저장소의 해당 기간 레코드 합과 같다
+
+    - 같은 저장소 상태에서 리포트를 두 번 생성하면 두 결과물이 동일하다
+
+    - 리포트에 모델별 토큰 종류별·비용 분해와 최근 30일 일별 추이와 마지막 적재 시각·레코드 수가 존재한다
+
+    - 단가표에 없는 모델이 기간에 포함되면 그 비용은 단가표 최고 단가로 계산되고 리포트에 해당 표시가 존재한다
+
+    - 데이터로 답할 수 없는 구간의 값이 0이 아닌 값 없음으로 표기된다
+
+    - 칸별 합계가 총계와 다른 리포트 산출물은 존재하지 않는다
+
+
+    **완료 조건: `test_r_028` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-028
+  usecase_ref: UC-03
+  signature: 8bb5ae3b0525
+  dod_tests:
+  - tests/test_fsm.py::test_r_028
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-34
+  type: story
+  title: '[R-029] sum(칸별 합계) == 총계'
+  description: '원자 `R-029` 구현
+
+
+    - 조건: `sum(칸별 합계) == 총계`
+
+    - 결과: `리포트 제시: 모델별 분해(토큰 종류별·비용), 최근 30일 일별 추이, 근거(마지막 적재 시각, 저장소 레코드 수)`
+
+
+    유스케이스: [UC-03] 사용량 리포트를 생성한다
+
+
+    인수 조건:
+
+    - 세션 칸(5시간)·하루(24시간)·주간(7일) 세 기간 각각에 대해 리포트 요청이 처리된다
+
+    - 리포트의 총 토큰이 저장소의 해당 기간 레코드 합과 같다
+
+    - 같은 저장소 상태에서 리포트를 두 번 생성하면 두 결과물이 동일하다
+
+    - 리포트에 모델별 토큰 종류별·비용 분해와 최근 30일 일별 추이와 마지막 적재 시각·레코드 수가 존재한다
+
+    - 단가표에 없는 모델이 기간에 포함되면 그 비용은 단가표 최고 단가로 계산되고 리포트에 해당 표시가 존재한다
+
+    - 데이터로 답할 수 없는 구간의 값이 0이 아닌 값 없음으로 표기된다
+
+    - 칸별 합계가 총계와 다른 리포트 산출물은 존재하지 않는다
+
+
+    **완료 조건: `test_r_029` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-029
+  usecase_ref: UC-03
+  signature: 48d7263cb5c3
+  dod_tests:
+  - tests/test_fsm.py::test_r_029
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-35
+  type: story
+  title: '[R-030] 같은 저장소 상태에서 리포트를 두 번 생성함  # 결정성 불변식'
+  description: '원자 `R-030` 구현
+
+
+    - 조건: `같은 저장소 상태에서 리포트를 두 번 생성함  # 결정성 불변식`
+
+    - 결과: `두 결과물이 동일하다; 리포트의 총 토큰 == 저장소의 해당 기간 레코드 합`
+
+
+    유스케이스: [UC-03] 사용량 리포트를 생성한다
+
+
+    인수 조건:
+
+    - 세션 칸(5시간)·하루(24시간)·주간(7일) 세 기간 각각에 대해 리포트 요청이 처리된다
+
+    - 리포트의 총 토큰이 저장소의 해당 기간 레코드 합과 같다
+
+    - 같은 저장소 상태에서 리포트를 두 번 생성하면 두 결과물이 동일하다
+
+    - 리포트에 모델별 토큰 종류별·비용 분해와 최근 30일 일별 추이와 마지막 적재 시각·레코드 수가 존재한다
+
+    - 단가표에 없는 모델이 기간에 포함되면 그 비용은 단가표 최고 단가로 계산되고 리포트에 해당 표시가 존재한다
+
+    - 데이터로 답할 수 없는 구간의 값이 0이 아닌 값 없음으로 표기된다
+
+    - 칸별 합계가 총계와 다른 리포트 산출물은 존재하지 않는다
+
+
+    **완료 조건: `test_r_030` 통과**'
+  status: done
+  parent: SWF-3
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-030
+  usecase_ref: UC-03
+  signature: 590697ecf5e6
+  dod_tests:
+  - tests/test_fsm.py::test_r_030
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-36
+  type: story
+  title: '[R-031] event == REQUEST_REBUILD'
+  description: '원자 `R-031` 구현
+
+
+    - 조건: `event == REQUEST_REBUILD`
+
+    - 결과: `다른 처리보다 먼저 ''원시 보존 기한(8일)을 넘긴 과거는 복구할 수 없다'' 안내를 출력한다`
+
+
+    유스케이스: [UC-04] 깨진 저장소를 원천에서 재구축한다
+
+
+    인수 조건:
+
+    - 재구축 출력에 8일을 넘긴 과거는 복구할 수 없다는 안내 문구가 포함된다
+
+    - 재구축 후 저장소의 레코드 집합이 현재 원천을 처음부터 수집한 결과와 동일하다
+
+    - 재구축 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 원천 디렉터리가 없을 때 재구축이 종료 코드 0으로 끝나고 빈 저장소가 존재한다
+
+
+    **완료 조건: `test_r_031` 통과**'
+  status: done
+  parent: SWF-4
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-031
+  usecase_ref: UC-04
+  signature: d414e1efc9bd
+  dod_tests:
+  - tests/test_fsm.py::test_r_031
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-37
+  type: story
+  title: '[R-032] event == REQUEST_REBUILD and !exists(source_dir)'
+  description: '원자 `R-032` 구현
+
+
+    - 조건: `event == REQUEST_REBUILD and !exists(source_dir)`
+
+    - 결과: `오류로 처리하지 않는다; 빈 저장소를 생성; exit_code == 0`
+
+
+    유스케이스: [UC-04] 깨진 저장소를 원천에서 재구축한다
+
+
+    인수 조건:
+
+    - 재구축 출력에 8일을 넘긴 과거는 복구할 수 없다는 안내 문구가 포함된다
+
+    - 재구축 후 저장소의 레코드 집합이 현재 원천을 처음부터 수집한 결과와 동일하다
+
+    - 재구축 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 원천 디렉터리가 없을 때 재구축이 종료 코드 0으로 끝나고 빈 저장소가 존재한다
+
+
+    **완료 조건: `test_r_032` 통과**'
+  status: done
+  parent: SWF-4
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-032
+  usecase_ref: UC-04
+  signature: '936289961033'
+  dod_tests:
+  - tests/test_fsm.py::test_r_032
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-38
+  type: story
+  title: '[R-033] event == REQUEST_REBUILD and exists(source_dir)'
+  description: '원자 `R-033` 구현
+
+
+    - 조건: `event == REQUEST_REBUILD and exists(source_dir)`
+
+    - 결과: `저장소와 offsets 를 비우고 원천 파일 전체를 처음부터 줄 규칙(R-007..R-011)으로 재분류·적재; 원천 파일은 바이트
+    단위로 무변경`
+
+
+    유스케이스: [UC-04] 깨진 저장소를 원천에서 재구축한다
+
+
+    인수 조건:
+
+    - 재구축 출력에 8일을 넘긴 과거는 복구할 수 없다는 안내 문구가 포함된다
+
+    - 재구축 후 저장소의 레코드 집합이 현재 원천을 처음부터 수집한 결과와 동일하다
+
+    - 재구축 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 원천 디렉터리가 없을 때 재구축이 종료 코드 0으로 끝나고 빈 저장소가 존재한다
+
+
+    **완료 조건: `test_r_033` 통과**'
+  status: done
+  parent: SWF-4
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-033
+  usecase_ref: UC-04
+  signature: da7497b33e7e
+  dod_tests:
+  - tests/test_fsm.py::test_r_033
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-39
+  type: story
+  title: '[R-034] 재구축 중 원천 파일 하나를 읽지 못함'
+  description: '원자 `R-034` 구현
+
+
+    - 조건: `재구축 중 원천 파일 하나를 읽지 못함`
+
+    - 결과: `ledger_file_failures += (path(file), failure_reason); 나머지 파일로 재구축 계속`
+
+
+    유스케이스: [UC-04] 깨진 저장소를 원천에서 재구축한다
+
+
+    인수 조건:
+
+    - 재구축 출력에 8일을 넘긴 과거는 복구할 수 없다는 안내 문구가 포함된다
+
+    - 재구축 후 저장소의 레코드 집합이 현재 원천을 처음부터 수집한 결과와 동일하다
+
+    - 재구축 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 원천 디렉터리가 없을 때 재구축이 종료 코드 0으로 끝나고 빈 저장소가 존재한다
+
+
+    **완료 조건: `test_r_034` 통과**'
+  status: done
+  parent: SWF-4
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-034
+  usecase_ref: UC-04
+  signature: b22bd1bac8cd
+  dod_tests:
+  - tests/test_fsm.py::test_r_034
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-40
+  type: story
+  title: '[R-035] 재구축 완료'
+  description: '원자 `R-035` 구현
+
+
+    - 조건: `재구축 완료`
+
+    - 결과: `append_ledger_line(rebuild=true, accepted 적재 건수 포함)  # 재구축 결과도 장부 한 줄`
+
+
+    유스케이스: [UC-04] 깨진 저장소를 원천에서 재구축한다
+
+
+    인수 조건:
+
+    - 재구축 출력에 8일을 넘긴 과거는 복구할 수 없다는 안내 문구가 포함된다
+
+    - 재구축 후 저장소의 레코드 집합이 현재 원천을 처음부터 수집한 결과와 동일하다
+
+    - 재구축 전후 모든 원천 파일의 내용·개수가 바이트 단위로 동일하다
+
+    - 원천 디렉터리가 없을 때 재구축이 종료 코드 0으로 끝나고 빈 저장소가 존재한다
+
+
+    **완료 조건: `test_r_035` 통과**'
+  status: done
+  parent: SWF-4
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-035
+  usecase_ref: UC-04
+  signature: 579ba215ccf7
+  dod_tests:
+  - tests/test_fsm.py::test_r_035
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-41
+  type: story
+  title: '[R-036] event == RUN_COMPARISON and !runnable(tools/usage_server.py)'
+  description: '원자 `R-036` 구현
+
+
+    - 조건: `event == RUN_COMPARISON and !runnable(tools/usage_server.py)`
+
+    - 결과: `''대조 불가''와 실행 실패 이유를 보고; 종료를 대조 성공으로 표기하지 않는다`
+
+
+    유스케이스: [UC-05] 기준 구현과 결과를 대조한다
+
+
+    인수 조건:
+
+    - 대조 출력에 두 구현 각각의 총 토큰·비용 값이 존재한다
+
+    - 두 결과가 다를 때 차이 항목이 0건이 아닌 목록으로 보고된다
+
+    - 기준 구현 실행 실패 시 종료가 대조 성공으로 표기되지 않는다
+
+
+    **완료 조건: `test_r_036` 통과**'
+  status: done
+  parent: SWF-5
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-036
+  usecase_ref: UC-05
+  signature: 262aaea8f2df
+  dod_tests:
+  - tests/test_fsm.py::test_r_036
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-42
+  type: story
+  title: '[R-037] event == RUN_COMPARISON and runnable(tools/usage_server.py)'
+  description: '원자 `R-037` 구현
+
+
+    - 조건: `event == RUN_COMPARISON and runnable(tools/usage_server.py)`
+
+    - 결과: `같은 원천·기간에 대해 이 도구와 기준 구현의 총 토큰·비용을 각각 산출해 나란히 제시`
+
+
+    유스케이스: [UC-05] 기준 구현과 결과를 대조한다
+
+
+    인수 조건:
+
+    - 대조 출력에 두 구현 각각의 총 토큰·비용 값이 존재한다
+
+    - 두 결과가 다를 때 차이 항목이 0건이 아닌 목록으로 보고된다
+
+    - 기준 구현 실행 실패 시 종료가 대조 성공으로 표기되지 않는다
+
+
+    **완료 조건: `test_r_037` 통과**'
+  status: done
+  parent: SWF-5
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-037
+  usecase_ref: UC-05
+  signature: 1038cc15a24f
+  dod_tests:
+  - tests/test_fsm.py::test_r_037
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-43
+  type: story
+  title: '[R-038] 대조 결과 두 구현의 값이 다름'
+  description: '원자 `R-038` 구현
+
+
+    - 조건: `대조 결과 두 구현의 값이 다름`
+
+    - 결과: `차이 항목(토큰 종류·모델·기간)과 차이 크기를 0건이 아닌 목록으로 보고`
+
+
+    유스케이스: [UC-05] 기준 구현과 결과를 대조한다
+
+
+    인수 조건:
+
+    - 대조 출력에 두 구현 각각의 총 토큰·비용 값이 존재한다
+
+    - 두 결과가 다를 때 차이 항목이 0건이 아닌 목록으로 보고된다
+
+    - 기준 구현 실행 실패 시 종료가 대조 성공으로 표기되지 않는다
+
+
+    **완료 조건: `test_r_038` 통과**'
+  status: done
+  parent: SWF-5
+  labels:
+  - auto
+  - transition
+  fsm_ref: R-038
+  usecase_ref: UC-05
+  signature: 2ed17792e5f3
+  dod_tests:
+  - tests/test_fsm.py::test_r_038
+  attempts: 1
+  last_error: ''
+  artifacts: []
+- key: SWF-44
+  type: subtask
+  title: R-001.1 app/fsm.py에 Machine 골격을 만들고 send 진입점을 정의한다
+  description: app/fsm.py에 Machine 클래스를 생성한다. 생성자는 source_dir·data_dir·now·price_table(선택
+    usage_server)을 받아 보관하고, store·ledger·offsets·daily_summary를 빈 컬렉션으로 초기화하며, send(event)가
+    이벤트를 전이 핸들러로 라우팅해 dict 결과를 반환하는 뼈대를 둔다.
+  status: done
+  parent: SWF-6
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-001
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-45
+  type: subtask
+  title: R-001.2 RUN_COLLECTION의 원천 디렉터리 부재 가드 분기를 구현한다
+  description: app/fsm.py의 RUN_COLLECTION 핸들러에서 source_dir이 없으면 오류 없이 저장소를 빈 상태로 유지하고,
+    read_lines=0·accepted=0·duplicates=0·invalid=0·unrelated=0·retention_deleted=0
+    장부 한 줄을 ledger에 추가한 뒤 exit_code 0을 반환하게 한다.
+  status: done
+  parent: SWF-6
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-001
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-46
+  type: subtask
+  title: R-001.3 원천 디렉터리가 있을 때의 최소 수집 경로를 구현한다
+  description: app/fsm.py의 RUN_COLLECTION 핸들러에서 source_dir이 존재하면 `**/*.jsonl` 파일의
+    줄을 읽어 채택(type=assistant이고 message.usage에 토큰 있음)을 분류·store에 적재하고, 읽은 줄 수와 채택 등
+    6개 건수를 담은 장부 한 줄을 ledger에 남기며 exit_code 0을 반환하게 한다.
+  status: done
+  parent: SWF-6
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-001
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-47
+  type: subtask
+  title: R-002.1 원천 파일 나열을 R-002 전용 메서드로 분리하고 재귀 glob을 고정한다
+  description: app/fsm.py의 Machine에 `_list_source_files()`를 추가해 `os.path.join(source_dir,
+    "**", "*.jsonl")`을 `recursive=True`로 정렬 반환하게 하고, `_run_collection`의 guard 통과 경로(source_dir
+    존재)에서 인라인 glob 대신 이 메서드를 호출하도록 바꾼다. `.txt` 등 비-jsonl 파일과 하위 디렉터리 깊이에 무관하게 `*.jsonl`만
+    대상이 되도록 한다.
+  status: done
+  parent: SWF-7
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-002
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-48
+  type: subtask
+  title: R-002.2 파일별 처리 루프를 읽기 전용 열기로 제한하고 파일 규칙 훅으로 위임한다
+  description: app/fsm.py `_run_collection`의 파일 루프를 `_collect_file(path, counts, invalid_reasons,
+    file_failures)` 호출로 정리한다. 이 메서드는 원천을 `open(path, "rb")` 등 읽기 모드로만 열고 offsets/store/ledger
+    같은 별도 상태만 갱신하며, 원천 경로에 대한 write/unlink/rename/truncate 호출이 존재하지 않도록 한다. 파일 규칙(R-003..R-006)이
+    이후 이 메서드 안에서 확장될 수 있게 위치 상태·읽기·분류 단계를 명시적으로 구분해 둔다.
+  status: done
+  parent: SWF-7
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-002
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-49
+  type: subtask
+  title: R-003.1 R-003 읽기 실패 가드를 전용 헬퍼로 분리하여 열기·읽기 단계만 감싼다
+  description: 'app/fsm.py 의 Machine._collect_file 에서 (2) 읽기 단계를 `_read_source_bytes(path,
+    start)` 헬퍼로 뽑아낸다. 헬퍼는 `open(path, "rb")`·seek·read 만 try 로 감싸고, OSError(IsADirectoryError·PermissionError·FileNotFoundError
+    포함)와 기타 Exception 을 잡아 `(None, failure_reason)` 을 돌려주며, 성공 시 `(data, None)` 을
+    돌려준다. failure_reason 은 예외 클래스명과 메시지를 합쳐 항상 비어 있지 않은 문자열이어야 한다. _collect_file 은
+    실패 시 `file_failures.append((path, failure_reason))` 후 즉시 return 하여 offsets·counts
+    를 건드리지 않고 다음 파일로 계속 진행하도록 한다(분류 단계의 예외는 이 가드에 포함시키지 않는다).
+
+    '
+  status: done
+  parent: SWF-8
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-003
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-50
+  type: subtask
+  title: R-003.2 R-003 결과가 장부·종료 코드에 반영되도록 _run_collection 을 정리하고 문서화한다
+  description: 'app/fsm.py 의 _run_collection 이 파일 실패 유무와 무관하게 루프를 끝까지 돌고 `file_failures`
+    리스트를 `_append_ledger_line(file_failures=...)` 로 그대로 넘겨 exit_code 0 을 반환함을 명시적으로
+    유지한다 (실패 파일 처리 중 예외가 상위로 전파되지 않도록 _collect_file 호출 경로 점검). 모듈 docstring 의 구현 범위에
+    `R-003 — 파일 열기/읽기 실패 시 (path, failure_reason) 장부 기록 후 건너뛰기, 비정상 종료 없음` 항목을 추가하고,
+    _collect_file 의 "(R-003 확장 지점)" 주석을 실제 동작 설명으로 교체한다.
+
+    '
+  status: done
+  parent: SWF-8
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-003
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-51
+  type: subtask
+  title: R-004.1 _collect_file의 시작 위치 결정을 offsets 조회로 바꾼다
+  description: app/fsm.py의 Machine._collect_file 단계(1)에서 고정값 `start = 0` 대신 `path
+    not in self.offsets` 이면 0(R-004, 처음 보는 파일), 아니면 self.offsets[path] 를 start 로 쓰도록
+    분기하고, 각 분기에 R-004/R-005..R-006 확장 지점 주석을 단다. 이로써 두 번째 RUN_COLLECTION 에서 변화 없는
+    파일은 read_lines 0 이 된다.
+  status: done
+  parent: SWF-9
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-004
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-52
+  type: subtask
+  title: R-004.2 처리 후 offsets 갱신을 파일 크기 기준으로 확정한다
+  description: app/fsm.py의 Machine._collect_file 단계(4)에서 offsets[path] 를 `start +
+    len(data)` 가 아니라 읽기 전용으로 연 파일의 실제 크기(size(file), os.fstat 또는 seek-to-end 로 원천
+    변경 없이 측정)로 저장하도록 정리하고, 읽기 실패(R-003) 시에는 offsets 를 건드리지 않는 기존 동작을 유지한다. 모듈 docstring
+    구현 범위에 R-004 항목을 추가한다.
+  status: done
+  parent: SWF-9
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-004
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-53
+  type: subtask
+  title: R-005.1 _read_source_bytes 가 기억한 offset 을 받아 회전(크기 감소) 시 start=0 을 스스로 고르게
+    확장한다
+  description: app/fsm.py 의 Machine._read_source_bytes(path, start) 시그니처를 (path, remembered_offset)
+    로 바꾼다. 읽기 전용 핸들의 os.fstat 으로 size 를 잰 뒤, size < remembered_offset 이면 start=0(R-005
+    회전 재읽기), 아니면 start=remembered_offset 으로 seek 한다. 반환값을 (data, size, start, failure_reason)
+    로 늘려 호출자가 실제 시작 위치를 알 수 있게 하고, docstring 에 R-005 분기 기준(같은 핸들의 fstat 크기와 기억한 offset
+    비교)을 적는다. 예외 처리(R-003)는 그대로 유지한다.
+  status: done
+  parent: SWF-10
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-005
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-54
+  type: subtask
+  title: R-005.2 _collect_file 의 위치 상태 단계를 R-005 분기로 바꾸고 처리 후 offsets[path]=size 를
+    유지한다
+  description: app/fsm.py 의 Machine._collect_file 에서 (1) 단계의 start 계산을 없애고, path not
+    in offsets 이면 remembered_offset=0(R-004), 아니면 self.offsets[path] 을 새 _read_source_bytes
+    에 넘긴다. 반환된 start 를 사용해 "R-005 회전 시 0 부터 재분류, R-006 확장 지점은 그대로" 라는 주석을 갱신하고, (4)
+    단계에서 offsets[path] = size 가 회전 경로에서도 그대로 적용되도록 확인한다. 회전 후 재분류에서 같은 requestId 가
+    다시 나오면 기존 _classify 가 중복으로 세도록 두어 read_lines = accepted+duplicates+invalid+unrelated
+    등식을 유지한다.
+  status: done
+  parent: SWF-10
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-005
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-55
+  type: subtask
+  title: R-005.3 모듈 docstring 의 구현 범위에 R-005 항목을 추가한다
+  description: app/fsm.py 상단 docstring 의 구현 범위 목록에 "R-005 — size(file) < offsets[path]
+    이면(회전) offset 0 부터 줄을 다시 읽어 재분류하고, 처리 후 offsets[path] = size(file)" 한 줄을 R-004
+    다음에 추가한다.
+  status: done
+  parent: SWF-10
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-005
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-56
+  type: subtask
+  title: R-006.1 R-006 꼬리 읽기 분기를 app/fsm.py에 명시하고 문서화하라
+  description: app/fsm.py의 Machine._read_source_bytes에서 `size >= remembered_offset`일
+    때 start=remembered_offset으로 seek해 덧붙은 바이트만 읽는 else 분기를 R-006 가드 조건 주석으로 명시하고,
+    _collect_file의 "(2) 읽기" 주석에 있는 "R-006 확장 지점" 문구와 "(4) 위치 상태 갱신" 주석을 R-006 결과(처리
+    후 offsets[path] = size(file))로 갱신하며, 모듈 docstring의 구현 범위에 R-006 항목을 추가한다. 동작 변경
+    없이 tests/test_fsm.py::test_r_006이 통과함을 확인한다.
+  status: done
+  parent: SWF-11
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-006
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-57
+  type: subtask
+  title: R-007.1 R-007 파싱 실패 분기가 read_lines·invalid·parse_error 를 세는지 app/fsm.py 에서
+    확정한다
+  description: app/fsm.py 의 _collect_file 이 줄마다 counts["read_lines"] 를 1 올린 뒤 _classify
+    를 호출하고, _classify 의 json.loads 실패(ValueError, JSONDecodeError 포함) 분기에서 counts["invalid"]
+    += 1 과 invalid_reasons["parse_error"] 증가만 수행하고 즉시 반환하도록 유지·정리한다. 파싱되는 줄은 이 분기를
+    거치지 않게 하며, 빈 문자열·공백만 있는 줄이 read_lines 에 포함되는지 정책을 코드 주석으로 명시한다. 장부 줄(_append_ledger_line)에
+    invalid_reasons 딕셔너리가 그대로 실려 tests/test_fsm.py::test_r_007 이 통과하는지 확인한다.
+  status: done
+  parent: SWF-12
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-007
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-58
+  type: subtask
+  title: R-008.1 R-008 무관 분류 가드를 _classify 에 확정하고 주석·모듈 docstring에 기록한다
+  description: 'app/fsm.py 의 Machine._classify 에서 파싱된 레코드의 type != ''assistant'' 또는
+    message.usage 부재(dict 아님 포함) 시 counts["unrelated"] 만 1 올리고 즉시 반환하는 분기를 R-008 규칙으로
+    명시(주석 "R-008: ..." 및 모듈 docstring 구현 범위 목록에 한 줄 추가)하고, 이 분기에서 store·request_ids·invalid_reasons
+    를 건드리지 않음을 확인한다. read_lines 는 호출자(_collect_file)가 이미 1 올린 상태이므로 추가 증가 없이 등식 read_lines
+    = accepted + duplicates + invalid + unrelated 가 유지되도록 한다.'
+  status: done
+  parent: SWF-13
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-008
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-59
+  type: subtask
+  title: R-009.1 R-009 가드 all_zero_or_missing 을 전용 정적 메서드로 분리한다
+  description: app/fsm.py 의 Machine 에 `_all_zero_or_missing(usage)` 정적 메서드를 추가한다.
+    TOKEN_KINDS 의 각 키를 usage 에서 꺼내 없거나(None) 0 이면 "0/없음"으로 보고, 여섯 개 전부가 그러할 때만 True
+    를 반환한다. 숫자가 아닌 값(문자열·리스트 등)은 0 으로 간주하도록 방어적으로 처리한다.
+  status: done
+  parent: SWF-14
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-009
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-60
+  type: subtask
+  title: R-009.2 _classify 의 R-009 분기를 가드 메서드로 연결하고 결과 동작을 명시한다
+  description: app/fsm.py `_classify` 에서 R-008 통과 직후의 임시 `not any(tokens.values())`
+    판정을 `_all_zero_or_missing(usage)` 호출로 바꾼다. 가드 참이면 counts["invalid"] += 1, `_count_reason(invalid_reasons,
+    "zero_or_missing_tokens")` 후 return 하고, store/request_ids/offsets 는 건드리지 않음을 주석으로
+    명시한다. read_lines 는 호출자가 이미 올린 상태임을 유지한다.
+  status: done
+  parent: SWF-14
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-009
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-61
+  type: subtask
+  title: R-009.3 모듈 docstring 에 R-009 구현 범위를 기록한다
+  description: app/fsm.py 상단 docstring 의 R-008 항목 아래에 R-009 항목을 추가한다. 조건(assistant
+    + usage dict 이지만 토큰 수 전부 0/없음), 결과(read_lines += 1; invalid += 1; invalid_reasons["zero_or_missing_tokens"]
+    += 1 후 그 줄 처리 종료), 저장소·중복 집합 불변을 한 줄로 적는다.
+  status: done
+  parent: SWF-14
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-009
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-62
+  type: subtask
+  title: R-010.1 app/fsm.py _classify 의 R-010 중복 분기를 명세대로 확정한다
+  description: 'app/fsm.py `_classify` 에서 R-009 통과 직후 `request_id in self.request_ids`
+    검사를 R-010 분기로 명시한다. 참이면 counts["duplicates"] 만 1 올리고 즉시 return 하여 store 적재·request_ids
+    추가·invalid_reasons 변경이 일어나지 않게 한다. read_lines 는 호출자(_collect_file)가 이미 올렸으므로 여기서
+    다시 올리지 않는다. 기존 R-007..R-009 분기와 같은 형식으로 규칙 id·조건·결과·건드리지 않는 상태를 주석으로 남기고, 모듈 상단
+    규칙 목록 주석에도 R-010 항목을 추가한다. guard 거짓(처음 보는 requestId)일 때만 이후 적재(R-011) 경로로 흐르는지
+    확인한다.
+
+    '
+  status: done
+  parent: SWF-15
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-010
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-63
+  type: subtask
+  title: R-011.1 R-011 채택 분기를 _classify 끝에 명시적으로 구현하고 주석을 달라
+  description: app/fsm.py 의 Machine._classify 마지막 부분(R-010 이후)에 R-011 주석 블록(조건·결과·건드리지
+    않는 상태)을 추가하고, 기존 임시 적재 코드를 명세 순서(ts_utc, model, session_id, input_tokens, output_tokens,
+    cache_read_tokens, cache_write_5m_tokens, cache_write_1h_tokens, web_search_count)를
+    따르는 _make_store_record(obj, message, usage) 헬퍼 호출로 정리한다. 헬퍼는 timestamp 를 UTC 시각
+    문자열로, 토큰 수는 없으면 0 인 정수로 정규화한 dict 를 돌려주고, 분기는 store.append 후 request_ids 에 requestId
+    를 등록하고 counts["accepted"] 를 1 올린다.
+  status: done
+  parent: SWF-16
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-011
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-64
+  type: subtask
+  title: R-011.2 채택 레코드를 원천과 별개인 data_dir 저장소 파일에 기록하라
+  description: 'app/fsm.py 에 _persist_store() 를 추가해 _run_collection 이 장부를 남기기 직전에
+    self.store 와 self.request_ids 를 data_dir 아래 저장소 파일(예: store.jsonl 과 request_ids.json)에
+    쓴다. data_dir 이 없으면 만들고, 원천 파일은 절대 열어 쓰지 않으며(원천은 계속 rb 로만 접근), R-001 빈 저장소 경로에서도
+    빈 저장소 파일이 존재하도록 같은 헬퍼를 호출한다.'
+  status: done
+  parent: SWF-16
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-011
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-65
+  type: subtask
+  title: R-011.3 파일 헤더 문서에 R-011 항목을 추가하라
+  description: app/fsm.py 상단의 전이 목록 주석(R-007..R-010 이 나열된 곳)에 R-011 항목을 추가해 조건(assistant
+    + usage 있음 + 토큰 하나라도 비영 + 처음 보는 requestId)과 결과(accepted += 1, 명세 필드 적재, request_ids
+    등록, 저장소는 원천과 별개 파일)를 한 줄로 기록한다.
+  status: done
+  parent: SWF-16
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-011
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-66
+  type: subtask
+  title: R-012.1 정상 마감 직전에 read_lines 등식 assert를 추가한다
+  description: app/fsm.py 의 _run_collection 에서 파일 루프가 끝난 뒤(_persist_store 호출 전)에 `assert
+    counts["read_lines"] == counts["accepted"] + counts["duplicates"] + counts["invalid"]
+    + counts["unrelated"]` 를 넣고, R-012 주석으로 "모든 파일의 줄 처리 완료 = 정상 마감" 지점임을 명시한다.
+  status: done
+  parent: SWF-17
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-012
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-67
+  type: subtask
+  title: R-012.2 정상 마감 장부 한 줄에 retention_deleted를 명시적으로 넘긴다
+  description: app/fsm.py 의 _run_collection 마지막 _append_ledger_line 호출에 counts 다섯
+    값과 함께 `retention_deleted=0`(보존 삭제가 이 실행에서 없었음을 명시)을 전달하고, 실행 1회당 이 호출이 정확히 한 번만
+    일어나도록 R-001 분기와 정상 분기 외에 다른 append 경로가 없음을 주석으로 못 박는다.
+  status: done
+  parent: SWF-17
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-012
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-68
+  type: subtask
+  title: R-012.3 모듈 docstring의 규칙 목록에 R-012를 기록한다
+  description: app/fsm.py 상단 docstring(R-007..R-011 나열 부분)에 "R-012 — 모든 파일의 줄 처리 완료(정상
+    마감) 이면 read_lines == accepted+duplicates+invalid+unrelated 를 단언하고 append_ledger_line(read_lines,
+    accepted, duplicates, invalid, unrelated, retention_deleted) 로 장부 한 줄을 남긴다(실행
+    1회 = 장부 한 줄)" 항목을 추가한다.
+  status: done
+  parent: SWF-17
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-012
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-69
+  type: subtask
+  title: R-013.1 읽기 위치 상태(offsets)를 data_dir/offsets.json 에 영속하라
+  description: app/fsm.py 에 OFFSETS_FILE = "offsets.json" 상수를 추가하고 _persist_store
+    에서 self.offsets 를 data_dir/offsets.json 에 JSON 으로 기록한다. 원천(source_dir)은 건드리지 않으며,
+    R-001 경로(원천 부재)에서도 빈 offsets 파일이 남도록 한다.
+  status: done
+  parent: SWF-18
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-013
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-70
+  type: subtask
+  title: R-013.2 Machine 생성 시 data_dir 의 store·request_ids·offsets 상태 파일을 복원하라
+  description: app/fsm.py Machine.__init__ 에 _load_state 를 추가해 data_dir/store.jsonl
+    → self.store, data_dir/request_ids.json → self.request_ids, data_dir/offsets.json
+    → self.offsets 를 읽어 들인다. 파일이 없으면 첫 실행으로 보고 빈 상태를 유지하며, 손상된 파일은 예외를 올리지 않고 빈 상태로
+    대체한다.
+  status: done
+  parent: SWF-18
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-013
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-71
+  type: subtask
+  title: R-013.3 R-013 재실행 불변식을 _run_collection 과 모듈 docstring 에 명시하라
+  description: app/fsm.py 모듈 docstring 에 R-013 항목을 추가하고, _run_collection 의 파일 루프 뒤에
+    "같은 원천 상태(모든 파일 size == offsets[path])면 read_lines=0 이므로 store/request_ids 는 변하지
+    않고 장부 한 줄만 추가된다"는 불변식을 주석과 assert(len(self.store) 가 루프 전후로 accepted 만큼만 증가)로 고정한다.
+  status: done
+  parent: SWF-18
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-013
+  usecase_ref: UC-01
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-72
+  type: subtask
+  title: R-014.1 R-014 가드 판정 헬퍼를 app/fsm.py 에 추가한다
+  description: Machine 에 `_record_age(record)`(self.now - ts_utc, timedelta), `_day_key(record)`(ts_utc
+    의 UTC 날짜 문자열 `YYYY-MM-DD`), `_reflected_in_daily_summary(record)`(저장소 레코드의 `reflected`
+    불리언 필드 또는 없으면 False) 정적/인스턴스 메서드를 만든다. 보존 기한 상수 `RAW_RETENTION_DAYS = 8` 을 모듈
+    상단(STORE_FILE 등 옆)에 정의한다. ts_utc 가 None·파싱 불가면 나이는 0 으로 보아 대상에서 제외한다.
+  status: done
+  parent: SWF-19
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-014
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-73
+  type: subtask
+  title: R-014.2 일 요약 반영 함수와 비용 계산을 app/fsm.py 에 구현한다
+  description: '`_record_cost(record)` 를 추가해 `price_table[record.model][kind] * record[kind]`
+    를 TOKEN_KINDS 전부 합산한다(모델·단가 없으면 0). `_reflect_in_daily_summary(record)` 를 추가해
+    `self.daily_summary[day_key]` 행을 없으면 `{"records":0,"total_tokens":0,"total_cost":0.0,
+    각 TOKEN_KINDS:0}` 으로 만들고 records +1, total_tokens 에 input_tokens+output_tokens
+    가산, total_cost 에 비용 가산, 종류별 토큰 가산 후 `record["reflected"] = True` 로 표시한다. 이미 반영된
+    레코드는 두 번 더하지 않는다.'
+  status: done
+  parent: SWF-19
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-014
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-74
+  type: subtask
+  title: R-014.3 _run_collection 정상 마감 경로에 R-014 반영 단계를 삽입한다
+  description: app/fsm.py `_run_collection` 에서 파일 루프·R-012/R-013 단언 직후, `_persist_store()`
+    호출 전에 `_reflect_expired_records()` 를 호출한다. 이 메서드는 `self.store` 를 순회해 `age > 8일
+    and not reflected` 인 레코드만 `_reflect_in_daily_summary` 로 반영하고, 어떤 레코드도 store 에서
+    제거하지 않는다(삭제는 R-015 몫이며 반영된 뒤에야 대상이 됨을 주석으로 남긴다). 8일 이내 레코드는 건드리지 않아 store 에 그대로
+    남는다. R-001 원천 부재 분기에는 넣지 않는다.
+  status: done
+  parent: SWF-19
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-014
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-75
+  type: subtask
+  title: R-014.4 daily_summary 와 reflected 표식을 data_dir 에 영속·복원한다
+  description: app/fsm.py 에 `DAILY_SUMMARY_FILE = "daily_summary.json"` 상수를 추가하고 `_persist_store`
+    에서 `self.daily_summary` 를 날짜 키 정렬 JSON 으로 쓴다. store.jsonl 은 레코드 dict 를 그대로 쓰므로
+    `reflected` 필드가 함께 저장된다. `_load_state` 에 `_load_daily_summary_file(path)` 를 추가해
+    파일 없음·손상은 빈 dict 로 복원하고, `_load_store_file` 이 `reflected` 키가 없는 기존 줄을 False 로
+    읽도록 한다. R-013 재실행 불변식(같은 원천 상태에서 store 길이 불변)은 반영 단계가 레코드를 지우지 않으므로 그대로 성립함을 확인한다.
+  status: done
+  parent: SWF-19
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-014
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-76
+  type: subtask
+  title: R-015.1 store 에서 기한 초과·반영 완료 레코드를 삭제하는 헬퍼를 추가한다
+  description: app/fsm.py 의 Machine 에 `_delete_expired_reflected_records()` 를 `_reflect_expired_records()`
+    바로 아래(R-014 섹션 뒤, 새 "R-015 보존 삭제" 섹션)에 만든다. `self.store` 를 순회해 `_record_age(record)
+    > timedelta(days=RAW_RETENTION_DAYS)` 이고 `_reflected_in_daily_summary(record)`
+    가 참인 레코드만 제외한 새 리스트로 `self.store` 를 교체하고, 삭제 건수를 정수로 돌려준다. 8일 이내 레코드와 미반영 레코드는
+    그대로 남기고, `request_ids` 는 중복 판정용이므로 건드리지 않는다. daily_summary 도 수정하지 않는다.
+  status: done
+  parent: SWF-20
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-015
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-77
+  type: subtask
+  title: R-015.2 수집 실행 흐름에 삭제 단계를 연결하고 장부에 retention_deleted 를 기록한다
+  description: app/fsm.py `_run_collection` 에서 `self._reflect_expired_records()` 호출
+    직후, `self._persist_store()` 이전에 `retention_deleted = self._delete_expired_reflected_records()`
+    를 호출한다. 이어지는 `_append_ledger_line(...)` 의 하드코딩된 `retention_deleted=0` 을 이 값으로
+    바꾸고, "이 실행에서는 보존 삭제가 없었음" 주석을 R-015 설명(반영 표식이 붙은 뒤에만 삭제되며 삭제 건수가 장부에 남는다)으로 고친다.
+    모듈 상단 전이 목록(R-014 항목 아래)에 R-015 한 줄을 추가한다. R-013 재실행 불변식 단언(store 증가량 == accepted)은
+    삭제 호출보다 앞에 있으므로 위치를 바꾸지 않는다.
+  status: done
+  parent: SWF-20
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-015
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-78
+  type: subtask
+  title: R-016.1 정상 마감 분기에서 retention_deleted > 0 일 때 deleted_at 을 계산해 장부 줄에 넘긴다
+  description: app/fsm.py 의 _run_collection 정상 마감 분기(_delete_expired_reflected_records
+    호출 직후 ~ _append_ledger_line 호출)에서 retention_deleted 가 0 보다 크면 self.now 를 "%Y-%m-%dT%H:%M:%SZ"
+    로 포맷한 삭제 시각을 deleted_at 으로 만들고, 0 이면 None 으로 두어 _append_ledger_line(..., retention_deleted=retention_deleted,
+    deleted_at=deleted_at, ...) 로 전달한다. R-016 주석(삭제가 있는 실행에만 deleted_at 기록, 없으면 None)을
+    함께 남긴다.
+  status: done
+  parent: SWF-21
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-016
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-79
+  type: subtask
+  title: R-017.1 장부 줄 보존 기한 상수와 나이·건수 반영 여부 판정 헬퍼를 추가한다
+  description: app/fsm.py 에 LEDGER_RETENTION_DAYS = 35 상수를 두고, Machine 에 장부 줄의 "ts"
+    를 파싱해 self.now 기준 나이를 timedelta 로 돌려주는 _ledger_line_age(line) 과, 그 줄의 날짜(ts 의
+    UTC 날짜)에 해당하는 daily_summary 행이 존재하고 채택·중복·무효·무관·보존 삭제 건수가 그 행에 반영되어 있는지를 판정하는
+    _counts_reflected_in_daily_summary(line) 을 추가한다. ts 가 없거나 파싱 불가면 나이 0, daily_summary
+    에 날짜 행이 없으면 미반영(False) 으로 본다.
+  status: done
+  parent: SWF-22
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-017
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-80
+  type: subtask
+  title: R-017.2 35일 초과·미반영 장부 줄을 유지하는 장부 정리 패스를 _run_collection 에 넣는다
+  description: app/fsm.py 의 Machine 에 _retain_expired_ledger_lines() 를 추가해 self.ledger
+    를 순회하며 age > 35일 이고 !_counts_reflected_in_daily_summary 인 줄(R-017 가드 참)과 35일 이내의
+    줄(가드 거짓)은 그대로 남기는 새 리스트로 교체하고, 남긴 줄 수를 돌려준다. _run_collection 에서 R-015 삭제(_delete_expired_reflected_records)
+    뒤·_persist_store 앞에 이 패스를 호출하되, 이번 실행의 장부 줄 append(_append_ledger_line) 는 그대로
+    정리 뒤에 한 번만 일어나도록 순서를 유지한다.
+  status: done
+  parent: SWF-22
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-017
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-81
+  type: subtask
+  title: R-017.3 모듈 docstring 과 주석에 R-017 규칙을 기록한다
+  description: app/fsm.py 상단 "구현 범위" docstring 에 R-017 항목(age(ledger_line) > 35일 and
+    !counts_reflected_in_daily_summary 이면 그 줄을 지우지 않고 유지, 35일 이내 줄은 반영 여부와 무관하게 유지)을
+    추가하고, _run_collection 의 호출 지점과 _retain_expired_ledger_lines 의 docstring 에 R-015/R-016
+    스타일로 근거 주석을 단다.
+  status: done
+  parent: SWF-22
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-017
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-82
+  type: subtask
+  title: R-018.1 장부 정리 패스에서 35일 초과·건수 반영 완료 줄을 삭제하도록 바꾼다
+  description: 'app/fsm.py 의 Machine._retain_expired_ledger_lines 에서 "기한 초과·반영 완료
+    줄은 그대로 남긴다"(현재 kept.append 폴스루) 분기를 제거해, age(ledger_line) > LEDGER_RETENTION_DAYS
+    이고 _counts_reflected_in_daily_summary(line) 이 참인 줄은 kept 에 넣지 않고 self.ledger 에서
+    떨어뜨린다. R-017 분기(기한 초과·미반영 유지)와 35일 이내 줄 유지는 그대로 둔다. 메서드 이름을 역할에 맞게 _prune_expired_ledger_lines
+    로 바꾸고 run 흐름의 호출부·docstring·모듈 상단 규칙 목록(R-017 옆)에 R-018 설명을 추가한다. 이번 실행의 장부 줄은
+    이 패스 뒤에 _append_ledger_line 으로 추가되므로 삭제 대상이 아님을 주석으로 남긴다.
+
+    '
+  status: done
+  parent: SWF-23
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-018
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-83
+  type: subtask
+  title: R-019.1 일 요약 행 보존 기한 상수와 나이 계산 헬퍼를 추가한다
+  description: app/fsm.py 에 SUMMARY_RETENTION_DAYS = 35 상수를 LEDGER_RETENTION_DAYS
+    옆에 정의하고, daily_summary 의 날짜 키("YYYY-MM-DD")를 UTC 날짜로 파싱해 self.now 와의 차이(timedelta)를
+    돌려주는 Machine._summary_row_age(key) 정적/인스턴스 메서드를 _ledger_line_age 옆에 만든다. 키 파싱
+    불가 시 나이 0(삭제 대상 아님)으로 처리한다.
+  status: done
+  parent: SWF-24
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-019
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-84
+  type: subtask
+  title: R-019.2 기한 초과 일 요약 행 정리 패스 메서드를 구현한다
+  description: app/fsm.py Machine 에 _prune_expired_summary_rows() 를 _prune_expired_ledger_lines
+    아래에 추가한다. self.daily_summary 를 순회해 _summary_row_age(key) > SUMMARY_RETENTION_DAYS
+    인 행만 제거하고, 35일 이내 행은 그대로 남긴 뒤 삭제한 행 수를 돌려준다. store/request_ids/ledger 는 건드리지 않는다.
+  status: done
+  parent: SWF-24
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-019
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-85
+  type: subtask
+  title: R-019.3 정리 패스를 _run_collection 에 연결하고 R-019 문서를 갱신한다
+  description: app/fsm.py _run_collection 의 정상 마감 분기에서 _prune_expired_ledger_lines()
+    호출 직후, _reflect_ledger_counts_in_daily_summary()·_persist_store() 보다 앞에 self._prune_expired_summary_rows()
+    를 호출한다(장부 줄 반영 판정이 요약 행을 참조하므로 장부 정리 뒤에 두어야 함). 호출 위치에 R-019 주석을 달고 모듈 상단 규칙 목록에
+    R-019 항목을 추가한다. daily_summary.json 영속은 기존 _persist_store 경로가 그대로 처리하는지 확인한다.
+  status: done
+  parent: SWF-24
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-019
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-86
+  type: subtask
+  title: R-020.1 R-020 offsets 정리 헬퍼 메서드를 Machine 에 추가한다
+  description: app/fsm.py 의 Machine 에 `_prune_missing_offsets()` 를 만든다. self.offsets
+    의 각 경로 키에 대해 `os.path.exists(path)` 가 거짓인 항목만 제거하고 제거 건수를 정수로 돌려준다. 존재하는 파일의 항목은
+    그대로 두며 store/request_ids/daily_summary/ledger 는 건드리지 않는다. R-015~R-019 헬퍼와 같은 섹션
+    구분 주석(`# --- R-020 읽기 위치 정리`) 과 docstring 을 붙인다.
+  status: done
+  parent: SWF-25
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-020
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-87
+  type: subtask
+  title: R-020.2 _run_collection 정리 패스에 offsets 정리를 연결하고 영속한다
+  description: app/fsm.py 의 `_run_collection` 에서 R-019 요약 행 정리 직후·`_persist_store`
+    앞에 `_prune_missing_offsets()` 를 호출한다. 기존 `_persist_store` 가 정리된 self.offsets 를
+    data_dir/offsets.json 에 쓰므로 상태 파일이 유계가 되는지 확인한다. 호출 지점에 R-020 주석을 남기고, 파일 상단 규칙
+    목록에 `R-020 — !exists(offsets 항목의 원천 파일) 이면 그 항목을 offsets 에서 제거` 항목을 추가한다.
+  status: done
+  parent: SWF-25
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-020
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-88
+  type: subtask
+  title: R-021.1 R-021 상한 상수와 규칙 주석을 fsm.py 에 추가한다
+  description: app/fsm.py 모듈 상단 규칙 목록에 R-021 항목을 적고, 실행 주기 여유(RUN_PERIOD_DAYS=1)와
+    상태 파일별 크기 상한(store.jsonl·daily_summary.json·offsets.json·장부용 MAX_*_BYTES 또는 항목
+    수 상한) 상수를 RAW/LEDGER/SUMMARY_RETENTION_DAYS 옆에 정의한다.
+  status: done
+  parent: SWF-26
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-021
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-89
+  type: subtask
+  title: R-021.2 나이 상한 불변식 검사 메서드를 구현한다
+  description: app/fsm.py Machine 에 `_assert_age_invariants()` 를 추가해 기존 `_record_age`·`_ledger_line_age`·`_summary_row_age`
+    로 max_age(store) <= 8일+주기, max_age(ledger 줄) <= 35일+주기, max_age(daily_summary
+    행) <= 35일+주기를 assert 한다. R-015/R-017 이 의도적으로 남긴 미반영 레코드·장부 줄은 삭제 대상이 아니므로 검사에서
+    제외하고 그 이유를 주석으로 남긴다.
+  status: done
+  parent: SWF-26
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-021
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-90
+  type: subtask
+  title: R-021.3 상태 파일 유계·offsets 정합 검사 메서드를 구현한다
+  description: app/fsm.py Machine 에 `_assert_state_files_bounded()` 를 추가해 data_dir
+    의 store.jsonl·daily_summary.json·장부·offsets.json 각각이 기간(항목 나이) 또는 크기(바이트/항목 수)
+    상한 안에 있음을 assert 하고, self.offsets 의 모든 경로가 os.path.exists 인지 assert 한다(R-020 결과
+    확인).
+  status: done
+  parent: SWF-26
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-021
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-91
+  type: subtask
+  title: R-021.4 정리 단계 완료 지점에 두 검사를 연결한다
+  description: app/fsm.py `_run_collection` 의 정상 마감 분기에서 `_append_ledger_line` 직후·`return
+    self._result(exit_code=0)` 직전에 `_assert_age_invariants()` 와 `_assert_state_files_bounded()`
+    를 호출한다(영속·장부 append 가 끝난 뒤라야 파일 상한 검사가 가능). R-020 프루닝 뒤에 도는 순서 근거를 주석으로 남긴다.
+  status: done
+  parent: SWF-26
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-021
+  usecase_ref: UC-02
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-92
+  type: subtask
+  title: R-022.1 REQUEST_REPORT 이벤트를 Machine.send 에 등록하고 기간 guard 를 구현한다
+  description: app/fsm.py 의 send 핸들러 표에 "REQUEST_REPORT" -> self._request_report 를
+    추가한다. _request_report(period) 는 period 가 {session_5h, day_24h, week_7d} 에 없으면
+    report=None 인 실패 결과(_result(exit_code=1, error=...))를 반환하고, 상태(store·daily_summary·offsets·request_ids·ledger)와
+    data_dir 파일을 전혀 건드리지 않는다. 모듈 상단 주석 목록에 R-022 설명을 추가한다.
+  status: done
+  parent: SWF-27
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-022
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-93
+  type: subtask
+  title: R-022.2 집계 대상 구간 목록(요청 기간 + 최근 30일 각 날짜)을 만드는 헬퍼를 구현한다
+  description: app/fsm.py 에 _report_windows(period) 를 추가한다. self.now 기준으로 요청 기간 구간
+    하나(session_5h=5시간, day_24h=24시간, week_7d=7일)와 최근 30일 추이용 날짜 구간 30개(오늘 포함 역순 또는
+    정순, 날짜 키 문자열 부여)를 [시작, 끝) UTC 구간 객체 목록으로 돌려준다. 순수 함수로 두어 같은 now 에 대해 동일한 결과가 나오게
+    한다.
+  status: done
+  parent: SWF-27
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-022
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-94
+  type: subtask
+  title: R-022.3 각 구간에 구간 규칙(R-023..R-025)을 적용하는 자리를 만들고 리포트 결과를 조립한다
+  description: 'app/fsm.py 의 _request_report 에서 _report_windows 결과를 순회하며 구간마다 _aggregate_window(window)
+    를 호출하는 뼈대를 만든다. _aggregate_window 는 R-023..R-025 가 구현될 진입점으로, 이 단계에서는 store 와
+    daily_summary 를 읽기 전용(복사본 또는 순회만)으로 접근해 구간 값을 계산하거나 값 없음("값 없음")을 돌려주는 최소 구현을
+    둔다. 결과를 report={"period": ..., "window": <요청 기간 결과>, "trend": [<30개 날짜 결과>], "evidence":
+    {"last_collected_at": 마지막 장부 시각, "record_count": len(store)}} 형태로 _result(report=...)
+    에 담아 반환한다.'
+  status: done
+  parent: SWF-27
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-022
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-95
+  type: subtask
+  title: R-023.1 구간의 원시 보존 범위(8일) 안 여부를 판정하는 guard 헬퍼를 추가한다
+  description: app/fsm.py 의 Machine 에 `_window_in_raw_retention(window)` 를 만든다. `window["start"]
+    >= now - timedelta(days=RAW_RETENTION_DAYS)` 이면 True 를 돌려주는 순수 판정이며 상태를 바꾸지 않는다.
+    R-023 규칙 주석을 모듈 상단 규칙 목록과 메서드 docstring 에 적는다.
+  status: done
+  parent: SWF-28
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-023
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-96
+  type: subtask
+  title: R-023.2 원시 레코드로 구간을 집계해 모델별·토큰 종류별 분해를 만드는 함수를 구현한다
+  description: app/fsm.py 에 `_aggregate_window_raw(window)` 를 만든다. store 를 읽기만 하며
+    `_window_contains` 로 구간 안 레코드만 골라 `by_model[model][kind]`(TOKEN_KINDS 전부) 와 `by_model[model]["cost"]`(`_record_cost`),
+    그리고 `records`·`total_tokens`(input+output)·`total_cost` 를 합산한다. 구간 안 레코드가 없으면
+    NO_VALUE 를 돌려준다. 원시 범위 밖 레코드(9일 전 등)는 구간 소속 판정에서 자연히 제외되도록 한다.
+  status: done
+  parent: SWF-28
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-023
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-97
+  type: subtask
+  title: R-023.3 _aggregate_window 를 guard 분기로 바꾸고 리포트에 by_model 을 노출한다
+  description: app/fsm.py 의 `_aggregate_window` 를 "guard 참(R-023) 이면 `_aggregate_window_raw`,
+    거짓이면 기존 최소 구현(추후 R-024/R-025 자리)" 로 분기시킨다. `_request_report` 에서 요청 기간 구간(kind="period")의
+    결과에서 `by_model` 을 꺼내 `report["by_model"]` 최상위 키로 넣고, `window`·`trend`·`evidence`
+    는 그대로 유지한다. 값 없음(NO_VALUE)인 경우 `by_model` 은 빈 dict 로 둔다.
+  status: done
+  parent: SWF-28
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-023
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-98
+  type: subtask
+  title: R-024.1 일 요약 보존 범위 guard 판정 메서드를 추가한다
+  description: app/fsm.py 의 Machine 에 `_window_in_summary_retention(window)` 를 추가한다.
+    `_window_in_raw_retention` 과 같은 순수 판정으로, `window["start"] >= now - SUMMARY_RETENTION_DAYS(35일)`
+    이면 True 를 돌려준다. self.now 와 window 만 읽고 상태를 바꾸지 않는다.
+  status: done
+  parent: SWF-29
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-024
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-99
+  type: subtask
+  title: R-024.2 구간을 일 요약으로 집계하는 메서드를 추가한다
+  description: app/fsm.py 의 Machine 에 `_aggregate_window_summary(window)` 를 추가한다.
+    self.daily_summary 를 읽기만 하며, 날짜 키("YYYY-MM-DD")를 UTC 자정으로 파싱해 `_window_contains`
+    로 구간 안 행만 고른 뒤 records·total_tokens·total_cost 와 TOKEN_KINDS 별 합을 더한다. 반환 형태는
+    `_aggregate_window_raw` 와 같게 `{"records", "total_tokens", "total_cost", "by_model"}`
+    로 맞추되 일 요약은 모델 분해가 없으므로 by_model 은 빈 dict 로 둔다. 구간 안 행이 하나도 없으면 NO_VALUE 를 돌려준다.
+  status: done
+  parent: SWF-29
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-024
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-100
+  type: subtask
+  title: R-024.3 _aggregate_window 진입점에 R-024 분기를 연결한다
+  description: app/fsm.py 의 `_aggregate_window` 에서 `_window_in_raw_retention` 이 거짓이고
+    `_window_in_summary_retention` 이 참이면 `_aggregate_window_summary` 를 돌려주도록 분기를 추가한다.
+    두 guard 모두 거짓인 구간은 기존 최소 구현(R-025 자리)으로 그대로 떨어지게 둔다. 모듈 docstring 의 R-023 항목 아래에
+    R-024 항목(guard·결과·읽기 전용)을 추가한다.
+  status: done
+  parent: SWF-29
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-024
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-101
+  type: subtask
+  title: R-025.1 _aggregate_window 의 두 guard 모두 거짓인 폴백을 '값 없음' 반환으로 교체하라
+  description: app/fsm.py 의 Machine._aggregate_window 에서 _window_in_raw_retention·_window_in_summary_retention
+    이 모두 거짓일 때 store 를 순회해 합계를 만들던 최소 구현을 제거하고 즉시 NO_VALUE("값 없음", 숫자 0 아님)를 돌려주도록
+    바꾼다. store·daily_summary 는 읽지도 변경하지도 않으며, guard 참인 경로(R-023 원시 집계, R-024 요약 집계)는
+    그대로 둔다. 메서드 docstring 을 R-025 결과에 맞게 갱신한다.
+  status: done
+  parent: SWF-30
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-025
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-102
+  type: subtask
+  title: R-025.2 모듈 docstring 과 리포트 조립 주석에 R-025 규칙을 기록하라
+  description: app/fsm.py 상단 모듈 docstring 의 R-023/R-024 항목 뒤에 R-025 항목(구간이 원시 보존 밖이고
+    일 요약 보존 밖이면 그 구간 값 = NO_VALUE, 숫자 0 금지, by_model 은 빈 dict)을 추가하고, _build_report
+    의 trend 조립 주석에서 값 없음 구간이 R-025 로 채워짐을 명시한다. 기존 R-024 항목의 "두 guard 모두 거짓인 경우" 언급을
+    R-025 참조로 정리한다.
+  status: done
+  parent: SWF-30
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-025
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-103
+  type: subtask
+  title: R-026.1 R-026 guard `model in price_table` 판정과 단가표 기반 비용 계산을 명시적으로 분리하라
+  description: app/fsm.py 의 Machine 에 `_model_in_price_table(model)` 을 추가해 price_table
+    에 해당 모델 키가 dict 로 존재하는지만 판정하게 하고, `_record_cost(record)` 를 guard 참일 때 TOKEN_KINDS
+    각각에 대해 `price_table[model][kind] × 정규화된 토큰 수` 를 합산하도록 정리한다(단가가 없는 종류는 0 항으로 취급).
+    모듈 상단 규칙 목록과 docstring 에 R-026 항목을 추가한다.
+  status: done
+  parent: SWF-31
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-026
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-104
+  type: subtask
+  title: R-026.2 by_model 각 모델 항목에 flags 리스트를 두고 단가표에 있는 모델은 빈 리스트로 노출하라
+  description: 'app/fsm.py 의 `_aggregate_window_raw` 에서 by_model[model] 버킷 생성 시 TOKEN_KINDS
+    합·"cost" 와 함께 `"flags": []` 를 초기화하고, `_request_report` 가 report["by_model"] 로
+    그대로 노출하게 한다. R-026 guard 가 참인 모델에는 어떤 "단가표 없음" 표시도 붙지 않도록 하며(R-027 에서 guard 거짓
+    케이스가 채울 자리만 마련), 구간 결과 형태를 설명하는 docstring 을 `{TOKEN_KINDS 전부, "cost", "flags"}`
+    로 갱신한다.'
+  status: done
+  parent: SWF-31
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-026
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-105
+  type: subtask
+  title: R-027.1 price_table 전체에서 토큰 종류별 최고 단가를 뽑는 _max_price 헬퍼를 app/fsm.py Machine
+    에 추가한다
+  description: 'app/fsm.py 의 _model_in_price_table 근처에 Machine._max_price(self) 를
+    만든다. price_table 의 모든 모델 dict 를 훑어 TOKEN_KINDS 각 종류별로 숫자(bool 제외) 단가 중 최댓값을 모은
+    {종류: 최고 단가} dict 를 돌려준다. 어떤 모델에도 그 종류 단가가 없으면 그 종류는 빼서 _cost_from_prices 가 0 항으로
+    다루게 한다. price_table 이 dict 가 아니거나 비어 있으면 빈 dict. 순수 계산이며 상태를 바꾸지 않는다. docstring
+    에 R-027 을 명시한다.'
+  status: done
+  parent: SWF-32
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-027
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-106
+  type: subtask
+  title: R-027.2 _record_cost 의 guard 거짓 분기를 R-027 결과(최고 단가 적용)로 바꾼다
+  description: 'app/fsm.py Machine._record_cost 에서 _model_in_price_table 이 거짓이면 0.0
+    을 돌려주던 자리를 self._cost_from_prices(self._max_price(), record) 로 바꾼다. guard 참 분기(R-026)는
+    그대로 둔다. docstring 의 ''R-027 의 자리이며 여기서는 0'' 문구를 ''R-027: 단가표 최고 단가로 계산'' 으로 고친다.
+    이 변경으로 원시 집계(_aggregate_window_raw)와 일 요약 반영(_reflect_in_daily_summary) 모두 단가표에
+    없는 모델 비용이 최고 단가로 잡힌다.'
+  status: done
+  parent: SWF-32
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-027
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-107
+  type: subtask
+  title: R-027.3 _aggregate_window_raw 에서 단가표에 없는 모델의 by_model 버킷 flags 에 '단가표 없음
+    — 최고 단가 적용' 표시를 붙인다
+  description: app/fsm.py 에 모듈 상수 PRICE_MISSING_FLAG = "단가표 없음 — 최고 단가 적용" 을 두고, Machine._aggregate_window_raw
+    가 by_model[model] 버킷을 새로 만들 때 self._model_in_price_table(model) 이 거짓이면 bucket["flags"]
+    에 그 문자열을 한 번만 넣는다(같은 모델의 레코드가 여러 개여도 중복 없음). 단가표에 있는 모델의 flags 는 기존대로 빈 리스트로 남긴다.
+    docstring 의 'guard 거짓인 모델의 표시는 R-027 이 이 자리에 채운다' 문구를 실제 동작 설명으로 갱신하고, 파일 상단 전이
+    목록 주석에 R-027 항목(guard·결과·구현 위치)을 추가한다.
+  status: done
+  parent: SWF-32
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-027
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-108
+  type: subtask
+  title: R-028.1 구간 집계 값의 칸별 합계와 총계 일치 여부를 판정하는 순수 헬퍼를 추가한다
+  description: app/fsm.py 의 Machine 에 `_sum_mismatch(window, value)` 를 추가한다. value
+    가 NO_VALUE 면 None 을 돌려주고, dict 이면 칸별 합계(원시 집계는 by_model 각 버킷의 input_tokens+output_tokens
+    합, 일 요약 집계는 결과의 input_tokens+output_tokens)를 구해 value["total_tokens"] 와 비교한다.
+    불일치면 구간 key·칸별 합계·총계를 담은 사유 문자열을, 일치면 None 을 돌려준다. store/daily_summary 는 읽지 않고
+    상태를 바꾸지 않는다.
+  status: done
+  parent: SWF-33
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-028
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-109
+  type: subtask
+  title: R-028.2 REQUEST_REPORT 에서 불일치 구간이 있으면 리포트를 만들지 않고 실패 결과를 돌려준다
+  description: 'app/fsm.py `_request_report` 의 구간 순회에서 `_aggregate_window` 결과마다 `_sum_mismatch`
+    를 호출하고, 사유가 나오면 report 조립 전에 즉시 `self._result(exit_code=1, error="R-028: ...사유")`
+    를 돌려주도록 한다(report 키는 None). 요청 기간 구간과 최근 30일 추이 구간 모두 검사 대상이며 어떤 상태·파일도 변경하지 않는다.
+    모듈 상단 규칙 목록에 R-028 항목(guard `sum(칸별 합계) != 총계` → 산출물 미생성·실패와 사유 보고)을 추가한다.'
+  status: done
+  parent: SWF-33
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-028
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-110
+  type: subtask
+  title: R-029.1 _request_report 에 R-029 guard(모든 구간 합계 일치)를 명시하고 리포트 조립을 그 guard
+    통과 뒤로 묶는다
+  description: app/fsm.py 의 Machine._request_report 에서 요청 기간 구간과 최근 30일 추이 구간 전부에
+    대해 _sum_mismatch 가 None 임을 확인한 결과를 R-029 guard 로 명시적으로 표현하고, guard 참일 때만 report={period,
+    window, by_model(모델별 TOKEN_KINDS 전부 + cost + flags), trend(날짜 키 30개, 과거->오늘),
+    evidence{last_load_at, store_records(=len(self.store)), last_collected_at, record_count}}
+    를 조립해 exit_code=0 으로 돌려준다. store·daily_summary·offsets·request_ids·ledger·data_dir
+    파일은 읽기만 하고 변경하지 않으며 같은 상태·같은 now 에서 두 번 호출해도 동일한 결과가 나오도록 유지한다.
+  status: done
+  parent: SWF-34
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-029
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-111
+  type: subtask
+  title: R-029.2 모듈 docstring 에 R-029 전이 설명을 추가한다
+  description: 'app/fsm.py 상단 모듈 docstring 의 R-022..R-028 항목 뒤에 R-029 항목을 추가한다. 조건(요청
+    기간 구간·추이 구간 30개 모두 sum(칸별 합계) == 총계), 결과(report 제시: by_model 토큰 종류별·비용 분해, trend
+    최근 30일 일별 추이, evidence 마지막 적재 시각·저장소 레코드 수), 상태 불변·결정성(같은 저장소 상태에서 두 번 생성하면 동일)
+    및 R-028 과의 관계(R-028 guard 거짓일 때만 R-029 로 진입)를 기록한다.'
+  status: done
+  parent: SWF-34
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-029
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-112
+  type: subtask
+  title: R-030.1 R-030 전이 명세를 app/fsm.py 모듈 docstring 규칙 목록에 추가한다
+  description: app/fsm.py 상단 docstring 의 R-029 항목 뒤에 R-030 항목을 추가한다. 조건(같은 저장소 상태·같은
+    now 에서 REQUEST_REPORT 두 번)과 결과(두 report 동일, report["by_model"] 의 TOKEN_KINDS 별
+    합 == store 의 요청 기간 안 레코드 합)를 적고, 이것이 _request_report 가 store·daily_summary·offsets·request_ids·ledger·data_dir
+    파일을 읽기만 하는 순수 집계이기 때문에 성립한다는 근거와 검증 지점(_assert_report_read_only, _assert_by_model_matches_store)을
+    명시한다.
+  status: done
+  parent: SWF-35
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-030
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-113
+  type: subtask
+  title: R-030.2 _request_report 에 읽기 전용 불변식 단언(_assert_report_read_only)을 추가한다
+  description: 'app/fsm.py 의 Machine 에 _state_fingerprint() 를 만들어 len(store)·store
+    의 requestId 순서 목록·daily_summary 키/행·offsets·len(ledger)·data_dir 의 store.jsonl/daily_summary.json/offsets.json
+    크기·mtime 을 튜플로 돌려주게 하고, _request_report 진입 직후와 반환 직전(성공·R-028 실패·period 오류 세 경로
+    모두) 에 지문을 비교해 다르면 "R-030: 리포트 생성이 상태를 변경했다" AssertionError 를 내는 _assert_report_read_only
+    를 붙인다. 상태 변경 없음이 결정성(두 번 생성 == 동일)의 전제임을 주석으로 남긴다.'
+  status: done
+  parent: SWF-35
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-030
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-114
+  type: subtask
+  title: R-030.3 리포트 조립 뒤 by_model 합 == store 합 자기검증(_assert_by_model_matches_store)을
+    추가한다
+  description: app/fsm.py 의 _request_report 성공 경로에서 _assemble_report 가 돌려준 report
+    에 대해, 요청 기간 구간(aggregated 첫 항목의 window)에 _window_contains 로 속하는 self.store 레코드를
+    모델별로 다시 훑어 TOKEN_KINDS 각 종류의 _normalize_token_count 합을 구하고 report["by_model"][model][kind]
+    와 같은지 비교하는 _assert_by_model_matches_store(report, window) 를 만들어 호출한다. 구간 값이 NO_VALUE
+    면 by_model 이 빈 dict 이고 구간 안 레코드도 0건이어야 함을 함께 단언한다. by_model 은 store 순회 순서로 채워지므로
+    dict 삽입 순서와 float cost 합산 순서가 실행마다 같음을 주석으로 명시하고, 집계 결과에 set 이나 시각(datetime.now)
+    등 비결정 입력이 섞이지 않도록 self.now 만 쓰는지 확인한다.
+  status: done
+  parent: SWF-35
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-030
+  usecase_ref: UC-03
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-115
+  type: subtask
+  title: R-031.1 send()에 REQUEST_REBUILD 이벤트를 _request_rebuild 핸들러로 연결한다
+  description: app/fsm.py의 Machine.send handlers 딕셔너리에 "REQUEST_REBUILD" 키를 추가하고,
+    이를 처리할 _request_rebuild 메서드를 새로 선언한다.
+  status: done
+  parent: SWF-36
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-031
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-116
+  type: subtask
+  title: R-031.2 _request_rebuild가 다른 처리보다 먼저 8일 초과 과거 복구 불가 안내를 messages[0]으로 반환하게
+    한다
+  description: app/fsm.py의 _request_rebuild 본문 첫 줄에서 "원시 보존 기한(8일)을 넘긴 과거는 복구할 수 없습니다"
+    문구를 messages 리스트 첫 항목으로 넣고, 원천 디렉터리 확인·재구축 등 어떤 처리보다 앞서 이 안내가 확정되도록 한 뒤 _result(exit_code=0,
+    messages=...)로 반환한다. RUN_COLLECTION 경로에는 이 안내가 섞이지 않도록 _run_collection은 손대지 않는다.
+  status: done
+  parent: SWF-36
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-031
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-117
+  type: subtask
+  title: R-032.1 _request_rebuild 에 원천 디렉터리 부재 분기를 추가해 빈 저장소로 exit 0 종료
+  description: app/fsm.py 의 Machine._request_rebuild 에서 R-031 안내(messages[0])를 확정한
+    직후 `not os.path.isdir(self.source_dir)` 를 검사하는 분기를 넣는다. 참이면 오류를 내지 않고 self.store
+    / self.request_ids / self.offsets 를 빈 값으로 초기화한 뒤 _persist_store() 로 data_dir 아래에
+    빈 저장소 파일을 남기고, 원천 부재를 알리는 안내를 messages 뒤에 덧붙여 _result(exit_code=0, messages=messages)
+    를 반환한다. 원천 경로는 열거나 쓰지 않는다. 함수 docstring 과 모듈 상단 전이 목록에 R-032 항목을 추가한다.
+  status: done
+  parent: SWF-37
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-032
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-118
+  type: subtask
+  title: R-032.2 원천이 있을 때 저장소를 비우고 원천 전체를 처음부터 다시 수집하도록 연결
+  description: app/fsm.py 의 Machine._request_rebuild 에서 원천 디렉터리가 존재하는 경우(guard 거짓
+    경로) self.store / self.request_ids / self.offsets 를 비운 다음 기존 _list_source_files
+    + _collect_file 루프(또는 _run_collection 의 수집 부분을 재사용하는 내부 헬퍼)로 모든 *.jsonl 을 offset
+    0 부터 읽어 저장소를 채우고 _persist_store() 로 저장한다. 파일 읽기 실패는 기존 file_failures 경로대로 흡수해
+    계속 진행하고, messages[0] 의 R-031 안내는 그대로 두고 exit_code 0 으로 반환한다.
+  status: done
+  parent: SWF-37
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-032
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-119
+  type: subtask
+  title: R-033.1 R-033 규칙을 app/fsm.py 모듈 헤더 규칙 목록에 추가한다
+  description: app/fsm.py 상단 규칙 목록의 R-032 뒤에 R-033 항목(event == REQUEST_REBUILD and
+    exists(source_dir) → store/request_ids/offsets 초기화 후 원천 *.jsonl 전체를 offset 0 부터
+    줄 규칙 R-007..R-011 로 재분류·적재, 처리 후 offsets[path] = size(file), 원천은 rb 로만 열어 바이트
+    무변경)을 기술한다.
+  status: done
+  parent: SWF-38
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-033
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-120
+  type: subtask
+  title: R-033.2 _request_rebuild 의 원천 존재 분기를 _rebuild_from_source 헬퍼로 분리하고 R-033
+    을 명시한다
+  description: app/fsm.py 의 _request_rebuild 에서 R-032 guard 거짓 뒤의 counts/invalid_reasons/file_failures
+    초기화 + _list_source_files 순회 + _collect_file 호출 + _persist_store 블록을 Machine._rebuild_from_source(self)
+    메서드로 옮기고, 그 메서드 docstring/주석에 R-033 guard·결과를 적는다. _reset_store_state 로 offsets
+    를 비웠으므로 모든 파일이 R-004(처음 보는 파일) 경로로 offset 0 부터 읽히고 request_ids 가 비어 있어 복제 없이 정확히
+    원천 전체 레코드가 적재되며, 처리 후 offsets[path] == size(file) 이 됨을 주석으로 근거 지운다. _request_rebuild
+    본문은 안내(R-031) → R-032 분기 → self._rebuild_from_source() → _result(exit_code=0)
+    로 정리한다.
+  status: done
+  parent: SWF-38
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-033
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-121
+  type: subtask
+  title: R-033.3 재구축 경로의 원천 무변경 보장을 코드 수준에서 확인한다
+  description: 'app/fsm.py 의 _rebuild_from_source 와 그것이 호출하는 _collect_file/_read_lines
+    경로가 원천 파일을 "rb" 로만 열고 쓰기 모드나 os.remove/rename 을 호출하지 않는지 점검하고, _rebuild_from_source
+    진입 시 원천 파일별 (size, mtime_ns) 를 기록해 끝난 뒤 동일함을 assert 하는 디버그 검사(R-021 자기검사와 같은 스타일)를
+    추가한다. 위반이면 "R-033: 재구축이 원천 파일을 변경했다: <path>" 메시지로 실패시킨다.'
+  status: done
+  parent: SWF-38
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-033
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-122
+  type: subtask
+  title: R-034.1 _rebuild_from_source 가 재구축 집계와 file_failures 를 반환하도록 바꾼다
+  description: 'app/fsm.py 의 Machine._rebuild_from_source 에서 지역 변수로만 쓰고 버리던 counts·invalid_reasons·file_failures
+    를 반환값(예: (counts, invalid_reasons, file_failures) 튜플)으로 돌려준다. _collect_file →
+    _read_source_bytes 가 읽기 실패 시 (path, failure_reason) 을 file_failures 에 넣고 offsets/counts
+    를 건드리지 않은 채 다음 파일로 계속하는 흐름은 그대로 유지하고, docstring 에 R-034(원천 파일 하나를 읽지 못하면 실패를 기록하고
+    나머지 파일로 계속) 근거를 추가한다.'
+  status: done
+  parent: SWF-39
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-034
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-123
+  type: subtask
+  title: R-034.2 REQUEST_REBUILD 결과를 file_failures 포함 장부 줄로 남긴다
+  description: app/fsm.py 의 Machine._request_rebuild 에서 R-033 경로(_rebuild_from_source
+    호출 뒤)에 _append_ledger_line(read_lines/accepted/duplicates/invalid/unrelated 와
+    file_failures, invalid_reasons 전달) 을 호출해 self.ledger[-1]["file_failures"] 에 (path,
+    failure_reason) 목록이 남도록 한다. 모든 파일이 읽히면 file_failures 가 빈 리스트인지 확인하고, _request_rebuild
+    docstring 과 주석에 R-034 전이 설명을 추가한다.
+  status: done
+  parent: SWF-39
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-034
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-124
+  type: subtask
+  title: R-035.1 재구축 완료 시 장부 줄에 rebuild=true 를 표시한다
+  description: app/fsm.py 의 _request_rebuild 에서 R-033 재구축 후 호출하는 _append_ledger_line
+    에 rebuild=True 를 전달하고, accepted 등 적재 건수 인자가 그대로 유지되는지 확인한다. 일반 수집(_run_collection)의
+    _append_ledger_line 호출은 기본값 rebuild=False 를 유지한다. 관련 주석을 R-035 로 갱신한다.
+  status: done
+  parent: SWF-40
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-035
+  usecase_ref: UC-04
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-125
+  type: subtask
+  title: R-036.1 RUN_COMPARISON 이벤트를 send 라우팅에 등록하고 _run_comparison 핸들러 골격을 추가하라
+  description: app/fsm.py Machine.send 의 handlers 사전에 "RUN_COMPARISON" -> self._run_comparison
+    을 추가하고, _request_rebuild 뒤에 `_run_comparison(self, **kwargs)` 메서드를 만든다. 이 단계에서는
+    self.usage_server 경로를 읽어 실행 가능성 판정 결과에 따라 분기하는 뼈대만 두고 반환은 self._result(...) 로
+    한다.
+  status: done
+  parent: SWF-41
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-036
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-126
+  type: subtask
+  title: R-036.2 기준 구현 실행 가능 여부 판정 함수 _usage_server_runnable 을 구현하라
+  description: 'app/fsm.py Machine 에 `_usage_server_runnable(self)` 를 추가한다. usage_server
+    가 None 이거나 os.path.isfile 이 거짓이면 (False, "기준 구현 파일이 없습니다: <경로>") 처럼 (bool, 이유
+    문자열) 튜플을 돌려준다. 파일이 있으면 subprocess 로 `sys.executable <usage_server>` 를 실행해 보고,
+    비정상 종료·예외 시 (False, stderr 또는 예외 메시지), 정상 종료 시 (True, stdout) 을 돌려준다.'
+  status: done
+  parent: SWF-41
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-036
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-127
+  type: subtask
+  title: R-036.3 실행 불가 시 '대조 불가'와 사유를 보고하고 comparison 을 None 으로 반환하도록 _run_comparison
+    을 완성하라
+  description: 'app/fsm.py _run_comparison 에서 _usage_server_runnable 이 False 를 돌려주면
+    messages 에 "대조 불가: <이유>" 를 넣고 error 에 실행 실패 이유를 담아 `self._result(exit_code=1,
+    messages=[...], error=이유, comparison=None)` 을 반환한다. 실행 가능(True) 경로는 ''대조 불가''
+    문구를 절대 포함하지 않으며, 현재 단계에서는 exit_code=0 과 빈 messages 로 반환하는 자리표시자로 둔다(성공 대조 내용은
+    R-037 에서 채움).'
+  status: done
+  parent: SWF-41
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-036
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-128
+  type: subtask
+  title: R-037.1 기준 구현 stdout 을 총 토큰·비용으로 파싱하는 헬퍼를 추가한다
+  description: 'app/fsm.py 의 Machine 에 `_parse_baseline_output(stdout)` 을 추가한다. `_usage_server_runnable`
+    이 돌려주는 stdout(JSON 한 줄, 예 `{"total_tokens": 150, "total_cost": 200.0}`)을 파싱해 `{"total_tokens":
+    int, "total_cost": float}` 로 정규화하고, JSON 이 아니거나 키가 없으면 `(None, 이유)` 를 돌려주도록 `(값,
+    이유)` 튜플 형태로 만든다. 외부 I/O 없이 문자열만 다룬다.'
+  status: done
+  parent: SWF-42
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-037
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-129
+  type: subtask
+  title: R-037.2 이 도구 쪽 같은 기간 총 토큰·비용을 산출하는 헬퍼를 추가한다
+  description: app/fsm.py 의 Machine 에 `_our_totals_for_period(period)` 를 추가한다. `_report_windows(period)`
+    의 kind="period" 구간 하나를 골라 `_aggregate_window` 로 집계하고 `{"total_tokens", "total_cost",
+    "by_model"}` 을 돌려준다. 집계가 NO_VALUE 면 total_tokens=0, total_cost=0.0, by_model={}
+    로 정규화해 baseline 과 같은 모양을 유지한다. period 기본값은 REPORT_PERIODS 의 "day_24h" 로 두고, `_run_comparison`
+    의 kwargs["period"] 로 덮어쓸 수 있게 한다.
+  status: done
+  parent: SWF-42
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-037
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-130
+  type: subtask
+  title: R-037.3 _run_comparison 의 guard 거짓 경로를 성공 대조 결과로 채운다
+  description: 'app/fsm.py `_run_comparison` 에서 `_usage_server_runnable` 이 (True,
+    stdout) 을 돌려주면 위 두 헬퍼로 ours·baseline 을 산출하고 `comparison={"period": period, "ours":
+    {...}, "baseline": {...}, "diffs": []}` 를 `_result(exit_code=0, messages=[...],
+    comparison=comparison)` 로 돌려준다. messages 에는 두 구현의 총 토큰·비용을 나란히 적은 한 줄을 넣는다. baseline
+    파싱 실패(`_parse_baseline_output` 이 None)면 R-036 과 같은 "대조 불가: <이유>" 경로(exit_code=1,
+    comparison=None)로 보낸다. 실행 불가 분기(R-036)는 그대로 둔다. `_result` 시그니처의 comparison 기본값
+    None 은 유지한다.'
+  status: done
+  parent: SWF-42
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-037
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-131
+  type: subtask
+  title: R-037.4 두 결과가 다를 때 차이 항목 목록을 comparison 에 채운다
+  description: 'app/fsm.py 에 `_comparison_diffs(ours, baseline)` 을 추가해 total_tokens·total_cost
+    가 다르면 `{"item": "total_tokens"|"total_cost", "ours": x, "baseline": y, "delta":
+    x - y}` 항목을 만들고, baseline 이 by_model 이나 TOKEN_KINDS 별 값을 제공하면 모델·토큰 종류 단위로도 같은
+    형식의 항목을 만든다. `_run_comparison` 에서 이 목록을 `comparison["diffs"]` 에 넣고, 차이가 있으면 messages
+    에 항목별 차이를 한 줄씩 덧붙인다(UC 2a). 값이 같으면 diffs 는 빈 리스트다.'
+  status: done
+  parent: SWF-42
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-037
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-132
+  type: subtask
+  title: R-037.5 모듈 docstring 의 전이 목록에 R-037 항목을 추가한다
+  description: app/fsm.py 상단 docstring 의 R-036 항목 뒤에 R-037 항목을 추가한다. guard(`event
+    == RUN_COMPARISON and runnable(tools/usage_server.py)`), 결과(같은 원천·기간에 대해 두 구현의
+    총 토큰·비용을 comparison["ours"]/["baseline"] 으로 나란히 제시), 차이 보고(comparison["diffs"]),
+    baseline 출력 파싱 실패 시 대조 불가 처리, 담당 메서드 이름(`_run_comparison`, `_our_totals_for_period`,
+    `_parse_baseline_output`, `_comparison_diffs`)을 기존 항목과 같은 문체로 적는다. `_run_comparison`
+    docstring 의 "R-037 이 채우며 … 자리표시자다" 문구도 실제 동작 설명으로 고친다.
+  status: done
+  parent: SWF-42
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-037
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-133
+  type: subtask
+  title: R-038.1 R-038 guard 분기를 _run_comparison / _comparison_diffs 에 확정한다
+  description: 'app/fsm.py 의 _comparison_diffs 가 두 구현의 값이 다를 때 total_tokens·total_cost
+    및 (기준 구현이 제공하면) 토큰 종류·모델 단위로 kind·model·period·ours·baseline·delta(≠0) 항목을 담은
+    0건이 아닌 목록을 돌려주고, 값이 같으면 빈 목록을 돌려주도록 점검·보정한다. _run_comparison 이 이 목록을 comparison["diffs"]
+    에 그대로 싣고 항목별 "차이 [기간] 항목: 이 도구 x, 기준 구현 y, 차이 delta" 메시지를 messages 에 덧붙이는지 확인한다(원천이
+    비어 있을 때 ours 가 0/0.0 으로 정규화되어 stub 의 999/9.9 와 차이가 잡히는 경로 포함).'
+  status: done
+  parent: SWF-43
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-038
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []
+- key: SWF-134
+  type: subtask
+  title: R-038.2 app/fsm.py 전이 목록과 docstring 에 R-038 을 등재한다
+  description: app/fsm.py 상단 전이 주석 목록에 "R-038 — 대조 결과 두 구현의 값이 다름 → 차이 항목(토큰 종류·모델·기간)과
+    차이 크기를 0건이 아닌 목록으로 보고" 항목을 추가하고, _run_comparison 과 _comparison_diffs 의 docstring
+    에서 R-037 로만 표기된 차이 보고 부분을 R-038 로 명시해 guard 참(diffs 비어 있지 않음)·거짓(diffs == [])
+    동작을 기술한다.
+  status: done
+  parent: SWF-43
+  labels:
+  - auto
+  - subtask
+  fsm_ref: R-038
+  usecase_ref: UC-05
+  signature: ''
+  dod_tests: []
+  attempts: 0
+  last_error: ''
+  artifacts: []

@@ -1,0 +1,62 @@
+[12:29:54] °øÀå 77f7f7a (¼öÁ¤º») ¡¤ ¿ä±¸»çÇ× 5a1af7ddfb8d
+[12:29:54] -- INIT --
+[12:29:54] git ÀúÀå¼Ò ÃÊ±âÈ­: C:\work\sw_factory\projects\accum_money\repo
+[12:29:54] ½ºÄ³Æúµù: conftest.py, CONVENTIONS.md, INTERFACE.md, .gitignore, app/__init__.py, tests/__init__.py
+[12:29:54] -- ELICIT --
+[12:36:11] ¿ä±¸»çÇ× 402°Ç ¡æ C:\work\sw_factory\projects\accum_money\artifacts\requirements.yaml
+[12:36:11] -- USECASE --
+[12:46:03] À¯½ºÄÉÀÌ½º 28°Ç ¡æ C:\work\sw_factory\projects\accum_money\artifacts\usecases.yaml
+[12:46:03] -- MODEL --
+[12:46:07] [STOP] ¿öÄ¿¸¦ ¾µ ¼ö ¾ø½À´Ï´Ù: fsm: exit 1: 
+   »ç¿ë·® ÇÑµµ³ª ³×Æ®¿öÅ© ¹®Á¦ÀÏ °¡´É¼ºÀÌ ³ô½À´Ï´Ù. »óÅÂ´Â ÀúÀåµÆ°í, ´Ù½Ã run ÇÏ¸é ÀÌ¾îÁı´Ï´Ù.
+[12:46:07] Á¤Áö ÁöÁ¡: MODEL | Åë°è: {}
+[17:33:24] °øÀå 77f7f7a (¼öÁ¤º») ¡¤ ¿ä±¸»çÇ× 5a1af7ddfb8d
+[17:33:24] -- MODEL --
+[17:37:52] [STOP] ¿öÄ¿¸¦ ¾µ ¼ö ¾ø½À´Ï´Ù: fsm: exit 1: 
+   »ç¿ë·® ÇÑµµ³ª ³×Æ®¿öÅ© ¹®Á¦ÀÏ °¡´É¼ºÀÌ ³ô½À´Ï´Ù. »óÅÂ´Â ÀúÀåµÆ°í, ´Ù½Ã run ÇÏ¸é ÀÌ¾îÁı´Ï´Ù.
+[17:37:52] Á¤Áö ÁöÁ¡: MODEL | Åë°è: {}
+[02:51:34] °øÀå 77f7f7a (¼öÁ¤º») ¡¤ ¿ä±¸»çÇ× 5a1af7ddfb8d
+[02:51:34] -- MODEL --
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\work\sw_factory\factory\cli.py", line 249, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "C:\work\sw_factory\factory\cli.py", line 245, in main
+    return args.fn(build_ctx(cfg_path), args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\cli.py", line 58, in cmd_run
+    phase = orch.run()
+            ^^^^^^^^^^
+  File "C:\work\sw_factory\factory\orchestrator.py", line 133, in run
+    finished = self._execute(phase)
+               ^^^^^^^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\orchestrator.py", line 180, in _execute
+    analysis.model(self.ctx)
+  File "C:\work\sw_factory\factory\stages\analysis.py", line 67, in model
+    return model_fsm(ctx)
+           ^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\stages\analysis.py", line 181, in model_fsm
+    fsm = _simulate_and_repair(ctx, fsm)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\work\sw_factory\factory\stages\analysis.py", line 214, in _simulate_and_repair
+    ctx.log(f"    - {f}")
+  File "C:\work\sw_factory\factory\context.py", line 100, in log
+    print(line, flush=True)
+UnicodeEncodeError: 'cp949' codec can't encode character '\u2014' in position 47: illegal multibyte sequence
+[03:06:37] ê³µì¥ 77f7f7a (ìˆ˜ì •ë³¸) Â· ìš”êµ¬ì‚¬í•­ 5a1af7ddfb8d
+[03:06:37] -- MODEL --
+[03:17:46] [STOP] ì›Œì»¤ë¥¼ ì“¸ ìˆ˜ ì—†ìŠµë‹ˆë‹¤: fsm: exit 1: 
+   ì‚¬ìš©ëŸ‰ í•œë„ë‚˜ ë„¤íŠ¸ì›Œí¬ ë¬¸ì œì¼ ê°€ëŠ¥ì„±ì´ ë†’ìŠµë‹ˆë‹¤. ìƒíƒœëŠ” ì €ì¥ëê³ , ë‹¤ì‹œ run í•˜ë©´ ì´ì–´ì§‘ë‹ˆë‹¤.
+[03:17:46] ì •ì§€ ì§€ì : MODEL | í†µê³„: {}
+[07:55:08] ê³µì¥ 77f7f7a (ìˆ˜ì •ë³¸) Â· ìš”êµ¬ì‚¬í•­ 5a1af7ddfb8d
+[07:55:08] -- MODEL --
+[08:10:08] [STOP] ì›Œì»¤ë¥¼ ì“¸ ìˆ˜ ì—†ìŠµë‹ˆë‹¤: fsm: timeout after 900s
+   ì‚¬ìš©ëŸ‰ í•œë„ë‚˜ ë„¤íŠ¸ì›Œí¬ ë¬¸ì œì¼ ê°€ëŠ¥ì„±ì´ ë†’ìŠµë‹ˆë‹¤. ìƒíƒœëŠ” ì €ì¥ëê³ , ë‹¤ì‹œ run í•˜ë©´ ì´ì–´ì§‘ë‹ˆë‹¤.
+[08:10:08] ì •ì§€ ì§€ì : MODEL | í†µê³„: {}
+[08:10:28] ê³µì¥ 77f7f7a (ìˆ˜ì •ë³¸) Â· ìš”êµ¬ì‚¬í•­ 5a1af7ddfb8d
+[08:10:28] -- MODEL --
+[08:21:46] [STOP] ì›Œì»¤ë¥¼ ì“¸ ìˆ˜ ì—†ìŠµë‹ˆë‹¤: fsm: exit 1: 
+   ì‚¬ìš©ëŸ‰ í•œë„ë‚˜ ë„¤íŠ¸ì›Œí¬ ë¬¸ì œì¼ ê°€ëŠ¥ì„±ì´ ë†’ìŠµë‹ˆë‹¤. ìƒíƒœëŠ” ì €ì¥ëê³ , ë‹¤ì‹œ run í•˜ë©´ ì´ì–´ì§‘ë‹ˆë‹¤.
+[08:21:46] ì •ì§€ ì§€ì : MODEL | í†µê³„: {}
